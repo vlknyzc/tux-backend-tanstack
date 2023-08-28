@@ -1,0 +1,10 @@
+{% extends "base.html" %}
+{% block content %}
+<div class="m-2"><h4>master_data</h4></div>
+<div class="m-2"><a class="btn btn-light" href="{% url 'master_data_Dimension_list' %}">Dimension Listing</a></div>
+<div class="m-2"><a class="btn btn-light" href="{% url 'master_data_JunkDimension_list' %}">JunkDimension Listing</a></div>
+<div class="m-2"><a class="btn btn-light" href="{% url 'master_data_Workspace_list' %}">Workspace Listing</a></div>
+<div class="m-2"><a class="btn btn-light" href="{% url 'master_data_Platform_list' %}">Platform Listing</a></div>
+<div class="m-2"><a class="btn btn-light" href="{% url 'master_data_Rule_list' %}">Rule Listing</a></div>
+<div class="m-2"><a class="btn btn-light" href="{% url 'master_data_Structure_list' %}">Structure Listing</a></div>
+{% endblock %}
