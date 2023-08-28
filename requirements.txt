@@ -1,11 +1,20 @@
-asgiref==3.7.2
-Django==4.2.4
+asgiref @ file:///Users/ec2-user/ci_py311/asgiref_1678390266874/work
+certifi==2023.7.22
+charset-normalizer==3.2.0
+coreapi==2.3.3
+coreschema==0.0.4
+Django @ file:///Users/ec2-user/ci_py311/django_1678411010555/work
 django-cors-headers==4.2.0
+django-filter==23.2
 djangorestframework==3.14.0
-gunicorn==21.2.0
-packaging==23.1
-psycopg2==2.9.6
+idna==3.4
+itypes==1.2.0
+Jinja2==3.1.2
+MarkupSafe==2.1.3
 pytz==2023.3
-sqlparse==0.4.4
-tzdata==2023.3
+PyYAML==6.0.1
+requests==2.31.0
+sqlparse @ file:///private/var/folders/sy/f16zz6x50xz3113nwtb9bvq00000gp/T/abs_cb77ukgrpu/croot/sqlparse_1690901947630/work
+uritemplate==4.1.1
+urllib3==2.0.4
 whitenoise==6.5.0
