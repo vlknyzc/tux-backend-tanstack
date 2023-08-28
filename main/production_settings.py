@@ -121,6 +121,12 @@ REST_FRAMEWORK = {
 
 CORS_ORIGIN_ALLOW_ALL = True
 
+CORS_ALLOWED_ORIGINS = [
+    "http://localhost:8080",
+    "http://localhost:5173",
+    "http://localhost:3000",
+]
+
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
     "DELETE",
@@ -130,6 +136,7 @@ CORS_ALLOW_METHODS = [
     "POST",
     "PUT",
 ]
+
 CORS_ALLOW_HEADERS = [
     "accept",
     "accept-encoding",
