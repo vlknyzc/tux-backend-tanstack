@@ -1,0 +1,18 @@
+
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+    
+<p>
+    <a class="btn btn-light" href="{% url 'master_data_Workspace_list' %}">
+    Workspace Listing
+    </a>
+</p>
+    
+<table class="table">
+    <tr><td>name</td><td>{{ object.name }}</td></tr>
+    <tr><td>created_by</td><td>{{ object.created_by }}</td></tr>
+</table>
+<a class="btn btn-primary" href="{{object.get_update_url}}">Edit</a>
+
+{% endblock %}

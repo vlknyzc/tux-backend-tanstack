@@ -1,0 +1,40 @@
+
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+    
+<p>
+    <a class="btn btn-light" href="{% url 'master_data_Platform_list' %}">
+    Platform Listing
+    </a>
+</p>
+    
+<form method="post" enctype="multipart/form-data">
+  {% csrf_token %}
+  {{form.errors}}
+  <div class="form-group row">
+      <label class="col-sm-2 col-form-label" for="platform_type">platform_type: </label>
+      <input class="form-control col-sm-10"'
+         id="platform_type" type="text"
+         name="platform_type" value="{{ object.platform_type }}">
+  </div>
+  <div class="form-group row">
+      <label class="col-sm-2 col-form-label" for="name">name: </label>
+      <input class="form-control col-sm-10"'
+         id="name" type="text"
+         name="name" value="{{ object.name }}">
+  </div>
+  <div class="form-group row">
+      <label class="col-sm-2 col-form-label" for="platform_field">platform_field: </label>
+      <input class="form-control col-sm-10"'
+         id="platform_field" type="text"
+         name="platform_field" value="{{ object.platform_field }}">
+  </div>
+  <div class="form-group row">
+      <label class="col-sm-2 col-form-label" for="workspace">workspace: </label>
+      {{ form.workspace }}
+  </div>
+  <input type="submit" value="Save" class="btn btn-primary">
+</form>
+
+{% endblock %}

@@ -1,0 +1,20 @@
+
+{% extends "base.html" %}
+{% load static %}
+{% block content %}
+    
+<p>
+    <a class="btn btn-light" href="{% url 'master_data_Platform_list' %}">
+    Platform Listing
+    </a>
+</p>
+    
+<table class="table">
+    <tr><td>platform_type</td><td>{{ object.platform_type }}</td></tr>
+    <tr><td>name</td><td>{{ object.name }}</td></tr>
+    <tr><td>platform_field</td><td>{{ object.platform_field }}</td></tr>
+    <tr><td>workspace</td><td>{{ object.workspace }}</td></tr>
+</table>
+<a class="btn btn-primary" href="{{object.get_update_url}}">Edit</a>
+
+{% endblock %}

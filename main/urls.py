@@ -14,8 +14,21 @@ Including another URLconf
     2. Add a URL to urlpatterns:  path('blog/', include('blog.urls'))
 """
 from django.contrib import admin
-from django.urls import path
+from django.urls import path, include
+from django.views.generic import TemplateView
+from rest_framework.documentation import include_docs_urls
+from rest_framework.schemas import get_schema_view
 
 urlpatterns = [
-    path("admin/", admin.site.urls),
+    path('', TemplateView.as_view(template_name='index.html'), name='index'),
+    path('', include('master_data.urls')),
+    path('admin/', admin.site.urls),
+
+    # API documentation
+    path("docs/", include_docs_urls(title="Master Data API")),
+    path("schema/", get_schema_view(    # pylint: disable=bad-continuation
+        title="Master Data API",
+        description="API for all things …",
+        version="1.0.0"
+    ), name="openapi-schema"),
 ]
