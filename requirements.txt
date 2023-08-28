@@ -1,9 +1,9 @@
-asgiref @ file:///Users/ec2-user/ci_py311/asgiref_1678390266874/work
+asgiref==3.4.1
 certifi==2023.7.22
 charset-normalizer==3.2.0
 coreapi==2.3.3
 coreschema==0.0.4
-Django @ file:///Users/ec2-user/ci_py311/django_1678411010555/work
+Django==3.2.8
 django-cors-headers==4.2.0
 django-filter==23.2
 djangorestframework==3.14.0
@@ -16,7 +16,7 @@ packaging==23.1
 pytz==2023.3
 PyYAML==6.0.1
 requests==2.31.0
-sqlparse @ file:///private/var/folders/sy/f16zz6x50xz3113nwtb9bvq00000gp/T/abs_cb77ukgrpu/croot/sqlparse_1690901947630/work
+sqlparse==0.4.2
 uritemplate==4.1.1
 urllib3==2.0.4
 whitenoise==6.5.0
