@@ -24,7 +24,12 @@ DEBUG = False
 ALLOWED_HOSTS = ["*"]
 
 # Comment out the following line and place your railway URL, and your production URL in the array.
-# CSRF_TRUSTED_ORIGINS = ["*"]
+CSRF_TRUSTED_ORIGINS = [
+    "https://django-rest-starter-production-de07.up.railway.app",
+    "https://tux-vlknyzc.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:8000",
+]
 
 
 # Application definition
@@ -122,15 +127,13 @@ REST_FRAMEWORK = {
 CORS_ORIGIN_ALLOW_ALL = True
 
 CORS_ALLOWED_ORIGINS = [
-    "http://localhost:3000",
+    "https://django-rest-starter-production-de07.up.railway.app",
     "https://tux-vlknyzc.vercel.app",
+    "http://localhost:3000",
+    "http://localhost:8000",
 
 ]
 
-CSRF_TRUSTED_ORIGINS = [
-    "http://localhost:3000",
-    "https://tux-vlknyzc.vercel.app",
-]
 
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOW_METHODS = [
