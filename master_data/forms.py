@@ -2,7 +2,8 @@ from django import forms
 from master_data.models import Dimension
 from master_data.models import Dimension
 from master_data.models import JunkDimension
-from django.contrib.auth.models import User
+# from django.contrib.auth.models import User
+from django.conf import settings
 from master_data.models import Workspace
 from master_data.models import Platform
 from master_data.models import Rule
@@ -56,7 +57,7 @@ class WorkspaceForm(forms.ModelForm):
 
     def __init__(self, *args, **kwargs):
         super(WorkspaceForm, self).__init__(*args, **kwargs)
-        self.fields["created_by"].queryset = User.objects.all()
+        self.fields["created_by"].queryset = settings.AUTH_USER_MODEL.objects.all()
 
 
 class PlatformForm(forms.ModelForm):

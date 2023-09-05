@@ -1,5 +1,7 @@
 from django.db import models
 from django.urls import reverse
+from django.conf import settings
+# from django.contrib.auth.models import User
 
 # TODO - link models with workspace to filter out responses
 
@@ -89,7 +91,7 @@ class Workspace(TimeStampModel):
 
     # Relationships
     created_by = models.ForeignKey(
-        "auth.User", on_delete=models.CASCADE, related_name="workspace")
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="workspace")
 
     # Fields
     name = models.CharField(max_length=30, unique=True)

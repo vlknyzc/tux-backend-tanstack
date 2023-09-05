@@ -5,6 +5,7 @@ from . import forms
 from rest_framework import generics
 from .serializers import DimensionSerializer
 from rest_framework import filters
+# from rest_framework.permissions import IsAuthenticated
 
 
 # class DimensionListView(generic.ListView):
@@ -68,6 +69,7 @@ class JunkDimensionDeleteView(generic.DeleteView):
 
 
 class WorkspaceListView(generic.ListView):
+    # permission_classes = (IsAuthenticated)
     model = models.Workspace
     form_class = forms.WorkspaceForm
 
@@ -78,6 +80,7 @@ class WorkspaceCreateView(generic.CreateView):
 
 
 class WorkspaceDetailView(generic.DetailView):
+    # permission_classes = (IsAuthenticated)
     model = models.Workspace
     form_class = forms.WorkspaceForm
 

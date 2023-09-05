@@ -15,7 +15,7 @@ router.register("Rule", api.RuleViewSet)
 router.register("Structure", api.StructureViewSet)
 
 urlpatterns = (
-    path("api/v1/", include(router.urls)),
+    path("api/", include(router.urls)),
     path("master_data/Dimension/", views.DimensionListView.as_view(),
          name="master_data_Dimension_list"),
     path("master_data/Dimension/create/", views.DimensionCreateView.as_view(),

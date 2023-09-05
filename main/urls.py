@@ -18,11 +18,25 @@ from django.urls import path, include
 from django.views.generic import TemplateView
 from rest_framework.documentation import include_docs_urls
 from rest_framework.schemas import get_schema_view
+from rest_framework_simplejwt.views import (
+    TokenObtainPairView,
+    TokenRefreshView,
+)
+
 
 urlpatterns = [
     path('', TemplateView.as_view(template_name='index.html'), name='index'),
     path('', include('master_data.urls')),
     path('admin/', admin.site.urls),
+
+    # API authentication
+    path("api-auth/", include("rest_framework.urls"), name="rest_framework"),
+
+    # API token authentication
+    path("api/token/", TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    path("api/token/refresh/", TokenRefreshView.as_view(),
+         name="token_refresh"),
+    path("api/user/", include("users.urls", namespace="users")),
 
     # API documentation
     path("docs/", include_docs_urls(title="Master Data API")),
