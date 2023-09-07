@@ -34,11 +34,13 @@ class JunkDimensionSerializer(serializers.ModelSerializer):
     parent_dimension_name = serializers.SerializerMethodField()
     parent_name = serializers.SerializerMethodField()
     parent_value = serializers.SerializerMethodField()
+    # workspace = serializers.SerializerMethodField()
 
     class Meta:
         model = models.JunkDimension
         fields = [
             "id",
+            "workspace",
             "dimension_value_code",
             "valid_from",
             "definition",
@@ -57,6 +59,9 @@ class JunkDimensionSerializer(serializers.ModelSerializer):
 
     def get_dimension_name(self, obj):
         return obj.dimension.name
+
+    # def get_workspace(self, obj):
+    #     return obj.dimension.workspace.id
 
     def get_parent_name(self, obj):
         if obj.parent_id:
