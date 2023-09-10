@@ -45,10 +45,10 @@ class Dimension(TimeStampModel):
     name = models.CharField(max_length=30)
 
     class Meta:
-        pass
+        unique_together = ('name', 'workspace')
 
     def __str__(self):
-        return str(self.name)
+        return str(f'{self.workspace.name} - {self.name}')
 
     def get_absolute_url(self):
         return reverse("master_data_Dimension_detail", args=(self.pk,))
@@ -73,6 +73,10 @@ class JunkDimension(TimeStampModel):
     valid_until = models.DateField(null=True, blank=True)
     dimension_value_label = models.CharField(max_length=50)
     dimension_value_utm = models.CharField(max_length=30)
+
+    @property
+    def workspace(self):
+        return self.dimension.workspace.id if self.dimension else None
 
     class Meta:
         unique_together = ('dimension', 'dimension_value')
