@@ -3,6 +3,11 @@ from rest_framework import viewsets, permissions
 from . import serializers
 from . import models
 
+# filter
+from rest_framework import filters
+from django_filters.rest_framework import DjangoFilterBackend
+import django_filters
+
 
 class DimensionViewSet(viewsets.ModelViewSet):
     """ViewSet for the Dimension class"""
@@ -10,6 +15,8 @@ class DimensionViewSet(viewsets.ModelViewSet):
     queryset = models.Dimension.objects.all()
     serializer_class = serializers.DimensionSerializer
     # permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['workspace__id', 'id', 'dimension_type']
 
 
 class JunkDimensionViewSet(viewsets.ModelViewSet):
@@ -18,6 +25,7 @@ class JunkDimensionViewSet(viewsets.ModelViewSet):
     queryset = models.JunkDimension.objects.all()
     serializer_class = serializers.JunkDimensionSerializer
     # permission_classes = [permissions.IsAuthenticated]
+    filterset_fields = ['dimension__workspace__id']
 
 
 class WorkspaceViewSet(viewsets.ModelViewSet):

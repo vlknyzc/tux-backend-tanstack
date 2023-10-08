@@ -10,18 +10,18 @@ import django_filters
 # from rest_framework.permissions import IsAuthenticated
 
 
-class DimensionListFilter(generics.ListAPIView):
-    queryset = models.Dimension.objects.all()
-    serializer_class = DimensionSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['workspace__id', 'id', 'dimension_type']
+# class DimensionListFilter(generics.ListAPIView):
+#     queryset = models.Dimension.objects.all()
+#     serializer_class = DimensionSerializer
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_fields = ['workspace__id', 'id', 'dimension_type']
 
 
-class JunkDimensionListFilter(generics.ListAPIView):
-    queryset = models.JunkDimension.objects.all()
-    serializer_class = JunkDimensionSerializer
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['dimension__workspace__id']
+# class JunkDimensionListFilter(generics.ListAPIView):
+#     queryset = models.JunkDimension.objects.all()
+#     serializer_class = JunkDimensionSerializer
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_fields = ['dimension__workspace__id']
 
 
 class WorkspaceListFilter(generics.ListAPIView):

@@ -18,11 +18,11 @@ router.register("structure", api.StructureViewSet)
 urlpatterns = (
     path("api/", include(router.urls)),
 
-    path("api/filter/dimension/", views.DimensionListFilter.as_view(),
-         name="dimension-filter"),
+    #     path("api/filter/dimension/", views.DimensionListFilter.as_view(),
+    #          name="dimension-filter"),
 
-    path("api/filter/junk-dimension/", views.JunkDimensionListFilter.as_view(),
-         name="junk-dimension-filter"),
+    #     path("api/filter/junk-dimension/", views.JunkDimensionListFilter.as_view(),
+    #          name="junk-dimension-filter"),
 
     path("api/filter/workspace/", views.WorkspaceListFilter.as_view(),
          name="workspace-filter"),
