@@ -104,52 +104,60 @@ class PlatformSerializer(serializers.ModelSerializer):
             "id",
             "platform_type",
             "name",
-            "platform_field",
-            "field_level",
-            "workspace",
-        ]
-
-
-class RuleSerializer(serializers.ModelSerializer):
-
-    class Meta:
-        model = models.Rule
-        fields = [
-            "id",
-            "workspace",
-            "name",
-            "valid_from",
-            "valid_until",
-
         ]
 
 
 class StructureSerializer(serializers.ModelSerializer):
-    dimension_name = serializers.SerializerMethodField()
-    parent_dimension_name = serializers.SerializerMethodField()
-    platform_field = serializers.SerializerMethodField()
-    field_level = serializers.SerializerMethodField()
+    workspace = serializers.SerializerMethodField()
+    convention_name = serializers.SerializerMethodField()
+    platform = serializers.SerializerMethodField()
     platform_name = serializers.SerializerMethodField()
+
+    dimension_name = serializers.SerializerMethodField()
+    dimension_type = serializers.SerializerMethodField()
+    parent_dimension_name = serializers.SerializerMethodField()
+    field_name = serializers.SerializerMethodField()
+    field_level = serializers.SerializerMethodField()
+    next_field = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Structure
         fields = [
             "id",
+            "workspace",
+            "convention_name",
             "platform",
             "platform_name",
-            "platform_field",
+            "field",
+            "field_name",
             "field_level",
-            "delimeter_after_dimension",
-            "delimeter_before_dimension",
-            "dimension_order",
-            "rule",
+            "next_field",
             "dimension",
             "dimension_name",
+            "dimension_type",
+            "dimension_order",
+            "delimeter_after_dimension",
+            "delimeter_before_dimension",
             "parent_dimension_name",
         ]
 
+    def get_workspace(self, obj):
+        return obj.field.platform.convention.workspace.id
+
+    def get_convention_name(self, obj):
+        return obj.field.platform.convention.name
+
+    def get_platform(self, obj):
+        return obj.field.platform.id
+
+    def get_platform_name(self, obj):
+        return obj.field.platform.name
+
     def get_dimension_name(self, obj):
         return obj.dimension.name
+
+    def get_dimension_type(self, obj):
+        return obj.dimension.dimension_type
 
     def get_parent_dimension_name(self, obj):
         if obj.dimension.parent_id:
@@ -158,11 +166,80 @@ class StructureSerializer(serializers.ModelSerializer):
         else:
             return None
 
-    def get_platform_field(self, obj):
-        return obj.platform.platform_field
-
-    def get_platform_name(self, obj):
-        return obj.platform.name
+    def get_field_name(self, obj):
+        return obj.field.name
 
     def get_field_level(self, obj):
-        return obj.platform.field_level
+        return obj.field.field_level
+
+    def get_next_field(self, obj):
+        if obj.field.next_field_id:
+            next_field = models.Field.objects.get(id=obj.field.next_field_id)
+            return next_field.name
+        else:
+            return None
+
+
+class FieldSerializer(serializers.ModelSerializer):
+    structures = StructureSerializer(many=True)
+    next_field_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.Field
+        fields = [
+            "id",
+            # "platform",
+
+            "name",
+            "field_level",
+            "next_field",
+            "next_field_name",
+            "structures"
+        ]
+
+    def get_next_field_name(self, obj):
+        if obj.next_field_id:
+            next_field = models.Field.objects.get(id=obj.next_field_id)
+            return next_field.name
+        else:
+            return None
+
+
+class FieldSingleSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.Field
+        fields = '__all__'
+
+
+class PlatformTemplateSerializer(serializers.ModelSerializer):
+    fields = FieldSerializer(many=True)
+
+    class Meta:
+        model = models.Platform
+        fields = [
+            "id",
+            "name",
+            "fields"
+        ]
+
+
+class ConventionSerializer(serializers.ModelSerializer):
+    platforms = PlatformTemplateSerializer(many=True)
+
+    class Meta:
+        model = models.Convention
+        fields = [
+            "id",
+            "workspace",
+            "name",
+            "description",
+            "platforms"
+        ]
+
+
+class ConventionSingleSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.Convention
+        fields = '__all__'

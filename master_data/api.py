@@ -44,12 +44,40 @@ class PlatformViewSet(viewsets.ModelViewSet):
     # permission_classes = [permissions.IsAuthenticated]
 
 
-class RuleViewSet(viewsets.ModelViewSet):
-    """ViewSet for the Rule class"""
+class FieldViewSet(viewsets.ModelViewSet):
+    """ViewSet for the Field class"""
 
-    queryset = models.Rule.objects.all()
-    serializer_class = serializers.RuleSerializer
+    queryset = models.Field.objects.all()
+    serializer_class = serializers.FieldSerializer
     # permission_classes = [permissions.IsAuthenticated]
+
+
+class FieldSingleViewSet(viewsets.ModelViewSet):
+    """ViewSet for the Field class"""
+
+    queryset = models.Field.objects.all()
+    serializer_class = serializers.FieldSingleSerializer
+    # permission_classes = [permissions.IsAuthenticated]
+
+
+class ConventionViewSet(viewsets.ModelViewSet):
+    """ViewSet for the Convention class"""
+
+    queryset = models.Convention.objects.all()
+    serializer_class = serializers.ConventionSerializer
+    # permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['workspace__id', 'id']
+
+
+class ConventionSingleViewSet(viewsets.ModelViewSet):
+    """ViewSet for the Convention class"""
+
+    queryset = models.Convention.objects.all()
+    serializer_class = serializers.ConventionSingleSerializer
+    # permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['workspace__id', 'id']
 
 
 class StructureViewSet(viewsets.ModelViewSet):
@@ -57,4 +85,12 @@ class StructureViewSet(viewsets.ModelViewSet):
 
     queryset = models.Structure.objects.all()
     serializer_class = serializers.StructureSerializer
+    # permission_classes = [permissions.IsAuthenticated]
+
+
+class PlatformTemplateViewSet(viewsets.ModelViewSet):
+    """ViewSet for the Structure class"""
+
+    queryset = models.Platform.objects.all()
+    serializer_class = serializers.PlatformTemplateSerializer
     # permission_classes = [permissions.IsAuthenticated]
