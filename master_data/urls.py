@@ -5,11 +5,6 @@ from rest_framework import routers
 from . import api
 from . import views
 
-template_router = routers.DefaultRouter()
-template_router.register("template-single", api.PlatformTemplateViewSet)
-template_router.register("convention-single", api.ConventionSingleViewSet)
-template_router.register("field-single", api.FieldSingleViewSet)
-
 
 router = routers.DefaultRouter()
 router.register("dimension", api.DimensionViewSet)
@@ -23,5 +18,5 @@ router.register("structure", api.StructureViewSet)
 
 urlpatterns = (
     path("api/", include(router.urls)),
-    path("api/", include(template_router.urls)),
+
 )

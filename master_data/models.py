@@ -51,25 +51,18 @@ class Convention(TimeStampModel):
 
 class Platform(TimeStampModel):
 
-    # Relationships
-    convention = models.ForeignKey(
-        "master_data.Convention", on_delete=models.CASCADE, related_name="platforms")
-
     # Fields
     platform_type = models.CharField(max_length=30)
     name = models.CharField(max_length=30)
 
-    class Meta:
-        unique_together = ('convention', 'name')
-
     def __str__(self):
-        return str(self.convention.name + " - " + self.name)
+        return str(self.name)
 
-    def get_absolute_url(self):
-        return reverse("master_data_Platform_detail", args=(self.pk,))
+    # def get_absolute_url(self):
+    #     return reverse("master_data_Platform_detail", args=(self.pk,))
 
-    def get_update_url(self):
-        return reverse("master_data_Platform_update", args=(self.pk,))
+    # def get_update_url(self):
+    #     return reverse("master_data_Platform_update", args=(self.pk,))
 
 
 class Field(TimeStampModel):
@@ -173,6 +166,8 @@ class JunkDimension(TimeStampModel):
 class Structure(TimeStampModel):
 
     # Relationships
+    convention = models.ForeignKey(
+        "master_data.Convention", on_delete=models.CASCADE, related_name="structures")
 
     dimension = models.ForeignKey(
         "master_data.Dimension", on_delete=models.CASCADE, related_name="structures")
@@ -180,6 +175,7 @@ class Structure(TimeStampModel):
         "master_data.Field", on_delete=models.CASCADE, related_name="structures")
 
     # Fields
+
     delimeter_after_dimension = models.CharField(
         max_length=1, null=True, blank=True)
     delimeter_before_dimension = models.CharField(
@@ -187,7 +183,7 @@ class Structure(TimeStampModel):
     dimension_order = models.SmallIntegerField()
 
     class Meta:
-        unique_together = ('field', 'dimension_order')
+        unique_together = ("convention", 'field', 'dimension_order')
 
     def __str__(self):
         return str(self.pk)

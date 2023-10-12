@@ -109,10 +109,11 @@ class PlatformSerializer(serializers.ModelSerializer):
 
 class StructureSerializer(serializers.ModelSerializer):
     workspace = serializers.SerializerMethodField()
-    convention_name = serializers.SerializerMethodField()
+    # convention_name = serializers.SerializerMethodField()
     platform = serializers.SerializerMethodField()
     platform_name = serializers.SerializerMethodField()
-
+    convention = serializers.SerializerMethodField()
+    convention_name = serializers.SerializerMethodField()
     dimension_name = serializers.SerializerMethodField()
     dimension_type = serializers.SerializerMethodField()
     parent_dimension_name = serializers.SerializerMethodField()
@@ -125,6 +126,7 @@ class StructureSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "workspace",
+            "convention",
             "convention_name",
             "platform",
             "platform_name",
@@ -142,10 +144,13 @@ class StructureSerializer(serializers.ModelSerializer):
         ]
 
     def get_workspace(self, obj):
-        return obj.field.platform.convention.workspace.id
+        return obj.dimension.workspace.id
+
+    def get_convention(self, obj):
+        return obj.convention.id
 
     def get_convention_name(self, obj):
-        return obj.field.platform.convention.name
+        return obj.convention.name
 
     def get_platform(self, obj):
         return obj.field.platform.id
@@ -225,20 +230,6 @@ class PlatformTemplateSerializer(serializers.ModelSerializer):
 
 
 class ConventionSerializer(serializers.ModelSerializer):
-    platforms = PlatformTemplateSerializer(many=True)
-
-    class Meta:
-        model = models.Convention
-        fields = [
-            "id",
-            "workspace",
-            "name",
-            "description",
-            "platforms"
-        ]
-
-
-class ConventionSingleSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Convention

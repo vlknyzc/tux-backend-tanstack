@@ -4,7 +4,8 @@ from . import serializers
 from . import models
 
 # filter
-from rest_framework import filters
+# from rest_framework import filters
+from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 
@@ -70,14 +71,31 @@ class ConventionViewSet(viewsets.ModelViewSet):
     filterset_fields = ['workspace__id', 'id']
 
 
-class ConventionSingleViewSet(viewsets.ModelViewSet):
-    """ViewSet for the Convention class"""
+# class ConventionSingleViewSet(viewsets.ModelViewSet):
+#     """ViewSet for the Convention class"""
 
-    queryset = models.Convention.objects.all()
-    serializer_class = serializers.ConventionSingleSerializer
-    # permission_classes = [permissions.IsAuthenticated]
-    filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['workspace__id', 'id']
+#     queryset = models.Convention.objects.all()
+#     serializer_class = serializers.ConventionSingleSerializer
+#     # permission_classes = [permissions.IsAuthenticated]
+#     filter_backends = [DjangoFilterBackend]
+#     filterset_fields = ['workspace__id', 'id']
+
+
+class StructureFilter(filters.FilterSet):
+    workspace_id = filters.NumberFilter(method='filter_workspace_id')
+    convention = filters.NumberFilter(method='filter_convention_id')
+
+    class Meta:
+        model = models.Structure
+        fields = ['id', 'workspace_id', "convention"]
+
+    def filter_workspace_id(self, queryset, name, value):
+        # Filter based on the workspace id through the related models
+        return queryset.filter(convention__workspace__id=value)
+
+    def filter_convention_id(self, queryset, name, value):
+        # Filter based on the workspace id through the related models
+        return queryset.filter(convention__id=value)
 
 
 class StructureViewSet(viewsets.ModelViewSet):
@@ -86,6 +104,8 @@ class StructureViewSet(viewsets.ModelViewSet):
     queryset = models.Structure.objects.all()
     serializer_class = serializers.StructureSerializer
     # permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = StructureFilter
 
 
 class PlatformTemplateViewSet(viewsets.ModelViewSet):
