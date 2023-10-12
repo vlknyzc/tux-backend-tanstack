@@ -186,20 +186,18 @@ class StructureSerializer(serializers.ModelSerializer):
 
 
 class FieldSerializer(serializers.ModelSerializer):
-    structures = StructureSerializer(many=True)
+
     next_field_name = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Field
         fields = [
             "id",
-            # "platform",
-
+            "platform",
             "name",
             "field_level",
             "next_field",
             "next_field_name",
-            "structures"
         ]
 
     def get_next_field_name(self, obj):
