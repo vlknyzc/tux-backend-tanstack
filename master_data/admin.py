@@ -84,7 +84,7 @@ class PlatformAdmin(admin.ModelAdmin):
     list_display = [
         "platform_type",
         "name",
-        "platform_field",
+
     ]
     # readonly_fields = [
     #     "platform_type",
@@ -93,26 +93,42 @@ class PlatformAdmin(admin.ModelAdmin):
     # ]
 
 
-class RuleAdminForm(forms.ModelForm):
+class FieldAdminForm(forms.ModelForm):
 
     class Meta:
-        model = models.Rule
+        model = models.Field
         fields = "__all__"
 
 
-class RuleAdmin(admin.ModelAdmin):
-    form = RuleAdminForm
+class FieldAdmin(admin.ModelAdmin):
+    form = FieldAdminForm
     list_display = [
-        "valid_from",
-        "valid_until",
         "name",
-        "workspace",
-
+        "platform",
     ]
     # readonly_fields = [
-    #     "valid_from",
-    #     "valid_until",
     #     "name",
+    #     "field_type",
+    #     "platform",
+    # ]
+
+
+class ConventionAdminForm(forms.ModelForm):
+
+    class Meta:
+        model = models.Convention
+        fields = "__all__"
+
+
+class ConventionAdmin(admin.ModelAdmin):
+    form = ConventionAdminForm
+    list_display = [
+        "name",
+        "workspace",
+    ]
+    # readonly_fields = [
+    #     "name",
+    #     "workspace",
     # ]
 
 
@@ -130,7 +146,8 @@ class StructureAdmin(admin.ModelAdmin):
         "delimeter_after_dimension",
         "delimeter_before_dimension",
         "dimension_order",
-        "rule"
+
+
     ]
     # readonly_fields = [
     #     "delimeter_after_dimension",
@@ -143,5 +160,5 @@ admin.site.register(models.Dimension, DimensionAdmin)
 admin.site.register(models.JunkDimension, JunkDimensionAdmin)
 admin.site.register(models.Workspace, WorkspaceAdmin)
 admin.site.register(models.Platform, PlatformAdmin)
-admin.site.register(models.Rule, RuleAdmin)
+admin.site.register(models.Field, FieldAdmin)
 admin.site.register(models.Structure, StructureAdmin)

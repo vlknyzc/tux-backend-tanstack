@@ -16,6 +16,78 @@ class TimeStampModel(models.Model):
         abstract = True
 
 
+class Workspace(TimeStampModel):
+
+    # Relationships
+    created_by = models.ForeignKey(
+        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="workspace")
+
+    # Fields
+    name = models.CharField(max_length=30, unique=True)
+
+    class Meta:
+        pass
+
+    def __str__(self):
+        return str(self.name)
+
+    def get_absolute_url(self):
+        return reverse("master_data_Workspace_detail", args=(self.pk,))
+
+    def get_update_url(self):
+        return reverse("master_data_Workspace_update", args=(self.pk,))
+
+
+class Convention(TimeStampModel):
+    workspace = models.ForeignKey(
+        "master_data.Workspace", on_delete=models.CASCADE, related_name="conventions")
+
+    name = models.CharField(max_length=30, unique=True)
+    description = models.TextField(max_length=500, null=True, blank=True)
+
+    def __str__(self):
+        return str(self.name)
+
+
+class Platform(TimeStampModel):
+
+    # Fields
+    platform_type = models.CharField(max_length=30)
+    name = models.CharField(max_length=30)
+
+    def __str__(self):
+        return str(self.name)
+
+    # def get_absolute_url(self):
+    #     return reverse("master_data_Platform_detail", args=(self.pk,))
+
+    # def get_update_url(self):
+    #     return reverse("master_data_Platform_update", args=(self.pk,))
+
+
+class Field(TimeStampModel):
+    platform = models.ForeignKey(
+        "master_data.Platform", on_delete=models.CASCADE, related_name="fields")
+
+    # Fields
+    name = models.CharField(max_length=30)
+    field_level = models.SmallIntegerField(null=False, blank=False)
+    next_field = models.ForeignKey("master_data.Field", on_delete=models.CASCADE,
+                                   null=True, blank=True, related_name="fields")
+
+    class Meta:
+        unique_together = ('platform', 'name', 'field_level')
+
+    def __str__(self):
+        return str(self.platform.name + " - " + self.name)
+
+    def get_absolute_url(self):
+        return reverse("master_data_Field_detail", args=(self.pk,))
+
+    def get_update_url(self):
+        return reverse("master_data_Field_update", args=(self.pk,))
+
+
 class Dimension(TimeStampModel):
     MASTERED = "mastered"
     FREE_TEXT = "free-text"
@@ -91,88 +163,19 @@ class JunkDimension(TimeStampModel):
         return reverse("master_data_JunkDimension_update", args=(self.pk,))
 
 
-class Workspace(TimeStampModel):
-
-    # Relationships
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="workspace")
-
-    # Fields
-    name = models.CharField(max_length=30, unique=True)
-
-    class Meta:
-        pass
-
-    def __str__(self):
-        return str(self.name)
-
-    def get_absolute_url(self):
-        return reverse("master_data_Workspace_detail", args=(self.pk,))
-
-    def get_update_url(self):
-        return reverse("master_data_Workspace_update", args=(self.pk,))
-
-
-class Platform(TimeStampModel):
-
-    # Relationships
-    workspace = models.ForeignKey(
-        "master_data.Workspace", on_delete=models.CASCADE, related_name="platforms")
-
-    # Fields
-    platform_type = models.CharField(max_length=30)
-    name = models.CharField(max_length=30)
-    platform_field = models.CharField(max_length=30)
-    field_level = models.SmallIntegerField()
-
-    class Meta:
-        unique_together = ('name', 'platform_field', 'field_level')
-
-    def __str__(self):
-        return str(self.name + " - " + self.platform_field)
-
-    def get_absolute_url(self):
-        return reverse("master_data_Platform_detail", args=(self.pk,))
-
-    def get_update_url(self):
-        return reverse("master_data_Platform_update", args=(self.pk,))
-
-
-class Rule(TimeStampModel):
-
-    # Relationships
-    workspace = models.ForeignKey(
-        "master_data.Workspace", on_delete=models.CASCADE, related_name="rules")
-
-    # Fields
-    valid_from = models.DateField(null=True, blank=True)
-    valid_until = models.DateField(null=True, blank=True)
-    name = models.CharField(max_length=30)
-
-    class Meta:
-        unique_together = ('workspace', 'name')
-
-    def __str__(self):
-        return str(self.name)
-
-    def get_absolute_url(self):
-        return reverse("master_data_Rule_detail", args=(self.pk,))
-
-    def get_update_url(self):
-        return reverse("master_data_Rule_update", args=(self.pk,))
-
-
 class Structure(TimeStampModel):
 
     # Relationships
-    rule = models.ForeignKey(
-        "master_data.Rule", on_delete=models.CASCADE, related_name="structures")
+    convention = models.ForeignKey(
+        "master_data.Convention", on_delete=models.CASCADE, related_name="structures")
+
     dimension = models.ForeignKey(
         "master_data.Dimension", on_delete=models.CASCADE, related_name="structures")
-    platform = models.ForeignKey(
-        "master_data.Platform", on_delete=models.CASCADE, related_name="structures")
+    field = models.ForeignKey(
+        "master_data.Field", on_delete=models.CASCADE, related_name="structures")
 
     # Fields
+
     delimeter_after_dimension = models.CharField(
         max_length=1, null=True, blank=True)
     delimeter_before_dimension = models.CharField(
@@ -180,7 +183,7 @@ class Structure(TimeStampModel):
     dimension_order = models.SmallIntegerField()
 
     class Meta:
-        unique_together = ('rule', 'platform', 'dimension_order')
+        unique_together = ("convention", 'field', 'dimension_order')
 
     def __str__(self):
         return str(self.pk)
