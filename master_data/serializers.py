@@ -112,7 +112,7 @@ class StructureSerializer(serializers.ModelSerializer):
     # convention_name = serializers.SerializerMethodField()
     platform = serializers.SerializerMethodField()
     platform_name = serializers.SerializerMethodField()
-    convention = serializers.SerializerMethodField()
+    # convention = serializers.SerializerMethodField()
     convention_name = serializers.SerializerMethodField()
     dimension_name = serializers.SerializerMethodField()
     dimension_type = serializers.SerializerMethodField()
@@ -188,12 +188,14 @@ class StructureSerializer(serializers.ModelSerializer):
 class FieldSerializer(serializers.ModelSerializer):
 
     next_field_name = serializers.SerializerMethodField()
+    platform_name = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Field
         fields = [
             "id",
             "platform",
+            "platform_name",
             "name",
             "field_level",
             "next_field",
@@ -207,12 +209,15 @@ class FieldSerializer(serializers.ModelSerializer):
         else:
             return None
 
+    def get_platform_name(self, obj):
+        return obj.platform.name
 
-class FieldSingleSerializer(serializers.ModelSerializer):
 
-    class Meta:
-        model = models.Field
-        fields = '__all__'
+# class FieldSingleSerializer(serializers.ModelSerializer):
+
+#     class Meta:
+#         model = models.Field
+#         fields = '__all__'
 
 
 class PlatformTemplateSerializer(serializers.ModelSerializer):

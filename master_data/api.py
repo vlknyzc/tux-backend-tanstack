@@ -53,12 +53,14 @@ class FieldViewSet(viewsets.ModelViewSet):
     # permission_classes = [permissions.IsAuthenticated]
 
 
-class FieldSingleViewSet(viewsets.ModelViewSet):
+class FieldViewSet(viewsets.ModelViewSet):
     """ViewSet for the Field class"""
 
     queryset = models.Field.objects.all()
-    serializer_class = serializers.FieldSingleSerializer
+    serializer_class = serializers.FieldSerializer
     # permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['platform__id', 'id']
 
 
 class ConventionViewSet(viewsets.ModelViewSet):
