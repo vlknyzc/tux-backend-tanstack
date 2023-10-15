@@ -172,7 +172,7 @@ class StructureSerializer(serializers.ModelSerializer):
             return None
 
     def get_field_name(self, obj):
-        return obj.field.name
+        return obj.field.field_name
 
     def get_field_level(self, obj):
         return obj.field.field_level
@@ -180,7 +180,7 @@ class StructureSerializer(serializers.ModelSerializer):
     def get_next_field(self, obj):
         if obj.field.next_field_id:
             next_field = models.Field.objects.get(id=obj.field.next_field_id)
-            return next_field.name
+            return next_field.field_name
         else:
             return None
 
@@ -196,7 +196,7 @@ class FieldSerializer(serializers.ModelSerializer):
             "id",
             "platform",
             "platform_name",
-            "name",
+            "field_name",
             "field_level",
             "next_field",
             "next_field_name",
@@ -205,7 +205,7 @@ class FieldSerializer(serializers.ModelSerializer):
     def get_next_field_name(self, obj):
         if obj.next_field_id:
             next_field = models.Field.objects.get(id=obj.next_field_id)
-            return next_field.name
+            return next_field.field_name
         else:
             return None
 

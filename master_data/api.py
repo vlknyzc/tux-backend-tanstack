@@ -70,7 +70,7 @@ class ConventionViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.ConventionSerializer
     # permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['workspace__id', 'id']
+    filterset_fields = ['workspace__id',  'id']
 
 
 # class ConventionSingleViewSet(viewsets.ModelViewSet):
@@ -86,10 +86,12 @@ class ConventionViewSet(viewsets.ModelViewSet):
 class StructureFilter(filters.FilterSet):
     workspace_id = filters.NumberFilter(method='filter_workspace_id')
     convention = filters.NumberFilter(method='filter_convention_id')
+    platform = filters.NumberFilter(method='filter_platform_id')
 
     class Meta:
         model = models.Structure
-        fields = ['id', 'workspace_id', "convention"]
+        fields = ['id', 'workspace_id', 'convention',
+                  'field__id', 'platform']
 
     def filter_workspace_id(self, queryset, name, value):
         # Filter based on the workspace id through the related models
@@ -98,6 +100,10 @@ class StructureFilter(filters.FilterSet):
     def filter_convention_id(self, queryset, name, value):
         # Filter based on the workspace id through the related models
         return queryset.filter(convention__id=value)
+
+    def filter_platform_id(self, queryset, name, value):
+        # Filter based on the workspace id through the related models
+        return queryset.filter(field__platform__id=value)
 
 
 class StructureViewSet(viewsets.ModelViewSet):
