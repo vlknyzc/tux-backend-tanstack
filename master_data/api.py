@@ -56,11 +56,17 @@ class FieldViewSet(viewsets.ModelViewSet):
 class FieldViewSet(viewsets.ModelViewSet):
     """ViewSet for the Field class"""
 
+    platform = filters.NumberFilter(method='filter_platform_id')
+
     queryset = models.Field.objects.all()
     serializer_class = serializers.FieldSerializer
     # permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['platform__id', 'id']
+    filterset_fields = ['platform', 'id']
+
+    def filter_platform_id(self, queryset, name, value):
+        # Filter based on the workspace id through the related models
+        return queryset.filter(platform__id=value)
 
 
 class ConventionViewSet(viewsets.ModelViewSet):
@@ -84,13 +90,13 @@ class ConventionViewSet(viewsets.ModelViewSet):
 
 
 class StructureFilter(filters.FilterSet):
-    workspace_id = filters.NumberFilter(method='filter_workspace_id')
+    workspace = filters.NumberFilter(method='filter_workspace_id')
     convention = filters.NumberFilter(method='filter_convention_id')
     platform = filters.NumberFilter(method='filter_platform_id')
 
     class Meta:
         model = models.Structure
-        fields = ['id', 'workspace_id', 'convention',
+        fields = ['id', 'workspace', 'convention',
                   'field__id', 'platform']
 
     def filter_workspace_id(self, queryset, name, value):
