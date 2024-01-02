@@ -35,7 +35,7 @@ class JunkDimensionAdminForm(forms.ModelForm):
 class JunkDimensionAdmin(admin.ModelAdmin):
     form = JunkDimensionAdminForm
     list_display = [
-        "dimension_value_code",
+        # "dimension_value_code",
         "valid_from",
         "definition",
         "dimension_value",

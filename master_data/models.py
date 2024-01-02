@@ -138,7 +138,7 @@ class JunkDimension(TimeStampModel):
                                on_delete=models.CASCADE, related_name="junk_dimension", null=True, blank=True)
 
     # Fields
-    dimension_value_code = models.CharField(max_length=30)
+    # dimension_value_code = models.CharField(max_length=30)
     valid_from = models.DateField(null=True, blank=True)
     definition = models.TextField(max_length=500, null=True, blank=True)
     dimension_value = models.CharField(max_length=30)

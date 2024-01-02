@@ -31,17 +31,18 @@ class DimensionSerializer(serializers.ModelSerializer):
 
 class JunkDimensionSerializer(serializers.ModelSerializer):
     dimension_name = serializers.SerializerMethodField()
-    parent_dimension_name = serializers.SerializerMethodField()
+    dimension_parent_name = serializers.SerializerMethodField()
     parent_name = serializers.SerializerMethodField()
     parent_value = serializers.SerializerMethodField()
     # workspace = serializers.SerializerMethodField()
+    dimension_parent = serializers.SerializerMethodField()
 
     class Meta:
         model = models.JunkDimension
         fields = [
             "id",
             "workspace",
-            "dimension_value_code",
+            # "dimension_value_code",
             "valid_from",
             "definition",
             "dimension_value",
@@ -50,12 +51,19 @@ class JunkDimensionSerializer(serializers.ModelSerializer):
             "dimension_value_utm",
             "dimension",
             "dimension_name",
-            "parent_dimension_name",
+            "dimension_parent_name",
+            "dimension_parent",
             "parent",
             "parent_name",
             "parent_value",
-
         ]
+
+    def get_dimension_parent(self, obj):
+        if obj.dimension.parent_id:
+            parent = models.Dimension.objects.get(id=obj.dimension.parent_id)
+            return parent.id
+        else:
+            return None
 
     def get_dimension_name(self, obj):
         return obj.dimension.name
@@ -77,7 +85,7 @@ class JunkDimensionSerializer(serializers.ModelSerializer):
         else:
             return None
 
-    def get_parent_dimension_name(self, obj):
+    def get_dimension_parent_name(self, obj):
         if obj.parent_id:
             parent = models.JunkDimension.objects.get(id=obj.parent_id)
             return parent.dimension.name
@@ -116,6 +124,7 @@ class StructureSerializer(serializers.ModelSerializer):
     convention_name = serializers.SerializerMethodField()
     dimension_name = serializers.SerializerMethodField()
     dimension_type = serializers.SerializerMethodField()
+    parent_dimension_id = serializers.SerializerMethodField()
     parent_dimension_name = serializers.SerializerMethodField()
     field_name = serializers.SerializerMethodField()
     field_level = serializers.SerializerMethodField()
@@ -141,6 +150,7 @@ class StructureSerializer(serializers.ModelSerializer):
             "delimeter_after_dimension",
             "delimeter_before_dimension",
             "parent_dimension_name",
+            "parent_dimension_id",
         ]
 
     def get_workspace(self, obj):
@@ -168,6 +178,13 @@ class StructureSerializer(serializers.ModelSerializer):
         if obj.dimension.parent_id:
             parent = models.Dimension.objects.get(id=obj.dimension.parent_id)
             return parent.name
+        else:
+            return None
+
+    def get_parent_dimension_id(self, obj):
+        if obj.dimension.parent_id:
+            parent = models.Dimension.objects.get(id=obj.dimension.parent_id)
+            return parent.id
         else:
             return None
 
