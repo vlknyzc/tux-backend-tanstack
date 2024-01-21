@@ -7,13 +7,13 @@ from . import views
 
 
 router = routers.DefaultRouter()
-router.register("dimension", api.DimensionViewSet)
+router.register("dimensions", api.DimensionViewSet)
 router.register("junk-dimension", api.JunkDimensionViewSet)
-router.register("workspace", api.WorkspaceViewSet)
-router.register("platform", api.PlatformViewSet)
-router.register("field", api.FieldViewSet)
-router.register("convention", api.ConventionViewSet)
-router.register("structure", api.StructureViewSet)
+router.register("workspaces", api.WorkspaceViewSet)
+router.register("platforms", api.PlatformViewSet)
+router.register("fields", api.FieldViewSet)
+router.register("conventions", api.ConventionViewSet)
+router.register("structures", api.StructureViewSet)
 
 
 urlpatterns = (

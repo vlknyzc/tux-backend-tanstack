@@ -9,6 +9,20 @@ from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
 import django_filters
 
+### Dimension ###
+
+
+class DimensionFilter(filters.FilterSet):
+    workspace = filters.NumberFilter(method='filter_workspace_id')
+
+    class Meta:
+        model = models.Dimension
+        fields = ['id', 'workspace', 'dimension_type']
+
+    def filter_workspace_id(self, queryset, name, value):
+        # Filter based on the workspace id through the related models
+        return queryset.filter(workspace__id=value)
+
 
 class DimensionViewSet(viewsets.ModelViewSet):
     """ViewSet for the Dimension class"""
@@ -17,7 +31,26 @@ class DimensionViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.DimensionSerializer
     # permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['workspace__id', 'id', 'dimension_type']
+    filterset_class = DimensionFilter
+
+### JunkDimension ###
+
+
+class JunkDimensionFilter(filters.FilterSet):
+    workspace = filters.NumberFilter(method='filter_workspace_id')
+    dimension = filters.NumberFilter(method='filter_dimension_id')
+
+    class Meta:
+        model = models.JunkDimension
+        fields = ['workspace']
+
+    def filter_workspace_id(self, queryset, name, value):
+        # Filter based on the workspace id through the related models
+        return queryset.filter(dimension__workspace__id=value)
+
+    def filter_dimension_id(self, queryset, name, value):
+        # Filter based on the workspace id through the related models
+        return queryset.filter(dimension__id=value)
 
 
 class JunkDimensionViewSet(viewsets.ModelViewSet):
@@ -26,15 +59,19 @@ class JunkDimensionViewSet(viewsets.ModelViewSet):
     queryset = models.JunkDimension.objects.all()
     serializer_class = serializers.JunkDimensionSerializer
     # permission_classes = [permissions.IsAuthenticated]
-    filterset_fields = ['dimension__workspace__id']
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = JunkDimensionFilter
 
 
+### Workspace ###
 class WorkspaceViewSet(viewsets.ModelViewSet):
     """ViewSet for the Workspace class"""
 
     queryset = models.Workspace.objects.all()
     serializer_class = serializers.WorkspaceSerializer
     # permission_classes = [permissions.IsAuthenticated]
+
+### Platform ###
 
 
 class PlatformViewSet(viewsets.ModelViewSet):
@@ -44,13 +81,13 @@ class PlatformViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.PlatformSerializer
     # permission_classes = [permissions.IsAuthenticated]
 
+### Field ###
+# class FieldViewSet(viewsets.ModelViewSet):
+#     """ViewSet for the Field class"""
 
-class FieldViewSet(viewsets.ModelViewSet):
-    """ViewSet for the Field class"""
-
-    queryset = models.Field.objects.all()
-    serializer_class = serializers.FieldSerializer
-    # permission_classes = [permissions.IsAuthenticated]
+#     queryset = models.Field.objects.all()
+#     serializer_class = serializers.FieldSerializer
+#     # permission_classes = [permissions.IsAuthenticated]
 
 
 class FieldViewSet(viewsets.ModelViewSet):
@@ -68,6 +105,8 @@ class FieldViewSet(viewsets.ModelViewSet):
         # Filter based on the workspace id through the related models
         return queryset.filter(platform__id=value)
 
+### Convention ###
+
 
 class ConventionViewSet(viewsets.ModelViewSet):
     """ViewSet for the Convention class"""
@@ -78,26 +117,19 @@ class ConventionViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['workspace__id',  'id']
 
-
-# class ConventionSingleViewSet(viewsets.ModelViewSet):
-#     """ViewSet for the Convention class"""
-
-#     queryset = models.Convention.objects.all()
-#     serializer_class = serializers.ConventionSingleSerializer
-#     # permission_classes = [permissions.IsAuthenticated]
-#     filter_backends = [DjangoFilterBackend]
-#     filterset_fields = ['workspace__id', 'id']
+### Structure ###
 
 
 class StructureFilter(filters.FilterSet):
     workspace = filters.NumberFilter(method='filter_workspace_id')
     convention = filters.NumberFilter(method='filter_convention_id')
     platform = filters.NumberFilter(method='filter_platform_id')
+    field = filters.NumberFilter(method='filter_field_id')
 
     class Meta:
         model = models.Structure
         fields = ['id', 'workspace', 'convention',
-                  'field__id', 'platform']
+                  'field', 'platform']
 
     def filter_workspace_id(self, queryset, name, value):
         # Filter based on the workspace id through the related models
@@ -110,6 +142,10 @@ class StructureFilter(filters.FilterSet):
     def filter_platform_id(self, queryset, name, value):
         # Filter based on the workspace id through the related models
         return queryset.filter(field__platform__id=value)
+
+    def filter_field_id(self, queryset, name, value):
+        # Filter based on the workspace id through the related models
+        return queryset.filter(field__id=value)
 
 
 class StructureViewSet(viewsets.ModelViewSet):
