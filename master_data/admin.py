@@ -156,9 +156,27 @@ class StructureAdmin(admin.ModelAdmin):
     # ]
 
 
+class StringAdminForm(forms.ModelForm):
+
+    class Meta:
+        model = models.String
+        fields = "__all__"
+
+
+class StringAdmin(admin.ModelAdmin):
+    form = StringAdminForm
+    list_display = [
+        "parent",
+        "workspace",
+        "field",
+    ]
+
+
 admin.site.register(models.Dimension, DimensionAdmin)
 admin.site.register(models.JunkDimension, JunkDimensionAdmin)
 admin.site.register(models.Workspace, WorkspaceAdmin)
 admin.site.register(models.Platform, PlatformAdmin)
 admin.site.register(models.Field, FieldAdmin)
 admin.site.register(models.Structure, StructureAdmin)
+admin.site.register(models.Convention, ConventionAdmin)
+admin.site.register(models.String, StringAdmin)

@@ -197,23 +197,25 @@ class Structure(TimeStampModel):
 
 
 class String(TimeStampModel):
-    # Relationships
-    workspace = models.ForeignKey(
-        "master_data.Workspace", on_delete=models.CASCADE, related_name="strings")
-    platform = models.ForeignKey(
-        "master_data.Platform", on_delete=models.CASCADE, related_name="strings")
-    field = models.ForeignKey(
-        "master_data.Field", on_delete=models.CASCADE, related_name="strings")
 
-    # Fields
-    string_id = models.UUIDField(
-        primary_key=True, default=uuid.uuid4, editable=False)
-    string_value = models.CharField(max_length=250)
+    # Relationships
     parent = models.ForeignKey("master_data.String", on_delete=models.CASCADE,
                                null=True, blank=True, related_name="strings")
+    workspace = models.ForeignKey(
+        "master_data.Workspace", on_delete=models.CASCADE)
+    field = models.ForeignKey("master_data.Field", on_delete=models.CASCADE)
+
+    # Fields
+    last_updated = models.DateTimeField(auto_now=True, editable=False)
+    created = models.DateTimeField(auto_now_add=True, editable=False)
+    string_value = models.CharField(max_length=400)
+    string_id = models.UUIDField()
+
+    class Meta:
+        pass
 
     def __str__(self):
-        return str(self.string_value)
+        return str(self.pk)
 
     def get_absolute_url(self):
         return reverse("master_data_String_detail", args=(self.pk,))

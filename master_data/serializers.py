@@ -230,13 +230,6 @@ class FieldSerializer(serializers.ModelSerializer):
         return obj.platform.name
 
 
-# class FieldSingleSerializer(serializers.ModelSerializer):
-
-#     class Meta:
-#         model = models.Field
-#         fields = '__all__'
-
-
 class PlatformTemplateSerializer(serializers.ModelSerializer):
     fields = FieldSerializer(many=True)
 
@@ -254,3 +247,18 @@ class ConventionSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Convention
         fields = '__all__'
+
+
+class StringSerializer(serializers.ModelSerializer):
+
+    class Meta:
+        model = models.String
+        fields = [
+            "last_updated",
+            "created",
+            "string_value",
+            "string_id",
+            "parent",
+            "workspace",
+            "field",
+        ]

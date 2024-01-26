@@ -164,3 +164,13 @@ class PlatformTemplateViewSet(viewsets.ModelViewSet):
     queryset = models.Platform.objects.all()
     serializer_class = serializers.PlatformTemplateSerializer
     # permission_classes = [permissions.IsAuthenticated]
+
+
+class StringViewSet(viewsets.ModelViewSet):
+    """ViewSet for the String class"""
+
+    queryset = models.String.objects.all()
+    serializer_class = serializers.StringSerializer
+    # permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_fields = ['id', 'workspace', 'field', 'parent']
