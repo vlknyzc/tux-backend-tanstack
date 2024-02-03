@@ -1,6 +1,7 @@
 from django.db import models
 from django.urls import reverse
 from django.conf import settings
+import uuid
 # from django.contrib.auth.models import User
 
 # TODO - link models with workspace to filter out responses
@@ -193,3 +194,34 @@ class Structure(TimeStampModel):
 
     def get_update_url(self):
         return reverse("master_data_Structure_update", args=(self.pk,))
+
+
+class String(TimeStampModel):
+
+    # Relationships
+    parent = models.ForeignKey("master_data.String", on_delete=models.CASCADE,
+                               null=True, blank=True, related_name="strings")
+    workspace = models.ForeignKey(
+        "master_data.Workspace", on_delete=models.CASCADE)
+    field = models.ForeignKey(
+        "master_data.Field", on_delete=models.CASCADE, related_name="strings")
+    convention = models.ForeignKey(
+        "master_data.Convention", on_delete=models.CASCADE, related_name="strings")
+
+    # Fields
+    last_updated = models.DateTimeField(auto_now=True, editable=False)
+    created = models.DateTimeField(auto_now_add=True, editable=False)
+    string_value = models.CharField(max_length=400)
+    string_id = models.UUIDField()
+
+    class Meta:
+        pass
+
+    def __str__(self):
+        return str(self.pk)
+
+    def get_absolute_url(self):
+        return reverse("master_data_String_detail", args=(self.pk,))
+
+    def get_update_url(self):
+        return reverse("master_data_String_update", args=(self.pk,))
