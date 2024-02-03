@@ -254,11 +254,13 @@ class StringSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.String
         fields = [
+            "id",
             "last_updated",
             "created",
-            "string_value",
-            "string_id",
-            "parent",
             "workspace",
             "field",
+            "convention",
+            "string_id",
+            "string_value",
+            "parent",
         ]

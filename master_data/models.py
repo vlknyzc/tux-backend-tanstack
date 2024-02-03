@@ -203,7 +203,10 @@ class String(TimeStampModel):
                                null=True, blank=True, related_name="strings")
     workspace = models.ForeignKey(
         "master_data.Workspace", on_delete=models.CASCADE)
-    field = models.ForeignKey("master_data.Field", on_delete=models.CASCADE)
+    field = models.ForeignKey(
+        "master_data.Field", on_delete=models.CASCADE, related_name="strings")
+    convention = models.ForeignKey(
+        "master_data.Convention", on_delete=models.CASCADE, related_name="strings")
 
     # Fields
     last_updated = models.DateTimeField(auto_now=True, editable=False)
