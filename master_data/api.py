@@ -108,6 +108,18 @@ class FieldViewSet(viewsets.ModelViewSet):
 ### Convention ###
 
 
+class ConventionFilter(filters.FilterSet):
+    workspace = filters.NumberFilter(method='filter_workspace_id')
+
+    class Meta:
+        model = models.Convention
+        fields = ['workspace']
+
+    def filter_workspace_id(self, queryset, name, value):
+        # Filter based on the workspace id through the related models
+        return queryset.filter(workspace__id=value)
+
+
 class ConventionViewSet(viewsets.ModelViewSet):
     """ViewSet for the Convention class"""
 
@@ -115,7 +127,7 @@ class ConventionViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.ConventionSerializer
     # permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['workspace__id',  'id']
+    filterset_class = ConventionFilter
 
 ### Structure ###
 
@@ -158,12 +170,31 @@ class StructureViewSet(viewsets.ModelViewSet):
     filterset_class = StructureFilter
 
 
+### PlatformTemplate ###
 class PlatformTemplateViewSet(viewsets.ModelViewSet):
     """ViewSet for the Structure class"""
 
     queryset = models.Platform.objects.all()
     serializer_class = serializers.PlatformTemplateSerializer
     # permission_classes = [permissions.IsAuthenticated]
+
+
+### String ###
+class StringFilter(filters.FilterSet):
+    workspace = filters.NumberFilter(method='filter_workspace_id')
+    field = filters.NumberFilter(method='filter_field_id')
+
+    class Meta:
+        model = models.String
+        fields = ['id', 'workspace', 'field', 'parent']
+
+    def filter_workspace_id(self, queryset, name, value):
+        # Filter based on the workspace id through the related models
+        return queryset.filter(workspace__id=value)
+
+    def filter_field_id(self, queryset, name, value):
+        # Filter based on the workspace id through the related models
+        return queryset.filter(field__id=value)
 
 
 class StringViewSet(viewsets.ModelViewSet):
@@ -173,4 +204,5 @@ class StringViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.StringSerializer
     # permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_fields = ['id', 'workspace', 'field', 'parent']
+    # filterset_fields = ['id', 'workspace', 'field', 'parent']
+    filterset_class = StringFilter
