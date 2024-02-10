@@ -183,6 +183,7 @@ class PlatformTemplateViewSet(viewsets.ModelViewSet):
 class StringFilter(filters.FilterSet):
     workspace = filters.NumberFilter(method='filter_workspace_id')
     field = filters.NumberFilter(method='filter_field_id')
+    convention = filters.NumberFilter(method='filter_convention_id')
 
     class Meta:
         model = models.String
@@ -195,6 +196,10 @@ class StringFilter(filters.FilterSet):
     def filter_field_id(self, queryset, name, value):
         # Filter based on the workspace id through the related models
         return queryset.filter(field__id=value)
+
+    def filter_convention_id(self, queryset, name, value):
+        # Filter based on the workspace id through the related models
+        return queryset.filter(convention__id=value)
 
 
 class StringViewSet(viewsets.ModelViewSet):

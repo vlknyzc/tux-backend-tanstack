@@ -251,6 +251,9 @@ class ConventionSerializer(serializers.ModelSerializer):
 
 class StringSerializer(serializers.ModelSerializer):
 
+    field_name = serializers.SerializerMethodField()
+    field_level = serializers.SerializerMethodField()
+
     class Meta:
         model = models.String
         fields = [
@@ -259,8 +262,16 @@ class StringSerializer(serializers.ModelSerializer):
             "created",
             "workspace",
             "field",
+            "field_name",
+            "field_level",
             "convention",
             "string_id",
             "string_value",
             "parent",
         ]
+
+    def get_field_name(self, obj):
+        return obj.field.field_name
+
+    def get_field_level(self, obj):
+        return obj.field.field_level
