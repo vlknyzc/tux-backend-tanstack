@@ -103,7 +103,7 @@ class FieldAdminForm(forms.ModelForm):
 class FieldAdmin(admin.ModelAdmin):
     form = FieldAdminForm
     list_display = [
-        "field_name",
+        "name",
         "platform",
     ]
     # readonly_fields = [

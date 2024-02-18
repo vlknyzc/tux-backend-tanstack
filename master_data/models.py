@@ -71,16 +71,16 @@ class Field(TimeStampModel):
         "master_data.Platform", on_delete=models.CASCADE, related_name="fields")
 
     # Fields
-    field_name = models.CharField(max_length=30)
+    name = models.CharField(max_length=30)
     field_level = models.SmallIntegerField(null=False, blank=False)
     next_field = models.ForeignKey("master_data.Field", on_delete=models.CASCADE,
                                    null=True, blank=True, related_name="fields")
 
     class Meta:
-        unique_together = ('platform', 'field_name', 'field_level')
+        unique_together = ('platform', 'name', 'field_level')
 
     def __str__(self):
-        return str(self.platform.name + " - " + self.field_name)
+        return str(self.platform.name + " - " + self.name)
 
     def get_absolute_url(self):
         return reverse("master_data_Field_detail", args=(self.pk,))
