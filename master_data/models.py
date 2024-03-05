@@ -1,6 +1,9 @@
 from django.db import models
 from django.urls import reverse
 from django.conf import settings
+from django.db.models.signals import post_save
+from django.dispatch import receiver
+
 import uuid
 # from django.contrib.auth.models import User
 
@@ -212,7 +215,8 @@ class String(TimeStampModel):
     last_updated = models.DateTimeField(auto_now=True, editable=False)
     created = models.DateTimeField(auto_now_add=True, editable=False)
     string_value = models.CharField(max_length=400)
-    string_id = models.UUIDField()
+    string_uuid = models.UUIDField()
+    parent_uuid = models.UUIDField(null=True, blank=True)
 
     class Meta:
         pass
@@ -225,3 +229,15 @@ class String(TimeStampModel):
 
     def get_update_url(self):
         return reverse("master_data_String_update", args=(self.pk,))
+
+
+@receiver(post_save, sender=String)
+def update_parent(sender, instance, created, **kwargs):
+    if created and instance.parent_uuid:
+        try:
+            parent_string = String.objects.get(
+                string_uuid=instance.parent_uuid)
+            instance.parent = parent_string
+            instance.save()
+        except String.DoesNotExist:
+            pass  # Handle the case where parent does not exist

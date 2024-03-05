@@ -265,9 +265,10 @@ class StringSerializer(serializers.ModelSerializer):
             "field_name",
             "field_level",
             "convention",
-            "string_id",
+            "string_uuid",
             "string_value",
             "parent",
+            "parent_uuid",
         ]
 
     def get_field_name(self, obj):
