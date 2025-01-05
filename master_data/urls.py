@@ -13,6 +13,7 @@ router.register("workspaces", api.WorkspaceViewSet)
 router.register("platforms", api.PlatformViewSet)
 router.register("fields", api.FieldViewSet)
 router.register("conventions", api.ConventionViewSet)
+router.register("convention-platforms", api.ConventionPlatformViewSet)
 router.register("structures", api.StructureViewSet)
 router.register("strings", api.StringViewSet)
 

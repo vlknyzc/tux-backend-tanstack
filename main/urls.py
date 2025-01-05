@@ -22,6 +22,8 @@ from rest_framework_simplejwt.views import (
     TokenObtainPairView,
     TokenRefreshView,
 )
+from django.conf import settings
+from django.conf.urls.static import static
 
 
 urlpatterns = [
@@ -46,3 +48,7 @@ urlpatterns = [
         version="1.0.0"
     ), name="openapi-schema"),
 ]
+
+if settings.DEBUG:
+    urlpatterns += static(settings.MEDIA_URL,
+                          document_root=settings.MEDIA_ROOT)

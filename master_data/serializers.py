@@ -100,8 +100,12 @@ class WorkspaceSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "logo",
             "created_by",
+            "created",
+            "last_updated",
         ]
+        read_only_fields = ["created", "last_updated"]
 
 
 class PlatformSerializer(serializers.ModelSerializer):
@@ -242,11 +246,33 @@ class PlatformTemplateSerializer(serializers.ModelSerializer):
         ]
 
 
-class ConventionSerializer(serializers.ModelSerializer):
+class ConventionPlatformSerializer(serializers.ModelSerializer):
+
+    platform_name = serializers.SerializerMethodField()
 
     class Meta:
-        model = models.Convention
+        model = models.ConventionPlatform
         fields = '__all__'
+
+    def get_platform_name(self, obj):
+        return obj.platform.name
+
+
+class ConventionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Convention
+        fields = ['id', 'workspace', 'name', 'description',
+                  'status', 'valid_from', 'valid_until']
+
+    def validate(self, data):
+        """
+        Check that valid_until is after valid_from if provided
+        """
+        if data.get('valid_until') and data['valid_until'] < data['valid_from']:
+            raise serializers.ValidationError({
+                "valid_until": "End date must be after start date"
+            })
+        return data
 
 
 class StringSerializer(serializers.ModelSerializer):
