@@ -133,6 +133,7 @@ class StructureSerializer(serializers.ModelSerializer):
     field_name = serializers.SerializerMethodField()
     field_level = serializers.SerializerMethodField()
     next_field = serializers.SerializerMethodField()
+    in_parent_field = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Structure
@@ -155,6 +156,7 @@ class StructureSerializer(serializers.ModelSerializer):
             "delimeter_before_dimension",
             "parent_dimension_name",
             "parent_dimension_id",
+            "in_parent_field",
         ]
 
     def get_workspace(self, obj):
@@ -204,6 +206,21 @@ class StructureSerializer(serializers.ModelSerializer):
             return next_field.name
         else:
             return None
+
+    def get_in_parent_field(self, obj):
+        field_level = obj.field.field_level
+        if field_level <= 1:
+            return False
+
+        # Check for existence of a parent level structure
+        parent_exists = models.Structure.objects.filter(
+            convention=obj.convention,
+            field__platform=obj.field.platform,
+            dimension=obj.dimension,
+            field__field_level=field_level - 1
+        ).exists()
+
+        return parent_exists
 
 
 class FieldSerializer(serializers.ModelSerializer):
@@ -279,6 +296,9 @@ class StringSerializer(serializers.ModelSerializer):
 
     field_name = serializers.SerializerMethodField()
     field_level = serializers.SerializerMethodField()
+    convention_name = serializers.SerializerMethodField()
+    platform_id = serializers.SerializerMethodField()
+    platform_name = serializers.SerializerMethodField()
 
     class Meta:
         model = models.String
@@ -291,6 +311,9 @@ class StringSerializer(serializers.ModelSerializer):
             "field_name",
             "field_level",
             "convention",
+            "convention_name",
+            "platform_id",
+            "platform_name",
             "string_uuid",
             "string_value",
             "parent",
@@ -302,3 +325,38 @@ class StringSerializer(serializers.ModelSerializer):
 
     def get_field_level(self, obj):
         return obj.field.field_level
+
+    def get_convention_name(self, obj):
+        return obj.convention.name if obj.convention else None
+
+    def get_platform_id(self, obj):
+        return obj.field.platform.id if obj.field and obj.field.platform else None
+
+    def get_platform_name(self, obj):
+        return obj.field.platform.name if obj.field and obj.field.platform else None
+
+
+class StringItemSerializer(serializers.ModelSerializer):
+    structure_field_name = serializers.SerializerMethodField()
+    dimension_value_label = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.StringItem
+        fields = [
+            "id",
+            "string",
+            "structure",
+            "structure_field_name",
+            "dimension_value",
+            "dimension_value_label",
+            "dimension_value_freetext",
+            "created",
+            "last_updated",
+        ]
+        read_only_fields = ["created", "last_updated"]
+
+    def get_structure_field_name(self, obj):
+        return obj.structure.field.name if obj.structure else None
+
+    def get_dimension_value_label(self, obj):
+        return obj.dimension_value.dimension_value_label if obj.dimension_value else None

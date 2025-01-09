@@ -16,6 +16,7 @@ router.register("conventions", api.ConventionViewSet)
 router.register("convention-platforms", api.ConventionPlatformViewSet)
 router.register("structures", api.StructureViewSet)
 router.register("strings", api.StringViewSet)
+router.register("string-items", api.StringItemViewSet)
 
 
 urlpatterns = (

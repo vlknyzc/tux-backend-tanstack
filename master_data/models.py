@@ -269,6 +269,44 @@ class String(TimeStampModel):
         return reverse("master_data_String_update", args=(self.pk,))
 
 
+class StringItem(TimeStampModel):
+    # Relationships
+    string = models.ForeignKey(
+        "master_data.String",
+        on_delete=models.CASCADE,
+        related_name="string_items"
+    )
+    structure = models.ForeignKey(
+        "master_data.Structure",
+        on_delete=models.CASCADE,
+        related_name="string_items"
+    )
+    dimension_value = models.ForeignKey(
+        "master_data.JunkDimension",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="string_items"
+    )
+    dimension_value_freetext = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True
+    )
+
+    class Meta:
+        pass
+
+    def __str__(self):
+        return f"{self.string} - {self.structure}"
+
+    def get_absolute_url(self):
+        return reverse("master_data_StringItem_detail", args=(self.pk,))
+
+    def get_update_url(self):
+        return reverse("master_data_StringItem_update", args=(self.pk,))
+
+
 @receiver(post_save, sender=String)
 def update_parent(sender, instance, created, **kwargs):
     if created and instance.parent_uuid:

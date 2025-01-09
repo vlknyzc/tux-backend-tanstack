@@ -249,3 +249,46 @@ class StringViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     # filterset_fields = ['id', 'workspace', 'field', 'parent']
     filterset_class = StringFilter
+
+### StringItem ###
+
+
+class StringItemFilter(filters.FilterSet):
+    workspace = filters.NumberFilter(method='filter_workspace_id')
+    string = filters.NumberFilter(method='filter_string_id')
+    structure = filters.NumberFilter(method='filter_structure_id')
+
+    class Meta:
+        model = models.StringItem
+        fields = ['id', 'workspace', 'string', 'structure', 'dimension_value']
+
+    def filter_workspace_id(self, queryset, name, value):
+        return queryset.filter(string__workspace__id=value)
+
+    def filter_string_id(self, queryset, name, value):
+        return queryset.filter(string__id=value)
+
+    def filter_structure_id(self, queryset, name, value):
+        return queryset.filter(structure__id=value)
+
+
+class StringItemViewSet(viewsets.ModelViewSet):
+    """ViewSet for the StringItem class"""
+
+    queryset = models.StringItem.objects.all()
+    serializer_class = serializers.StringItemSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = StringItemFilter
+
+    def create(self, request, *args, **kwargs):
+        print("\n=== StringItem POST Request Debug ===")
+        print("Headers:", request.headers)
+        print("Data:", request.data)
+        print("Content Type:", request.content_type)
+        try:
+            response = super().create(request, *args, **kwargs)
+            print("Success Response:", response.data)
+            return response
+        except Exception as e:
+            print("Error occurred:", str(e))
+            raise
