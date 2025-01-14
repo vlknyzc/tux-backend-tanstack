@@ -338,7 +338,10 @@ class StringSerializer(serializers.ModelSerializer):
 
 class StringItemSerializer(serializers.ModelSerializer):
     structure_field_name = serializers.SerializerMethodField()
+    dimension_value_id = serializers.SerializerMethodField()
+    dimension_value = serializers.SerializerMethodField()
     dimension_value_label = serializers.SerializerMethodField()
+    dimension_id = serializers.SerializerMethodField()
 
     class Meta:
         model = models.StringItem
@@ -347,16 +350,142 @@ class StringItemSerializer(serializers.ModelSerializer):
             "string",
             "structure",
             "structure_field_name",
+            "dimension_value_id",
             "dimension_value",
             "dimension_value_label",
             "dimension_value_freetext",
+            "dimension_id",
             "created",
             "last_updated",
         ]
         read_only_fields = ["created", "last_updated"]
 
+    def validate(self, data):
+        """
+        Validate based on dimension type
+        """
+        structure = data.get('structure')
+        if not structure:
+            raise serializers.ValidationError({
+                "structure": "Structure is required"
+            })
+
+        dimension_type = structure.dimension.dimension_type
+        dimension_value_id = self.initial_data.get('dimension_value_id')
+        dimension_value = self.initial_data.get('dimension_value')
+        dimension_value_label = self.initial_data.get('dimension_value_label')
+        dimension_value_freetext = self.initial_data.get(
+            'dimension_value_freetext')
+
+        # For free text dimensions
+        if dimension_type in [models.Dimension.FREE_TEXT, models.Dimension.FREE_TEXT_WITH_VALIDATIONS]:
+            if dimension_value_id or dimension_value_label:
+                raise serializers.ValidationError({
+                    "dimension_value_id": "Cannot set dimension_value_id for free text dimensions",
+                    "dimension_value_label": "Cannot set dimension_value_label for free text dimensions"
+                })
+            # Remove the requirement for dimension_value_freetext
+            data['dimension_value'] = None
+            return data
+
+        # For mastered dimensions
+        if dimension_type == models.Dimension.MASTERED:
+            if dimension_value_freetext:
+                raise serializers.ValidationError({
+                    "dimension_value_freetext": "Cannot set free text for mastered dimensions"
+                })
+            if not dimension_value_id:
+                raise serializers.ValidationError({
+                    "dimension_value_id": "Dimension value ID is required for mastered dimensions"
+                })
+
+            try:
+                junk_dimension = models.JunkDimension.objects.get(
+                    id=dimension_value_id)
+
+                # If other fields are provided, validate they match
+                if dimension_value and junk_dimension.dimension_value != dimension_value:
+                    raise serializers.ValidationError({
+                        "dimension_value": f"Value '{dimension_value}' does not match JunkDimension with id {dimension_value_id}"
+                    })
+
+                if dimension_value_label and junk_dimension.dimension_value_label != dimension_value_label:
+                    raise serializers.ValidationError({
+                        "dimension_value_label": f"Label '{dimension_value_label}' does not match JunkDimension with id {dimension_value_id}"
+                    })
+
+                data['dimension_value'] = junk_dimension
+
+            except models.JunkDimension.DoesNotExist:
+                raise serializers.ValidationError({
+                    "dimension_value_id": f"JunkDimension with id {dimension_value_id} does not exist"
+                })
+
+        return data
+
+    def create(self, validated_data):
+        # Remove only the extra fields that aren't in the model
+        validated_data.pop('dimension_value_id', None)
+        validated_data.pop('dimension_value_label', None)
+
+        # Note: Don't pop 'dimension_value' as it contains the JunkDimension instance
+        # that was set in the validate method
+
+        # Create the StringItem instance
+        string_item = models.StringItem.objects.create(**validated_data)
+        return string_item
+
     def get_structure_field_name(self, obj):
         return obj.structure.field.name if obj.structure else None
 
+    def get_dimension_id(self, obj):
+        return obj.structure.dimension.id if obj.structure and obj.structure.dimension else None
+
+    def get_dimension_value_id(self, obj):
+        return obj.dimension_value.id if obj.dimension_value else None
+
+    def get_dimension_value(self, obj):
+        return obj.dimension_value.dimension_value if obj.dimension_value else None
+
     def get_dimension_value_label(self, obj):
         return obj.dimension_value.dimension_value_label if obj.dimension_value else None
+
+
+class ConventionPlatformDetailSerializer(serializers.ModelSerializer):
+    platform_name = serializers.SerializerMethodField()
+    platform_fields = serializers.SerializerMethodField()
+    workspace_name = serializers.SerializerMethodField()
+    workspace = serializers.SerializerMethodField()
+    convention_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.ConventionPlatform
+        fields = [
+            'id',
+            'workspace',
+            'workspace_name',
+            'convention',
+            'convention_name',
+            'platform',
+            'platform_name',
+            'platform_fields',
+            'created',
+            'last_updated'
+        ]
+
+    def get_platform_name(self, obj):
+        return obj.platform.name
+
+    def get_platform_fields(self, obj):
+        fields = models.Field.objects.filter(
+            platform=obj.platform).order_by('field_level')
+        return FieldSerializer(fields, many=True).data
+
+    def get_workspace_name(self, obj):
+        return obj.convention.workspace.name
+
+    def get_workspace(self, obj):
+        return obj.convention.workspace.id
+
+    def get_convention_name(self, obj):
+        return obj.convention.name

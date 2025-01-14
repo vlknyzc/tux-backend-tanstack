@@ -292,3 +292,26 @@ class StringItemViewSet(viewsets.ModelViewSet):
         except Exception as e:
             print("Error occurred:", str(e))
             raise
+
+### ConventionPlatformDetail ###
+
+
+class ConventionPlatformDetailFilter(filters.FilterSet):
+    workspace = filters.NumberFilter(method='filter_workspace_id')
+
+    class Meta:
+        model = models.ConventionPlatform
+        fields = ['convention', 'platform', 'workspace']
+
+    def filter_workspace_id(self, queryset, name, value):
+        # Filter based on the workspace id through the convention relationship
+        return queryset.filter(convention__workspace__id=value)
+
+
+class ConventionPlatformDetailViewSet(viewsets.ReadOnlyModelViewSet):
+    """ViewSet for detailed Convention Platform information including fields"""
+
+    queryset = models.ConventionPlatform.objects.all()
+    serializer_class = serializers.ConventionPlatformDetailSerializer
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = ConventionPlatformDetailFilter
