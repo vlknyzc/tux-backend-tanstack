@@ -69,11 +69,15 @@ class JunkDimensionViewSet(viewsets.ModelViewSet):
 
 ### Workspace ###
 class WorkspaceViewSet(viewsets.ModelViewSet):
-    """ViewSet for the Workspace class"""
-
     queryset = models.Workspace.objects.all()
     serializer_class = serializers.WorkspaceSerializer
     permission_classes = [permissions.IsAuthenticated]
+
+    def list(self, request, *args, **kwargs):
+        print(f"Authenticated User: {request.user}")
+        print(f"Is Authenticated: {request.user.is_authenticated}")
+        print(f"Queryset: {self.queryset}")
+        return super().list(request, *args, **kwargs)
 
 ### Platform ###
 
