@@ -33,7 +33,7 @@ class DimensionViewSet(viewsets.ModelViewSet):
 
     queryset = models.Dimension.objects.all()
     serializer_class = serializers.DimensionSerializer
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = DimensionFilter
 
@@ -62,7 +62,7 @@ class JunkDimensionViewSet(viewsets.ModelViewSet):
 
     queryset = models.JunkDimension.objects.all()
     serializer_class = serializers.JunkDimensionSerializer
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = JunkDimensionFilter
 
@@ -73,7 +73,7 @@ class WorkspaceViewSet(viewsets.ModelViewSet):
 
     queryset = models.Workspace.objects.all()
     serializer_class = serializers.WorkspaceSerializer
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
 ### Platform ###
 
@@ -83,7 +83,7 @@ class PlatformViewSet(viewsets.ModelViewSet):
 
     queryset = models.Platform.objects.all()
     serializer_class = serializers.PlatformSerializer
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
 ### Field ###
 # class FieldViewSet(viewsets.ModelViewSet):
@@ -101,7 +101,7 @@ class FieldViewSet(viewsets.ModelViewSet):
 
     queryset = models.Field.objects.all()
     serializer_class = serializers.FieldSerializer
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['platform', 'id']
 
@@ -129,7 +129,7 @@ class ConventionViewSet(viewsets.ModelViewSet):
 
     queryset = models.Convention.objects.all()
     serializer_class = serializers.ConventionSerializer
-    # permission_classes = [IsAuthenticated]
+    permission_classes = [IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = ConventionFilter
 
@@ -166,7 +166,7 @@ class ConventionPlatformViewSet(viewsets.ModelViewSet):
 
     queryset = models.ConventionPlatform.objects.all()
     serializer_class = serializers.ConventionPlatformSerializer
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = ConventionPlatformFilter
 
@@ -206,7 +206,7 @@ class StructureViewSet(viewsets.ModelViewSet):
 
     queryset = models.Structure.objects.all()
     serializer_class = serializers.StructureSerializer
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = StructureFilter
 
@@ -266,7 +266,7 @@ class PlatformTemplateViewSet(viewsets.ModelViewSet):
 
     queryset = models.Platform.objects.all()
     serializer_class = serializers.PlatformTemplateSerializer
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
 
 
 ### String ###
@@ -297,9 +297,8 @@ class StringViewSet(viewsets.ModelViewSet):
 
     queryset = models.String.objects.all()
     serializer_class = serializers.StringSerializer
-    # permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    # filterset_fields = ['id', 'workspace', 'field', 'parent']
     filterset_class = StringFilter
 
 ### StringItem ###
@@ -329,6 +328,7 @@ class StringItemViewSet(viewsets.ModelViewSet):
 
     queryset = models.StringItem.objects.all()
     serializer_class = serializers.StringItemSerializer
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = StringItemFilter
 
@@ -365,5 +365,6 @@ class ConventionPlatformDetailViewSet(viewsets.ReadOnlyModelViewSet):
 
     queryset = models.ConventionPlatform.objects.all()
     serializer_class = serializers.ConventionPlatformDetailSerializer
+    permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = ConventionPlatformDetailFilter
