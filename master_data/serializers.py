@@ -1,4 +1,5 @@
 from rest_framework import serializers
+from django.db.models import Max
 
 from . import models
 
@@ -134,6 +135,7 @@ class StructureSerializer(serializers.ModelSerializer):
     field_level = serializers.SerializerMethodField()
     next_field = serializers.SerializerMethodField()
     in_parent_field = serializers.SerializerMethodField()
+    is_max_field_level = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Structure
@@ -157,6 +159,7 @@ class StructureSerializer(serializers.ModelSerializer):
             "parent_dimension_name",
             "parent_dimension_id",
             "in_parent_field",
+            "is_max_field_level",
         ]
 
     def get_workspace(self, obj):
@@ -221,6 +224,14 @@ class StructureSerializer(serializers.ModelSerializer):
         ).exists()
 
         return parent_exists
+
+    def get_is_max_field_level(self, obj):
+        # Get the max field level for this platform
+        max_field_level = models.Field.objects.filter(
+            platform=obj.field.platform
+        ).aggregate(max_level=Max('field_level'))['max_level']
+
+        return obj.field.field_level == max_field_level
 
 
 class FieldSerializer(serializers.ModelSerializer):
@@ -489,3 +500,16 @@ class ConventionPlatformDetailSerializer(serializers.ModelSerializer):
 
     def get_convention_name(self, obj):
         return obj.convention.name
+
+
+class GroupedStructureSerializer(serializers.Serializer):
+    field_level = serializers.IntegerField()
+    field_name = serializers.CharField()
+    workspace = serializers.IntegerField()
+    convention = serializers.IntegerField()
+    convention_name = serializers.CharField()
+    platform = serializers.IntegerField()
+    platform_name = serializers.CharField()
+    field = serializers.IntegerField()
+    next_field = serializers.CharField(allow_null=True)
+    structures = StructureSerializer(many=True)
