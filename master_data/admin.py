@@ -25,15 +25,15 @@ class DimensionAdmin(admin.ModelAdmin):
     # ]
 
 
-class JunkDimensionAdminForm(forms.ModelForm):
+class DimensionValueAdminForm(forms.ModelForm):
 
     class Meta:
-        model = models.JunkDimension
+        model = models.DimensionValue
         fields = "__all__"
 
 
-class JunkDimensionAdmin(admin.ModelAdmin):
-    form = JunkDimensionAdminForm
+class DimensionValueAdmin(admin.ModelAdmin):
+    form = DimensionValueAdminForm
     list_display = [
         # "dimension_value_code",
         "valid_from",
@@ -132,20 +132,17 @@ class ConventionAdmin(admin.ModelAdmin):
     # ]
 
 
-class StructureAdminForm(forms.ModelForm):
+class RuleAdminForm(forms.ModelForm):
 
     class Meta:
-        model = models.Structure
+        model = models.Rule
         fields = "__all__"
 
 
-class StructureAdmin(admin.ModelAdmin):
-    form = StructureAdminForm
+class RuleAdmin(admin.ModelAdmin):
+    form = RuleAdminForm
     list_display = [
-        "dimension",
-        "delimeter_after_dimension",
-        "delimeter_before_dimension",
-        "dimension_order",
+        "name",
 
 
     ]
@@ -153,6 +150,25 @@ class StructureAdmin(admin.ModelAdmin):
     #     "delimeter_after_dimension",
     #     "delimeter_before_dimension",
     #     "dimension_order",
+    # ]
+
+
+class RuleDetailAdminForm(forms.ModelForm):
+
+    class Meta:
+        model = models.RuleDetail
+        fields = "__all__"
+
+
+class RuleDetailAdmin(admin.ModelAdmin):
+    form = RuleDetailAdminForm
+    list_display = [
+        "rule",
+        "dimension",
+    ]
+    # readonly_fields = [
+    #     "rule",
+    #     "dimension",
     # ]
 
 
@@ -172,11 +188,32 @@ class StringAdmin(admin.ModelAdmin):
     ]
 
 
+class StringDetailAdminForm(forms.ModelForm):
+
+    class Meta:
+        model = models.StringDetail
+        fields = "__all__"
+
+
+class StringDetailAdmin(admin.ModelAdmin):
+    form = StringDetailAdminForm
+    list_display = [
+        "string",
+        "rule",
+    ]
+    # readonly_fields = [
+    #     "string",
+    #     "rule",
+    # ]
+
+
 admin.site.register(models.Dimension, DimensionAdmin)
-admin.site.register(models.JunkDimension, JunkDimensionAdmin)
+admin.site.register(models.DimensionValue, DimensionValueAdmin)
 admin.site.register(models.Workspace, WorkspaceAdmin)
 admin.site.register(models.Platform, PlatformAdmin)
 admin.site.register(models.Field, FieldAdmin)
-admin.site.register(models.Structure, StructureAdmin)
+admin.site.register(models.Rule, RuleAdmin)
+admin.site.register(models.RuleDetail, RuleDetailAdmin)
 admin.site.register(models.Convention, ConventionAdmin)
 admin.site.register(models.String, StringAdmin)
+admin.site.register(models.StringDetail, StringDetailAdmin)

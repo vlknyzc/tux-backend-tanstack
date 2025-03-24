@@ -20,6 +20,7 @@ class DimensionSerializer(serializers.ModelSerializer):
             "name",
             "parent",
             "parent_name",
+            "status",
         ]
 
     def get_parent_name(self, obj):
@@ -30,7 +31,7 @@ class DimensionSerializer(serializers.ModelSerializer):
             return None
 
 
-class JunkDimensionSerializer(serializers.ModelSerializer):
+class DimensionValueSerializer(serializers.ModelSerializer):
     dimension_name = serializers.SerializerMethodField()
     dimension_parent_name = serializers.SerializerMethodField()
     parent_name = serializers.SerializerMethodField()
@@ -39,7 +40,7 @@ class JunkDimensionSerializer(serializers.ModelSerializer):
     dimension_parent = serializers.SerializerMethodField()
 
     class Meta:
-        model = models.JunkDimension
+        model = models.DimensionValue
         fields = [
             "id",
             "workspace",
@@ -74,21 +75,21 @@ class JunkDimensionSerializer(serializers.ModelSerializer):
 
     def get_parent_name(self, obj):
         if obj.parent_id:
-            parent = models.JunkDimension.objects.get(id=obj.parent_id)
+            parent = models.DimensionValue.objects.get(id=obj.parent_id)
             return parent.dimension_value_label
         else:
             return None
 
     def get_parent_value(self, obj):
         if obj.parent_id:
-            parent = models.JunkDimension.objects.get(id=obj.parent_id)
+            parent = models.DimensionValue.objects.get(id=obj.parent_id)
             return parent.dimension_value
         else:
             return None
 
     def get_dimension_parent_name(self, obj):
         if obj.parent_id:
-            parent = models.JunkDimension.objects.get(id=obj.parent_id)
+            parent = models.DimensionValue.objects.get(id=obj.parent_id)
             return parent.dimension.name
         else:
             return None
@@ -120,7 +121,7 @@ class PlatformSerializer(serializers.ModelSerializer):
         ]
 
 
-class StructureSerializer(serializers.ModelSerializer):
+class RuleSerializer(serializers.ModelSerializer):
     workspace = serializers.SerializerMethodField()
     # convention_name = serializers.SerializerMethodField()
     platform = serializers.SerializerMethodField()
@@ -138,7 +139,7 @@ class StructureSerializer(serializers.ModelSerializer):
     is_max_field_level = serializers.SerializerMethodField()
 
     class Meta:
-        model = models.Structure
+        model = models.Rule
         fields = [
             "id",
             "workspace",
@@ -154,8 +155,9 @@ class StructureSerializer(serializers.ModelSerializer):
             "dimension_name",
             "dimension_type",
             "dimension_order",
-            "delimeter_after_dimension",
-            "delimeter_before_dimension",
+            "prefix",
+            "suffix",
+            "delimeter",
             "parent_dimension_name",
             "parent_dimension_id",
             "in_parent_field",
@@ -163,7 +165,7 @@ class StructureSerializer(serializers.ModelSerializer):
         ]
 
     def get_workspace(self, obj):
-        return obj.dimension.workspace.id
+        return obj.workspace.id
 
     def get_convention(self, obj):
         return obj.convention.id
@@ -275,15 +277,40 @@ class PlatformTemplateSerializer(serializers.ModelSerializer):
 
 
 class ConventionPlatformSerializer(serializers.ModelSerializer):
-
-    platform_name = serializers.SerializerMethodField()
+    name = serializers.SerializerMethodField()
+    platforms = serializers.SerializerMethodField()
+    description = serializers.SerializerMethodField()
+    # created_by = serializers.SerializerMethodField()
+    created = serializers.DateTimeField(format="%Y-%m-%d")
+    last_updated = serializers.DateTimeField(format="%Y-%m-%d")
 
     class Meta:
         model = models.ConventionPlatform
-        fields = '__all__'
+        fields = [
+            'id',
+            'convention',
+            'name',
+            'platforms',
+            'description',
+            # 'status',
+            # 'created_by',
+            'created',
+            'last_updated'
+        ]
 
-    def get_platform_name(self, obj):
-        return obj.platform.name
+    def get_name(self, obj):
+        return obj.convention.name
+
+    def get_description(self, obj):
+        return obj.convention.description
+
+    def get_platforms(self, obj):
+        # Assuming 'platforms' is the related_name for the many-to-many field
+        return [obj.platform.name]
+
+    # def get_created_by(self, obj):
+    #     # Assuming 'created_by' is a ForeignKey to a User model with an email field
+    #     return obj.created_by.email if obj.created_by else None
 
 
 class ConventionSerializer(serializers.ModelSerializer):
@@ -326,7 +353,7 @@ class StringSerializer(serializers.ModelSerializer):
             "platform_id",
             "platform_name",
             "string_uuid",
-            "string_value",
+            "value",
             "parent",
             "parent_uuid",
         ]
@@ -347,20 +374,22 @@ class StringSerializer(serializers.ModelSerializer):
         return obj.field.platform.name if obj.field and obj.field.platform else None
 
 
-class StringItemSerializer(serializers.ModelSerializer):
-    structure_field_name = serializers.SerializerMethodField()
+class StringDetailSerializer(serializers.ModelSerializer):
+    rule_name = serializers.SerializerMethodField()
     dimension_value_id = serializers.SerializerMethodField()
     dimension_value = serializers.SerializerMethodField()
     dimension_value_label = serializers.SerializerMethodField()
     dimension_id = serializers.SerializerMethodField()
 
     class Meta:
-        model = models.StringItem
+        model = models.StringDetail
         fields = [
             "id",
+            "workspace",
+            "submission",
             "string",
-            "structure",
-            "structure_field_name",
+            "rule",
+            "rule_name",
             "dimension_value_id",
             "dimension_value",
             "dimension_value_label",
@@ -375,13 +404,13 @@ class StringItemSerializer(serializers.ModelSerializer):
         """
         Validate based on dimension type
         """
-        structure = data.get('structure')
-        if not structure:
+        rule = data.get('rule')
+        if not rule:
             raise serializers.ValidationError({
-                "structure": "Structure is required"
+                "rule": "Rule is required"
             })
 
-        dimension_type = structure.dimension.dimension_type
+        dimension_type = rule.dimension.dimension_type
         dimension_value_id = self.initial_data.get('dimension_value_id')
         dimension_value = self.initial_data.get('dimension_value')
         dimension_value_label = self.initial_data.get('dimension_value_label')
@@ -443,14 +472,14 @@ class StringItemSerializer(serializers.ModelSerializer):
         # that was set in the validate method
 
         # Create the StringItem instance
-        string_item = models.StringItem.objects.create(**validated_data)
-        return string_item
+        string_detail = models.StringDetail.objects.create(**validated_data)
+        return string_detail
 
-    def get_structure_field_name(self, obj):
-        return obj.structure.field.name if obj.structure else None
+    def get_rule_name(self, obj):
+        return obj.rule.name if obj.rule else None
 
     def get_dimension_id(self, obj):
-        return obj.structure.dimension.id if obj.structure and obj.structure.dimension else None
+        return obj.rule.dimension.id if obj.rule and obj.rule.dimension else None
 
     def get_dimension_value_id(self, obj):
         return obj.dimension_value.id if obj.dimension_value else None
@@ -502,7 +531,19 @@ class ConventionPlatformDetailSerializer(serializers.ModelSerializer):
         return obj.convention.name
 
 
-class GroupedStructureSerializer(serializers.Serializer):
+class RuleDetailSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.RuleDetail
+        fields = ['id', 'rule', 'dimension']
+
+
+class SubmissionSerializer(serializers.ModelSerializer):
+    class Meta:
+        model = models.Submission
+        fields = ['id', 'workspace', 'name', 'description', 'status']
+
+
+class GroupedRuleSerializer(serializers.Serializer):
     field_level = serializers.IntegerField()
     field_name = serializers.CharField()
     workspace = serializers.IntegerField()
@@ -512,4 +553,5 @@ class GroupedStructureSerializer(serializers.Serializer):
     platform_name = serializers.CharField()
     field = serializers.IntegerField()
     next_field = serializers.CharField(allow_null=True)
-    structures = StructureSerializer(many=True)
+
+    rules = RuleSerializer(many=True)

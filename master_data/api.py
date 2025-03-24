@@ -37,15 +37,15 @@ class DimensionViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = DimensionFilter
 
-### JunkDimension ###
+### DimensionValue ###
 
 
-class JunkDimensionFilter(filters.FilterSet):
+class DimensionValueFilter(filters.FilterSet):
     workspace = filters.NumberFilter(method='filter_workspace_id')
     dimension = filters.NumberFilter(method='filter_dimension_id')
 
     class Meta:
-        model = models.JunkDimension
+        model = models.DimensionValue
         fields = ['workspace']
 
     def filter_workspace_id(self, queryset, name, value):
@@ -57,27 +57,39 @@ class JunkDimensionFilter(filters.FilterSet):
         return queryset.filter(dimension__id=value)
 
 
-class JunkDimensionViewSet(viewsets.ModelViewSet):
-    """ViewSet for the JunkDimension class"""
+class DimensionValueViewSet(viewsets.ModelViewSet):
+    """ViewSet for the DimensionValue class"""
 
-    queryset = models.JunkDimension.objects.all()
-    serializer_class = serializers.JunkDimensionSerializer
+    queryset = models.DimensionValue.objects.all()
+    serializer_class = serializers.DimensionValueSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_class = JunkDimensionFilter
+    filterset_class = DimensionValueFilter
 
 
 ### Workspace ###
+
+
+class WorkspaceFilter(filters.FilterSet):
+    workspace = filters.NumberFilter(method='filter_workspace_id')
+
+    class Meta:
+        model = models.Workspace
+        fields = ['id']
+
+
 class WorkspaceViewSet(viewsets.ModelViewSet):
     queryset = models.Workspace.objects.all()
     serializer_class = serializers.WorkspaceSerializer
     permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = WorkspaceFilter
 
-    def list(self, request, *args, **kwargs):
-        print(f"Authenticated User: {request.user}")
-        print(f"Is Authenticated: {request.user.is_authenticated}")
-        print(f"Queryset: {self.queryset}")
-        return super().list(request, *args, **kwargs)
+    # def list(self, request, *args, **kwargs):
+    #     print(f"Authenticated User: {request.user}")
+    #     print(f"Is Authenticated: {request.user.is_authenticated}")
+    #     print(f"Queryset: {self.queryset}")
+    #     return super().list(request, *args, **kwargs)
 
 ### Platform ###
 
@@ -174,17 +186,16 @@ class ConventionPlatformViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = ConventionPlatformFilter
 
-### Structure ###
 
-
-class StructureFilter(filters.FilterSet):
+### Rule ###
+class RuleFilter(filters.FilterSet):
     workspace = filters.NumberFilter(method='filter_workspace_id')
     convention = filters.NumberFilter(method='filter_convention_id')
     platform = filters.NumberFilter(method='filter_platform_id')
     field = filters.NumberFilter(method='filter_field_id')
 
     class Meta:
-        model = models.Structure
+        model = models.Rule
         fields = ['id', 'workspace', 'convention',
                   'field', 'platform']
 
@@ -205,14 +216,14 @@ class StructureFilter(filters.FilterSet):
         return queryset.filter(field__id=value)
 
 
-class StructureViewSet(viewsets.ModelViewSet):
-    """ViewSet for the Structure class"""
+class RuleViewSet(viewsets.ModelViewSet):
+    """ViewSet for the Rule class"""
 
-    queryset = models.Structure.objects.all()
-    serializer_class = serializers.StructureSerializer
+    queryset = models.Rule.objects.all()
+    serializer_class = serializers.RuleSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_class = StructureFilter
+    filterset_class = RuleFilter
 
     @action(detail=False, methods=['get'])
     def grouped_by_field_level(self, request):
@@ -308,14 +319,14 @@ class StringViewSet(viewsets.ModelViewSet):
 ### StringItem ###
 
 
-class StringItemFilter(filters.FilterSet):
+class StringDetailFilter(filters.FilterSet):
     workspace = filters.NumberFilter(method='filter_workspace_id')
     string = filters.NumberFilter(method='filter_string_id')
-    structure = filters.NumberFilter(method='filter_structure_id')
+    rule = filters.NumberFilter(method='filter_rule_id')
 
     class Meta:
-        model = models.StringItem
-        fields = ['id', 'workspace', 'string', 'structure', 'dimension_value']
+        model = models.StringDetail
+        fields = ['id', 'workspace', 'string', 'rule', 'dimension_value']
 
     def filter_workspace_id(self, queryset, name, value):
         return queryset.filter(string__workspace__id=value)
@@ -323,21 +334,21 @@ class StringItemFilter(filters.FilterSet):
     def filter_string_id(self, queryset, name, value):
         return queryset.filter(string__id=value)
 
-    def filter_structure_id(self, queryset, name, value):
-        return queryset.filter(structure__id=value)
+    def filter_rule_id(self, queryset, name, value):
+        return queryset.filter(rule__id=value)
 
 
-class StringItemViewSet(viewsets.ModelViewSet):
-    """ViewSet for the StringItem class"""
+class StringDetailViewSet(viewsets.ModelViewSet):
+    """ViewSet for the StringDetail class"""
 
-    queryset = models.StringItem.objects.all()
-    serializer_class = serializers.StringItemSerializer
+    queryset = models.StringDetail.objects.all()
+    serializer_class = serializers.StringDetailSerializer
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    filterset_class = StringItemFilter
+    filterset_class = StringDetailFilter
 
     def create(self, request, *args, **kwargs):
-        print("\n=== StringItem POST Request Debug ===")
+        print("\n=== StringDetail POST Request Debug ===")
         print("Headers:", request.headers)
         print("Data:", request.data)
         print("Content Type:", request.content_type)
@@ -372,3 +383,47 @@ class ConventionPlatformDetailViewSet(viewsets.ReadOnlyModelViewSet):
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = ConventionPlatformDetailFilter
+
+
+### RuleDetail ###
+class RuleDetailFilter(filters.FilterSet):
+    rule = filters.NumberFilter(method='filter_rule_id')
+
+    class Meta:
+        model = models.RuleDetail
+        fields = ['id', 'rule', 'dimension']
+
+    def filter_rule_id(self, queryset, name, value):
+        return queryset.filter(rule__id=value)
+
+
+### Submission ###
+class SubmissionFilter(filters.FilterSet):
+    workspace = filters.NumberFilter(method='filter_workspace_id')
+
+    class Meta:
+        model = models.Submission
+        fields = ['id', 'workspace']
+
+    def filter_workspace_id(self, queryset, name, value):
+        return queryset.filter(workspace__id=value)
+
+
+class SubmissionViewSet(viewsets.ModelViewSet):
+    """ViewSet for the Submission class"""
+
+    queryset = models.Submission.objects.all()
+    serializer_class = serializers.SubmissionSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = SubmissionFilter
+
+
+class RuleDetailViewSet(viewsets.ModelViewSet):
+    """ViewSet for the RuleDetail class"""
+
+    queryset = models.RuleDetail.objects.all()
+    serializer_class = serializers.RuleDetailSerializer
+    permission_classes = [permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = RuleDetailFilter

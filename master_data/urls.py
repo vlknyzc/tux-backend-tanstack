@@ -8,20 +8,22 @@ from . import views
 
 router = routers.DefaultRouter()
 router.register("dimensions", api.DimensionViewSet)
-router.register("junk-dimension", api.JunkDimensionViewSet)
+router.register("dimension-values", api.DimensionValueViewSet)
 router.register("workspaces", api.WorkspaceViewSet)
 router.register("platforms", api.PlatformViewSet)
 router.register("fields", api.FieldViewSet)
 router.register("conventions", api.ConventionViewSet)
-router.register("convention-platforms", api.ConventionPlatformViewSet)
-router.register("structures", api.StructureViewSet)
-router.register("strings", api.StringViewSet)
-router.register("string-items", api.StringItemViewSet)
+router.register("convention-platforms",
+                api.ConventionPlatformViewSet, basename="convention-platforms")
 router.register("convention-platforms-detail",
-                api.ConventionPlatformDetailViewSet)
+                api.ConventionPlatformDetailViewSet, basename="convention-platforms-detail")
+router.register("rules", api.RuleViewSet)
+router.register("rule-details", api.RuleDetailViewSet)
+router.register("submissions", api.SubmissionViewSet)
+router.register("strings", api.StringViewSet)
+router.register("string-details", api.StringDetailViewSet)
 
 
-urlpatterns = (
-    path("api/", include(router.urls)),
-
-)
+urlpatterns = [
+    path("", include(router.urls)),
+]
