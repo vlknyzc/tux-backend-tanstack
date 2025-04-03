@@ -14,9 +14,10 @@ class DimensionAdminForm(forms.ModelForm):
 class DimensionAdmin(admin.ModelAdmin):
     form = DimensionAdminForm
     list_display = [
+
+        "name",
         "definition",
         "dimension_type",
-        "name",
     ]
     # readonly_fields = [
     #     "definition",
@@ -113,19 +114,19 @@ class FieldAdmin(admin.ModelAdmin):
     # ]
 
 
-class ConventionAdminForm(forms.ModelForm):
+# class ConventionAdminForm(forms.ModelForm):
 
-    class Meta:
-        model = models.Convention
-        fields = "__all__"
+#     class Meta:
+#         model = models.Convention
+#         fields = "__all__"
 
 
-class ConventionAdmin(admin.ModelAdmin):
-    form = ConventionAdminForm
-    list_display = [
-        "name",
-        "workspace",
-    ]
+# class ConventionAdmin(admin.ModelAdmin):
+#     form = ConventionAdminForm
+#     list_display = [
+#         "name",
+#         # "workspace",
+#     ]
     # readonly_fields = [
     #     "name",
     #     "workspace",
@@ -183,7 +184,7 @@ class StringAdmin(admin.ModelAdmin):
     form = StringAdminForm
     list_display = [
         "parent",
-        "workspace",
+        # "workspace",
         "field",
     ]
 
@@ -214,6 +215,6 @@ admin.site.register(models.Platform, PlatformAdmin)
 admin.site.register(models.Field, FieldAdmin)
 admin.site.register(models.Rule, RuleAdmin)
 admin.site.register(models.RuleDetail, RuleDetailAdmin)
-admin.site.register(models.Convention, ConventionAdmin)
+# admin.site.register(models.Convention, ConventionAdmin)
 admin.site.register(models.String, StringAdmin)
 admin.site.register(models.StringDetail, StringDetailAdmin)
