@@ -56,7 +56,7 @@ class RuleDetail(TimeStampModel):
     dimension_order = models.SmallIntegerField()
 
     class Meta:
-        unique_together = ("rule", "field",  'dimension_order')
+        unique_together = ("rule", "field", "dimension", 'dimension_order')
 
     def __str__(self):
         return str(self.rule.name + " - " + self.field.name + " - " + self.dimension.name)

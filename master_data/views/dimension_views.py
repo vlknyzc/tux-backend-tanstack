@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions
 from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
+from django.conf import settings
 
 from .. import serializers
 from .. import models
@@ -20,7 +21,8 @@ class DimensionFilter(filters.FilterSet):
 class DimensionViewSet(viewsets.ModelViewSet):
     queryset = models.Dimension.objects.all()
     serializer_class = serializers.DimensionSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
+        permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = DimensionFilter
 
@@ -43,6 +45,7 @@ class DimensionValueFilter(filters.FilterSet):
 class DimensionValueViewSet(viewsets.ModelViewSet):
     queryset = models.DimensionValue.objects.all()
     serializer_class = serializers.DimensionValueSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
+        permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = DimensionValueFilter

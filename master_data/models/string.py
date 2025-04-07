@@ -18,6 +18,10 @@ class Submission(TimeStampModel):
         (REJECTED, 'Rejected'),
     ]
 
+    # relationships
+    rule = models.ForeignKey(
+        "master_data.Rule", on_delete=models.CASCADE, related_name="strings")
+
     name = models.CharField(max_length=30)
     description = models.TextField(max_length=500, null=True, blank=True)
     status = models.CharField(
@@ -63,11 +67,15 @@ class StringDetail(TimeStampModel):
         on_delete=models.CASCADE,
         related_name="string_details"
     )
-    rule = models.ForeignKey(
-        "master_data.Rule",
-        on_delete=models.CASCADE,
+
+    dimension = models.ForeignKey(
+        "master_data.Dimension",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
         related_name="string_details"
     )
+
     dimension_value = models.ForeignKey(
         "master_data.DimensionValue",
         on_delete=models.SET_NULL,
@@ -82,7 +90,7 @@ class StringDetail(TimeStampModel):
     )
 
     def __str__(self):
-        return f"{self.string} - {self.rule}"
+        return f"{self.string}"
 
     def get_absolute_url(self):
         return reverse("master_data_StringDetail_detail", args=(self.pk,))

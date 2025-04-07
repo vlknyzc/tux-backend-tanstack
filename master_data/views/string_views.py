@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions
 from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
+from django.conf import settings
 
 from .. import serializers
 from .. import models
@@ -28,30 +29,29 @@ class StringFilter(filters.FilterSet):
 class StringViewSet(viewsets.ModelViewSet):
     queryset = models.String.objects.all()
     serializer_class = serializers.StringSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
+        permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = StringFilter
 
 
 class StringDetailFilter(filters.FilterSet):
     string = filters.NumberFilter(method='filter_string_id')
-    rule = filters.NumberFilter(method='filter_rule_id')
 
     class Meta:
         model = models.StringDetail
-        fields = ['id', 'string', 'rule', 'dimension_value']
+        fields = ['id', 'string', 'dimension_value',
+                  'dimension_value_freetext']
 
     def filter_string_id(self, queryset, name, value):
         return queryset.filter(string__id=value)
-
-    def filter_rule_id(self, queryset, name, value):
-        return queryset.filter(rule__id=value)
 
 
 class StringDetailViewSet(viewsets.ModelViewSet):
     queryset = models.StringDetail.objects.all()
     serializer_class = serializers.StringDetailSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
+        permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = StringDetailFilter
 

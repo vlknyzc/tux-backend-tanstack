@@ -43,9 +43,9 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                 'dimension_name': detail.dimension.name,
                 'dimension_type': detail.dimension.dimension_type,
                 'dimension_order': detail.dimension_order,
-                'prefix': detail.prefix,
-                'suffix': detail.suffix,
-                'delimiter': detail.delimiter,
+                'prefix': detail.prefix or '',  # Convert None to empty string
+                'suffix': detail.suffix or '',  # Convert None to empty string
+                'delimiter': detail.delimiter or '',  # Convert None to empty string
                 'parent_dimension_name': (detail.dimension.parent.name
                                           if detail.dimension.parent_id else None),
                 'parent_dimension_id': detail.dimension.parent_id
@@ -55,14 +55,16 @@ class RuleNestedSerializer(serializers.ModelSerializer):
 
             # combine dimensions to form field_rule
             dimension_names = [
-                dim['prefix'] + dim['dimension_name'] +
-                dim['suffix'] + dim['delimiter']
+                (dim.get('prefix', '') or '') +  # Handle None values
+                (dim.get('dimension_name', '') or '') +
+                (dim.get('suffix', '') or '') +
+                (dim.get('delimiter', '') or '')
                 for dim in sorted(
                     grouped_details[field_id]['dimensions'],
                     key=lambda x: x['dimension_order']
                 )
             ]
-            field_rule = f"{''.join(dimension_names)}"
+            field_rule = ''.join(dimension_names)
             grouped_details[field_id]['field_rule'] = field_rule
 
         # Convert dictionary to list

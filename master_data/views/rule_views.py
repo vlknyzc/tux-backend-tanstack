@@ -1,7 +1,7 @@
 from rest_framework import viewsets, permissions
 from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
-
+from django.conf import settings
 from .. import serializers
 from .. import models
 
@@ -33,39 +33,27 @@ class RuleFilter(filters.FilterSet):
 class RuleViewSet(viewsets.ModelViewSet):
     queryset = models.Rule.objects.all()
     serializer_class = serializers.RuleSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
+        permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter
 
 
 class RuleDetailFilter(filters.FilterSet):
-    # convention = filters.NumberFilter(method='filter_convention_id')
-    platform = filters.NumberFilter(method='filter_platform_id')
-    field = filters.NumberFilter(method='filter_field_id')
+    field = filters.NumberFilter(field_name='field__id')
+    platform = filters.NumberFilter(field_name='rule__platform__id')
+    rule = filters.NumberFilter()
 
     class Meta:
         model = models.RuleDetail
-        fields = [
-            'id',
-            # 'convention',
-            'field',
-            'platform'
-        ]
-
-    # def filter_convention_id(self, queryset, name, value):
-    #     return queryset.filter(convention__id=value)
-
-    def filter_platform_id(self, queryset, name, value):
-        return queryset.filter(field__platform__id=value)
-
-    def filter_field_id(self, queryset, name, value):
-        return queryset.filter(field__id=value)
+        fields = ['id', 'rule', 'dimension_order', 'field', 'platform']
 
 
 class RuleDetailViewSet(viewsets.ModelViewSet):
     queryset = models.RuleDetail.objects.all()
     serializer_class = serializers.RuleDetailSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
+        permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleDetailFilter
 
@@ -73,6 +61,7 @@ class RuleDetailViewSet(viewsets.ModelViewSet):
 class RuleNestedViewSet(viewsets.ModelViewSet):
     queryset = models.Rule.objects.all()
     serializer_class = serializers.RuleNestedSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
+        permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter

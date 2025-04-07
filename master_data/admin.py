@@ -165,6 +165,8 @@ class RuleDetailAdmin(admin.ModelAdmin):
     form = RuleDetailAdminForm
     list_display = [
         "rule",
+        # "platform",
+        "field",
         "dimension",
     ]
     # readonly_fields = [
@@ -185,7 +187,7 @@ class StringAdmin(admin.ModelAdmin):
     list_display = [
         "parent",
         # "workspace",
-        "field",
+
     ]
 
 
@@ -200,7 +202,10 @@ class StringDetailAdmin(admin.ModelAdmin):
     form = StringDetailAdminForm
     list_display = [
         "string",
-        "rule",
+        "dimension",
+        "dimension_value",
+        "dimension_value_freetext",
+        # "rule",
     ]
     # readonly_fields = [
     #     "string",

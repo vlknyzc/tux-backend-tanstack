@@ -13,6 +13,7 @@ from .views import (
     SubmissionViewSet,
     StringViewSet,
     StringDetailViewSet,
+    UserViewSet,
 )
 
 router = routers.DefaultRouter()
@@ -28,6 +29,7 @@ router.register("rule-nested", RuleNestedViewSet, basename="rule-nested")
 router.register("submissions", SubmissionViewSet)
 router.register("strings", StringViewSet)
 router.register("string-details", StringDetailViewSet)
+router.register("users", UserViewSet)
 
 urlpatterns = [
     path("", include(router.urls)),

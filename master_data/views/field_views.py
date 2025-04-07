@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions
 from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
+from django.conf import settings
 
 from .. import serializers
 from .. import models
@@ -11,7 +12,8 @@ class FieldViewSet(viewsets.ModelViewSet):
 
     queryset = models.Field.objects.all()
     serializer_class = serializers.FieldSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
+        permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['platform', 'id']
 

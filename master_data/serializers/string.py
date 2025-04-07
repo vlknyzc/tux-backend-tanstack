@@ -46,7 +46,7 @@ class StringSerializer(serializers.ModelSerializer):
 
 
 class StringDetailSerializer(serializers.ModelSerializer):
-    rule_name = serializers.SerializerMethodField()
+    # rule_name = serializers.SerializerMethodField()
     dimension_value_id = serializers.SerializerMethodField()
     dimension_value = serializers.SerializerMethodField()
     dimension_value_label = serializers.SerializerMethodField()
@@ -59,8 +59,8 @@ class StringDetailSerializer(serializers.ModelSerializer):
             "id",
             "submission_name",
             "string",
-            "rule",
-            "rule_name",
+            # "rule",
+            # "rule_name",
             "dimension_value_id",
             "dimension_value",
             "dimension_value_label",
@@ -75,13 +75,8 @@ class StringDetailSerializer(serializers.ModelSerializer):
         """
         Validate based on dimension type
         """
-        rule = data.get('rule')
-        if not rule:
-            raise serializers.ValidationError({
-                "rule": "Rule is required"
-            })
 
-        dimension_type = rule.dimension.dimension_type
+        dimension_type = data.get('dimension').dimension_type
         dimension_value_id = self.initial_data.get('dimension_value_id')
         dimension_value = self.initial_data.get('dimension_value')
         dimension_value_label = self.initial_data.get('dimension_value_label')

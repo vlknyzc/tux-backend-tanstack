@@ -188,9 +188,9 @@ class RuleDetailSerializer(serializers.ModelSerializer):
 
         parent_exists = models.RuleDetail.objects.filter(
             # rule__convention=obj.rule.convention,
-            rule__field__platform=obj.field.platform,
+            field__platform=obj.field.platform,
             dimension=obj.dimension,
-            rule__field__field_level=field_level - 1
+            field__field_level=field_level - 1
         ).exists()
 
         return parent_exists

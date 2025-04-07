@@ -1,6 +1,7 @@
 from rest_framework import viewsets, permissions
 from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
+from django.conf import settings
 
 from .. import serializers
 from .. import models
@@ -25,4 +26,5 @@ class WorkspaceViewSet(viewsets.ModelViewSet):
 class PlatformViewSet(viewsets.ModelViewSet):
     queryset = models.Platform.objects.all()
     serializer_class = serializers.PlatformSerializer
-    permission_classes = [permissions.IsAuthenticated]
+    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
+        permissions.IsAuthenticated]
