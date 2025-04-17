@@ -51,7 +51,7 @@ class String(TimeStampModel):
     parent_uuid = models.UUIDField(null=True, blank=True)
 
     def __str__(self):
-        return str(self.pk)
+        return str(self.pk) + " - " + str(self.field.field_level) + " - " + str(self.field.name) + " - " + str(self.value)
 
     def get_absolute_url(self):
         return reverse("master_data_String_detail", args=(self.pk,))
@@ -70,9 +70,7 @@ class StringDetail(TimeStampModel):
 
     dimension = models.ForeignKey(
         "master_data.Dimension",
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
+        on_delete=models.CASCADE,
         related_name="string_details"
     )
 
@@ -90,7 +88,7 @@ class StringDetail(TimeStampModel):
     )
 
     def __str__(self):
-        return f"{self.string}"
+        return f"{self.string.field.field_level} - {self.string.field.name} - {self.string.value}"
 
     def get_absolute_url(self):
         return reverse("master_data_StringDetail_detail", args=(self.pk,))
@@ -99,7 +97,7 @@ class StringDetail(TimeStampModel):
         return reverse("master_data_StringDetail_update", args=(self.pk,))
 
 
-@receiver(post_save, sender=StringDetail)
+@receiver(post_save, sender=String)
 def update_parent(sender, instance, created, **kwargs):
     if created and instance.parent_uuid:
         try:

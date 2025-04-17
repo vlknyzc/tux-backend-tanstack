@@ -213,6 +213,21 @@ class StringDetailAdmin(admin.ModelAdmin):
     # ]
 
 
+class SubmissionAdminForm(forms.ModelForm):
+
+    class Meta:
+        model = models.Submission
+        fields = "__all__"
+
+
+class SubmissionAdmin(admin.ModelAdmin):
+    form = SubmissionAdminForm
+    list_display = [
+        "name",
+
+    ]
+
+
 admin.site.register(models.Dimension, DimensionAdmin)
 admin.site.register(models.DimensionValue, DimensionValueAdmin)
 admin.site.register(models.Workspace, WorkspaceAdmin)
@@ -220,6 +235,6 @@ admin.site.register(models.Platform, PlatformAdmin)
 admin.site.register(models.Field, FieldAdmin)
 admin.site.register(models.Rule, RuleAdmin)
 admin.site.register(models.RuleDetail, RuleDetailAdmin)
-# admin.site.register(models.Convention, ConventionAdmin)
 admin.site.register(models.String, StringAdmin)
 admin.site.register(models.StringDetail, StringDetailAdmin)
+admin.site.register(models.Submission, SubmissionAdmin)
