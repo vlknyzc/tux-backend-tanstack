@@ -16,8 +16,11 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
     options_key = serializers.CharField(required=False, allow_blank=True)
     delimiter = serializers.CharField(
         required=False, allow_blank=True, allow_null=True)
-    dimension_value = serializers.IntegerField(
-        source='dimension_value_id', required=False, allow_null=True)
+    dimension_value = serializers.PrimaryKeyRelatedField(
+        queryset=models.DimensionValue.objects.all(),
+        required=False,
+        allow_null=True
+    )
     dimension_value_freetext = serializers.CharField(
         required=False, allow_blank=True, allow_null=True)
 
@@ -211,12 +214,6 @@ class StringNestedSerializer(serializers.ModelSerializer):
             block_item_data.pop('suffix', None)
             block_item_data.pop('dimension_order', None)
 
-            # Handle dimension_value_id
-            dimension_value_id = block_item_data.pop(
-                'dimension_value_id', None)
-            if dimension_value_id:
-                block_item_data['dimension_value'] = dimension_value_id
-
             models.StringDetail.objects.create(
                 string=string, **block_item_data)
 
@@ -273,8 +270,12 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
         source='strings', many=True, required=False)
     rule = serializers.PrimaryKeyRelatedField(
         queryset=models.Rule.objects.all(), required=True)
-    selected_parent = serializers.IntegerField(
-        source='selected_parent_string', required=False)
+    selected_parent = serializers.PrimaryKeyRelatedField(
+        queryset=models.String.objects.all(),
+        required=False,
+        allow_null=True,
+        source='selected_parent_string'
+    )
 
     class Meta:
         model = models.Submission

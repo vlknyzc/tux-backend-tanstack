@@ -148,7 +148,7 @@ class RuleDetailSerializer(serializers.ModelSerializer):
         return obj.dimension.name
 
     def get_dimension_type(self, obj):
-        return obj.dimension.dimension_type
+        return obj.dimension.type
 
     def get_parent_dimension_name(self, obj):
         if obj.dimension.parent_id:

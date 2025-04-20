@@ -29,8 +29,8 @@ class Dimension(TimeStampModel):
         choices=STATUSES,
         default=ACTIVE,
     )
-    definition = models.TextField(max_length=500, null=True, blank=True)
-    dimension_type = models.CharField(
+    description = models.TextField(max_length=500, null=True, blank=True)
+    type = models.CharField(
         max_length=30,
         choices=TYPES,
         default=LIST,
@@ -56,17 +56,17 @@ class DimensionValue(TimeStampModel):
 
     # Fields
     valid_until = models.DateField(null=True, blank=True)
-    dimension_value = models.CharField(max_length=30)
-    dimension_value_label = models.CharField(max_length=50)
-    dimension_value_utm = models.CharField(max_length=30)
+    value = models.CharField(max_length=30)
+    label = models.CharField(max_length=50)
+    utm = models.CharField(max_length=30)
     valid_from = models.DateField(null=True, blank=True)
-    definition = models.TextField(max_length=500, null=True, blank=True)
+    description = models.TextField(max_length=500, null=True, blank=True)
 
     class Meta:
-        unique_together = ('dimension', 'dimension_value')
+        unique_together = ('dimension', 'value')
 
     def __str__(self):
-        return str(self.dimension_value)
+        return str(self.value)
 
     def get_absolute_url(self):
         return reverse("master_data_DimensionValue_detail", args=(self.pk,))

@@ -12,7 +12,7 @@ class DimensionFilter(filters.FilterSet):
 
     class Meta:
         model = models.Dimension
-        fields = ['id', 'workspace', 'dimension_type']
+        fields = ['id', 'workspace', 'type']
 
     def filter_workspace_id(self, queryset, name, value):
         return queryset.filter(workspace__id=value)

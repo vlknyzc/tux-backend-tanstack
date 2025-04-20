@@ -4,16 +4,13 @@ from .. import models
 
 class DimensionSerializer(serializers.ModelSerializer):
     parent_name = serializers.SerializerMethodField()
-    dimension_type_label = serializers.CharField(
-        source='get_dimension_type_display', required=False)
 
     class Meta:
         model = models.Dimension
         fields = [
             "id",
-            "definition",
-            "dimension_type",
-            "dimension_type_label",
+            "description",
+            "type",
             "name",
             "parent",
             "parent_name",
@@ -40,11 +37,11 @@ class DimensionValueSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "valid_from",
-            "definition",
-            "dimension_value",
+            "description",
+            "value",
             "valid_until",
-            "dimension_value_label",
-            "dimension_value_utm",
+            "label",
+            "utm",
             "dimension",
             "dimension_name",
             "dimension_parent_name",
@@ -67,14 +64,14 @@ class DimensionValueSerializer(serializers.ModelSerializer):
     def get_parent_name(self, obj):
         if obj.parent_id:
             parent = models.DimensionValue.objects.get(id=obj.parent_id)
-            return parent.dimension_value_label
+            return parent.label
         else:
             return None
 
     def get_parent_value(self, obj):
         if obj.parent_id:
             parent = models.DimensionValue.objects.get(id=obj.parent_id)
-            return parent.dimension_value
+            return parent.value
         else:
             return None
 

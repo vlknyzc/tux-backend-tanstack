@@ -41,7 +41,7 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                 'id': detail.id,
                 'dimension_id': detail.dimension.id,
                 'dimension_name': detail.dimension.name,
-                'dimension_type': detail.dimension.dimension_type,
+                'dimension_type': detail.dimension.type,
                 'dimension_order': detail.dimension_order,
                 'prefix': detail.prefix or '',  # Convert None to empty string
                 'suffix': detail.suffix or '',  # Convert None to empty string

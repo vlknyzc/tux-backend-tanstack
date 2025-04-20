@@ -16,8 +16,8 @@ class DimensionAdmin(admin.ModelAdmin):
     list_display = [
 
         "name",
-        "definition",
-        "dimension_type",
+        "description",
+        "type",
     ]
     # readonly_fields = [
     #     "definition",
@@ -38,11 +38,11 @@ class DimensionValueAdmin(admin.ModelAdmin):
     list_display = [
         # "dimension_value_code",
         "valid_from",
-        "definition",
-        "dimension_value",
+        "description",
+        "value",
         "valid_until",
-        "dimension_value_label",
-        "dimension_value_utm",
+        "label",
+        "utm",
     ]
     # readonly_fields = [
     #     "dimension_value_code",

@@ -92,7 +92,7 @@ class StringDetailSerializer(serializers.ModelSerializer):
         return obj.dimension.name if obj.dimension else None
 
     def get_dimension_value_display(self, obj):
-        return obj.dimension_value.dimension_value if obj.dimension_value else None
+        return obj.dimension_value.value if obj.dimension_value else None
 
     def get_dimension_value_label(self, obj):
-        return obj.dimension_value.dimension_value_label if obj.dimension_value else None
+        return obj.dimension_value.label if obj.dimension_value else None
