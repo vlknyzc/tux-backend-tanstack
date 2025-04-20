@@ -204,6 +204,7 @@ class RuleDetailSerializer(serializers.ModelSerializer):
 
 
 class RuleSerializer(serializers.ModelSerializer):
+    platform_name = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Rule
@@ -211,10 +212,14 @@ class RuleSerializer(serializers.ModelSerializer):
             'id',
             # 'convention',
             'platform',
+            'platform_name',
             'status',
             'name',
 
         ]
+
+    def get_platform_name(self, obj):
+        return obj.platform.name
 
 
 class RuleNestedSerializer(serializers.ModelSerializer):

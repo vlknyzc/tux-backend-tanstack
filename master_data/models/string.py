@@ -4,34 +4,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 
 from .base import TimeStampModel
-
-
-class Submission(TimeStampModel):
-    SUBMITTED = "submitted"
-    DRAFT = "draft"
-    APPROVED = "approved"
-    REJECTED = "rejected"
-    STATUSES = [
-        (SUBMITTED, 'Submitted'),
-        (DRAFT, 'Draft'),
-        (APPROVED, 'Approved'),
-        (REJECTED, 'Rejected'),
-    ]
-
-    # relationships
-    rule = models.ForeignKey(
-        "master_data.Rule", on_delete=models.CASCADE, related_name="strings")
-
-    name = models.CharField(max_length=30)
-    description = models.TextField(max_length=500, null=True, blank=True)
-    status = models.CharField(
-        max_length=30,
-        choices=STATUSES,
-        default=DRAFT,
-    )
-
-    def __str__(self):
-        return str(self.name)
+from .submission import Submission
 
 
 class String(TimeStampModel):

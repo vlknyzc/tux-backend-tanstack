@@ -5,7 +5,8 @@ from .platform import Platform
 from .field import Field
 from .dimension import Dimension, DimensionValue
 from .rule import Rule, RuleDetail
-from .string import Submission, String, StringDetail
+from .string import String, StringDetail
+from .submission import Submission
 
 __all__ = [
     'TimeStampModel',

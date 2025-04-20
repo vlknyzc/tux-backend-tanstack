@@ -5,6 +5,7 @@ from .string_views import StringViewSet, StringDetailViewSet
 from .field_views import FieldViewSet
 from .submission_views import SubmissionViewSet
 from .user_views import UserViewSet
+from .nested_submission_views import SubmissionNestedViewSet
 
 __all__ = [
     'DimensionViewSet',
@@ -19,4 +20,5 @@ __all__ = [
     'FieldViewSet',
     'SubmissionViewSet',
     'UserViewSet',
+    'SubmissionNestedViewSet',
 ]

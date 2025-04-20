@@ -1,0 +1,136 @@
+from rest_framework import viewsets, permissions, response
+from django_filters import rest_framework as filters
+from django_filters.rest_framework import DjangoFilterBackend
+from django.conf import settings
+from django.db import transaction
+from django.db.models import Prefetch, Q
+
+from .. import models
+from ..serializers.nested_submission import SubmissionNestedSerializer
+
+
+class SubmissionNestedFilter(filters.FilterSet):
+    rule = filters.NumberFilter(field_name='rule')
+    status = filters.CharFilter(field_name='status')
+
+    class Meta:
+        model = models.Submission
+        fields = ['id', 'rule', 'status']
+
+
+class SubmissionNestedViewSet(viewsets.ModelViewSet):
+    """
+    Viewset for managing submissions with nested strings and string details.
+    This endpoint allows CRUD operations on a submission with all its strings
+    and string details in a single request.
+    """
+    serializer_class = SubmissionNestedSerializer
+    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
+        permissions.IsAuthenticated]
+    filter_backends = [DjangoFilterBackend]
+    filterset_class = SubmissionNestedFilter
+
+    def get_queryset(self):
+        """
+        Optimize queryset with appropriate prefetch and select related
+        to minimize database queries
+        """
+        return models.Submission.objects.all().select_related(
+            'rule'
+        ).prefetch_related(
+            'strings',
+            'strings__field',
+            'strings__string_details',
+            'strings__string_details__dimension',
+            'strings__string_details__dimension_value'
+        )
+
+    def list(self, request, *args, **kwargs):
+        """
+        Override list to optimize rule detail lookups for all submissions
+        """
+        queryset = self.filter_queryset(self.get_queryset())
+
+        # Get all submission IDs in the filtered queryset
+        submission_ids = list(queryset.values_list('id', flat=True))
+
+        if submission_ids:
+            # Get all rules used by these submissions
+            rule_ids = list(queryset.values_list(
+                'rule_id', flat=True).distinct())
+
+            # Get all dimensions used in string details for these submissions
+            dimensions = models.StringDetail.objects.filter(
+                string__submission_id__in=submission_ids
+            ).values_list('dimension_id', flat=True).distinct()
+
+            # Get all rule details in a single query
+            if rule_ids and dimensions:
+                rule_details = models.RuleDetail.objects.filter(
+                    rule_id__in=rule_ids,
+                    dimension_id__in=dimensions
+                )
+
+                # Group rule details by rule_id and dimension_id for faster lookup
+                # Format: {(rule_id, dimension_id): rule_detail}
+                rule_details_dict = {
+                    (rd.rule_id, rd.dimension_id): rd for rd in rule_details
+                }
+
+                # Attach to the request context
+                self.request.rule_details_dict = rule_details_dict
+
+        page = self.paginate_queryset(queryset)
+        if page is not None:
+            serializer = self.get_serializer(page, many=True)
+            return self.get_paginated_response(serializer.data)
+
+        serializer = self.get_serializer(queryset, many=True)
+        return response.Response(serializer.data)
+
+    def retrieve(self, request, *args, **kwargs):
+        """
+        Override retrieve to optimize rule detail lookups
+        """
+        instance = self.get_object()
+
+        # When retrieving a single object, we can optimize the rule details lookup
+        if instance.rule:
+            # Prefetch rule details for this specific submission
+            dimensions = models.StringDetail.objects.filter(
+                string__submission=instance
+            ).values_list('dimension', flat=True).distinct()
+
+            # Get all relevant rule details in a single query
+            rule_details = models.RuleDetail.objects.filter(
+                rule=instance.rule,
+                dimension__in=dimensions
+            )
+
+            # Attach the rule details to the request context for serializer to use
+            self.request.rule_details = {
+                rd.dimension_id: rd for rd in rule_details
+            }
+
+        serializer = self.get_serializer(instance)
+        return response.Response(serializer.data)
+
+    @transaction.atomic
+    def create(self, request, *args, **kwargs):
+        """Create a submission with nested strings and string details atomically"""
+        return super().create(request, *args, **kwargs)
+
+    @transaction.atomic
+    def update(self, request, *args, **kwargs):
+        """Update a submission with nested strings and string details atomically"""
+        return super().update(request, *args, **kwargs)
+
+    @transaction.atomic
+    def partial_update(self, request, *args, **kwargs):
+        """Partially update a submission with nested strings and string details atomically"""
+        return super().partial_update(request, *args, **kwargs)
+
+    @transaction.atomic
+    def destroy(self, request, *args, **kwargs):
+        """Delete a submission with its related strings and string details atomically"""
+        return super().destroy(request, *args, **kwargs)

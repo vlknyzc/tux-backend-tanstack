@@ -14,6 +14,7 @@ from .views import (
     StringViewSet,
     StringDetailViewSet,
     UserViewSet,
+    SubmissionNestedViewSet,
 )
 
 router = routers.DefaultRouter()
@@ -30,6 +31,8 @@ router.register("submissions", SubmissionViewSet)
 router.register("strings", StringViewSet)
 router.register("string-details", StringDetailViewSet)
 router.register("users", UserViewSet)
+router.register("nested-submissions", SubmissionNestedViewSet,
+                basename="nested-submissions")
 
 urlpatterns = [
     path("", include(router.urls)),
