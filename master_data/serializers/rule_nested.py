@@ -27,9 +27,8 @@ class RuleNestedSerializer(serializers.ModelSerializer):
 
             if field_id not in grouped_details:
                 # Initialize the field group with field information
-
                 grouped_details[field_id] = {
-                    'field_id': field_id,
+                    'field': field_id,
                     'field_name': detail.field.name,
                     'field_level': detail.field.field_level,
                     'next_field': detail.field.next_field.name if detail.field.next_field_id else None,
@@ -39,7 +38,7 @@ class RuleNestedSerializer(serializers.ModelSerializer):
             # Add dimension information
             dimension_info = {
                 'id': detail.id,
-                'dimension_id': detail.dimension.id,
+                'dimension': detail.dimension.id,
                 'dimension_name': detail.dimension.name,
                 'dimension_type': detail.dimension.type,
                 'dimension_order': detail.dimension_order,
@@ -48,7 +47,15 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                 'delimiter': detail.delimiter or '',  # Convert None to empty string
                 'parent_dimension_name': (detail.dimension.parent.name
                                           if detail.dimension.parent_id else None),
-                'parent_dimension_id': detail.dimension.parent_id
+                'parent_dimension_id': detail.dimension.parent_id,
+                'dimension_values': [
+                    {
+                        'id': value.id,
+                        'value': value.value,
+                        'label': value.label,
+                        'utm': value.utm,
+                    } for value in detail.dimension.dimension_values.all()
+                ]
             }
 
             grouped_details[field_id]['dimensions'].append(dimension_info)

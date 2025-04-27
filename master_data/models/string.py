@@ -13,15 +13,24 @@ class String(TimeStampModel):
                                null=True, blank=True, related_name="strings")
     field = models.ForeignKey(
         "master_data.Field", on_delete=models.CASCADE, related_name="strings")
-    # convention = models.ForeignKey(
-    #     "master_data.Convention", on_delete=models.CASCADE, related_name="strings")
     submission = models.ForeignKey(
         "master_data.Submission", on_delete=models.CASCADE, related_name="strings")
+    # Add direct rule reference
+    rule = models.ForeignKey(
+        "master_data.Rule",
+        on_delete=models.CASCADE,
+        related_name="rule_strings",
+        editable=False  # Prevent manual editing since it's derived from submission
+    )
 
     # Fields
     value = models.CharField(max_length=400)
     string_uuid = models.UUIDField()
     parent_uuid = models.UUIDField(null=True, blank=True)
+
+    class Meta:
+        # Updated unique constraint
+        unique_together = ('rule', 'field', 'value')
 
     def __str__(self):
         return str(self.pk) + " - " + str(self.field.field_level) + " - " + str(self.field.name) + " - " + str(self.value)
@@ -31,6 +40,12 @@ class String(TimeStampModel):
 
     def get_update_url(self):
         return reverse("master_data_String_update", args=(self.pk,))
+
+    def save(self, *args, **kwargs):
+        # Automatically set rule from submission before saving
+        if not self.rule_id and self.submission_id:
+            self.rule = self.submission.rule
+        super().save(*args, **kwargs)
 
 
 class StringDetail(TimeStampModel):

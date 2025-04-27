@@ -7,13 +7,11 @@ from .submission import SubmissionSerializer
 class StringDetailNestedSerializer(serializers.ModelSerializer):
     prefix = serializers.SerializerMethodField()
     suffix = serializers.SerializerMethodField()
+    dimension_name = serializers.SerializerMethodField()
+    dimension_type = serializers.SerializerMethodField()
     dimension_order = serializers.SerializerMethodField()
-    name = serializers.CharField(required=False, allow_blank=True)
-    type = serializers.CharField(required=False, allow_blank=True)
-    order = serializers.IntegerField(required=False, allow_null=True)
     value = serializers.CharField(required=False, allow_blank=True)
-    options = serializers.JSONField(required=False, allow_null=True)
-    options_key = serializers.CharField(required=False, allow_blank=True)
+    dimension_values = serializers.JSONField(required=False, allow_null=True)
     delimiter = serializers.CharField(
         required=False, allow_blank=True, allow_null=True)
     dimension_value = serializers.PrimaryKeyRelatedField(
@@ -29,56 +27,41 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "dimension",
+            "dimension_name",
+            "dimension_order",
+            "dimension_type",
             "dimension_value",
             "dimension_value_freetext",
             "prefix",
             "suffix",
-            "dimension_order",
-            "name",
-            "type",
-            "order",
             "value",
-            "options",
-            "options_key",
+            "dimension_values",
+
             "delimiter",
         ]
+
+    def get_dimension_name(self, obj):
+        return obj.dimension.name if obj.dimension.name else None
+
+    def get_dimension_type(self, obj):
+        return obj.dimension.type if obj.dimension else None
 
     def get_dimension_order(self, obj):
         request = self.context.get('request')
 
-        # Case 1: Check for rule_details_dict from list view
-        if hasattr(request, 'rule_details_dict') and obj.dimension_id:
-            try:
-                rule_id = obj.string.submission.rule_id
-                field_id = obj.string.field_id
-                key = (rule_id, field_id, obj.dimension_id)
-                print(request.rule_details_dict[key])
-                if key in request.rule_details_dict:
-                    rule_detail = request.rule_details_dict[key]
-                    if hasattr(rule_detail, 'dimension_order'):
-                        return rule_detail.dimension_order
-            except Exception:
-                pass
-
-        # Case 2: Check for rule_details from retrieve view
-        if hasattr(request, 'rule_details') and obj.dimension_id:
-            rule_details = request.rule_details
-            if obj.dimension_id in rule_details:
-                rule_detail = rule_details[obj.dimension_id]
-                if hasattr(rule_detail, 'dimension_order'):
-                    return rule_detail.dimension_order
-
-        # Case 3: Fallback to database lookup
         try:
             rule = obj.string.submission.rule
             field = obj.string.field
+            # Get the correct dimension order from RuleDetail
             rule_detail = models.RuleDetail.objects.filter(
                 rule=rule,
                 field=field,
                 dimension=obj.dimension
-            ).first()
+            ).order_by('dimension_order').first()
+
             if rule_detail and hasattr(rule_detail, 'dimension_order'):
                 return rule_detail.dimension_order
+
         except Exception:
             pass
 
@@ -207,8 +190,7 @@ class StringNestedSerializer(serializers.ModelSerializer):
             block_item_data.pop('type', None)
             block_item_data.pop('order', None)
             block_item_data.pop('value', None)
-            block_item_data.pop('options', None)
-            block_item_data.pop('options_key', None)
+            block_item_data.pop('dimension_values', None)
             block_item_data.pop('delimiter', None)
             block_item_data.pop('prefix', None)
             block_item_data.pop('suffix', None)
@@ -246,8 +228,7 @@ class StringNestedSerializer(serializers.ModelSerializer):
                 block_item_data.pop('type', None)
                 block_item_data.pop('order', None)
                 block_item_data.pop('value', None)
-                block_item_data.pop('options', None)
-                block_item_data.pop('options_key', None)
+                block_item_data.pop('dimension_values', None)
                 block_item_data.pop('delimiter', None)
                 block_item_data.pop('prefix', None)
                 block_item_data.pop('suffix', None)
@@ -299,6 +280,13 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                 'name': instance.rule.name,
                 'platform': instance.rule.platform.name,
             }
+
+        if instance.starting_field:
+            ret['starting_field'] = {
+                'id': instance.starting_field.id,
+                'name': instance.starting_field.name,
+                'field_level': instance.starting_field.field_level,
+            }
         return ret
 
     def validate_rule(self, value):
@@ -340,8 +328,7 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                 detail_data.pop('type', None)
                 detail_data.pop('order', None)
                 detail_data.pop('value', None)
-                detail_data.pop('options', None)
-                detail_data.pop('options_key', None)
+                detail_data.pop('dimension_values', None)
                 detail_data.pop('delimiter', None)
                 detail_data.pop('prefix', None)
                 detail_data.pop('suffix', None)
@@ -364,11 +351,9 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
         blocks_data = validated_data.pop('strings', [])
 
         # Handle rule data if it comes as a dict
-        rule_data = validated_data.pop('rule', None)
-        if isinstance(rule_data, dict):
-            validated_data['rule_id'] = rule_data.get('id')
-        elif rule_data is not None:
-            validated_data['rule_id'] = rule_data
+        rule = validated_data.pop('rule', None)
+        if rule is not None:
+            instance.rule = rule
 
         # Update Submission instance
         for attr, value in validated_data.items():
@@ -377,10 +362,10 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
 
         # Handle blocks
         if blocks_data:
-            # Get existing strings
-            existing_strings = {
-                string.id: string for string in instance.strings.all()}
+            # First, delete all existing strings to avoid unique constraint conflicts
+            instance.strings.all().delete()
 
+            # Create new strings
             for block_data in blocks_data:
                 # Handle nested block_items
                 block_items_data = block_data.pop('string_details', [])
@@ -390,60 +375,37 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                 block_data.pop('field_level', None)
                 block_data.pop('next_field_name', None)
                 block_data.pop('next_field_code', None)
+                block_data.pop('dimensions', None)
+                block_data.pop('field_rule', None)
 
-                string_id = block_data.get('id')
+                # Create new string
+                new_string_data = block_data.copy()
+                if 'id' in new_string_data:
+                    del new_string_data['id']
 
-                if string_id and string_id in existing_strings:
-                    # Update existing string
-                    string = existing_strings[string_id]
-                    for attr, value in block_data.items():
-                        if attr != 'id':
-                            setattr(string, attr, value)
-                    string.save()
+                string = models.String.objects.create(
+                    submission=instance,
+                    **new_string_data
+                )
 
-                    # Update string details
-                    string.string_details.all().delete()
-                    for detail_data in block_items_data:
-                        # Remove non-model fields
-                        detail_data.pop('name', None)
-                        detail_data.pop('type', None)
-                        detail_data.pop('order', None)
-                        detail_data.pop('value', None)
-                        detail_data.pop('options', None)
-                        detail_data.pop('options_key', None)
-                        detail_data.pop('delimiter', None)
-                        detail_data.pop('prefix', None)
-                        detail_data.pop('suffix', None)
-                        detail_data.pop('dimension_order', None)
+                # Create string details
+                for detail_data in block_items_data:
+                    # Remove non-model fields
+                    detail_data.pop('name', None)
+                    detail_data.pop('type', None)
+                    detail_data.pop('order', None)
+                    detail_data.pop('value', None)
+                    detail_data.pop('dimension_values', None)
+                    detail_data.pop('delimiter', None)
+                    detail_data.pop('prefix', None)
+                    detail_data.pop('suffix', None)
+                    detail_data.pop('dimension_order', None)
+                    detail_data.pop('parent_dimension_name', None)
+                    detail_data.pop('parent_dimension_id', None)
 
-                        models.StringDetail.objects.create(
-                            string=string,
-                            **detail_data
-                        )
-                else:
-                    # Create new string
-                    string = models.String.objects.create(
-                        submission=instance,
-                        **block_data
+                    models.StringDetail.objects.create(
+                        string=string,
+                        **detail_data
                     )
-
-                    # Create string details
-                    for detail_data in block_items_data:
-                        # Remove non-model fields
-                        detail_data.pop('name', None)
-                        detail_data.pop('type', None)
-                        detail_data.pop('order', None)
-                        detail_data.pop('value', None)
-                        detail_data.pop('options', None)
-                        detail_data.pop('options_key', None)
-                        detail_data.pop('delimiter', None)
-                        detail_data.pop('prefix', None)
-                        detail_data.pop('suffix', None)
-                        detail_data.pop('dimension_order', None)
-
-                        models.StringDetail.objects.create(
-                            string=string,
-                            **detail_data
-                        )
 
         return instance
