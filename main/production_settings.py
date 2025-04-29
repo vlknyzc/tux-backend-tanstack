@@ -22,15 +22,15 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = [
+    "django-rest-starter-production-de07.up.railway.app",
+    "tux-frontend-next-singletenant.vercel.app",
+]
 
 # Comment out the following line and place your railway URL, and your production URL in the array.
 CSRF_TRUSTED_ORIGINS = [
     "https://django-rest-starter-production-de07.up.railway.app",
-    "https://tux-vlknyzc.vercel.app",
     "https://tux-frontend-next-singletenant.vercel.app",
-    "http://localhost:3000",
-    "http://localhost:8000",
 ]
 
 
@@ -136,14 +136,12 @@ REST_FRAMEWORK = {
 # IsAuthenticatedOrReadOnly
 
 
-CORS_ORIGIN_ALLOW_ALL = True
+CORS_ORIGIN_ALLOW_ALL = False
+CORS_ALLOW_ALL = False
 
 CORS_ALLOWED_ORIGINS = [
     "https://django-rest-starter-production-de07.up.railway.app",
-    "https://tux-vlknyzc.vercel.app",
-    "http://localhost:3000",
-    "http://localhost:8000",
-
+    "https://tux-frontend-next-singletenant.vercel.app",
 ]
 
 # Custom user model
@@ -192,6 +190,12 @@ SIMPLE_JWT = {
 }
 
 CORS_ALLOW_CREDENTIALS = True
+
+
+SECURE_SSL_REDIRECT = True
+SESSION_COOKIE_SECURE = True
+CSRF_COOKIE_SECURE = True
+
 CORS_ALLOW_METHODS = [
     "DELETE",
     "GET",
