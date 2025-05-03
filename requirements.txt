@@ -16,6 +16,7 @@ django-ses==4.4.0
 djangorestframework==3.16.0
 djangorestframework_simplejwt==5.5.0
 djoser==2.3.1
+gunicorn==21.2.0
 idna==3.10
 itypes==1.2.0
 Jinja2==3.1.6
