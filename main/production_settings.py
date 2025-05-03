@@ -15,12 +15,12 @@ SECRET_KEY = os.environ["SECRET_KEY"]
 DEBUG = False
 
 ALLOWED_HOSTS = [
-    "django-rest-starter-production-de07.up.railway.app",
+    ".up.railway.app",
     "tux-frontend-next-singletenant.vercel.app",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
-    "https://django-rest-starter-production-de07.up.railway.app",
+    "https://*.up.railway.app",
     "https://tux-frontend-next-singletenant.vercel.app",
 ]
 
@@ -125,7 +125,7 @@ SIMPLE_JWT = {
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    "https://django-rest-starter-production-de07.up.railway.app",
+    "https://*.up.railway.app",
     "https://tux-frontend-next-singletenant.vercel.app",
 ]
 CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
