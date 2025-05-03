@@ -4,23 +4,32 @@ when you are in your local environment.
 """
 
 import os
+from os import getenv, path
 from pathlib import Path
+from django.core.management.utils import get_random_secret_key
+import dotenv
+
 from datetime import timedelta
 
 # Build paths inside the project like this: BASE_DIR / 'subdir'.
 BASE_DIR = Path(__file__).resolve().parent.parent
 
+dotenv_file = BASE_DIR / '.env.local'
+
+if path.exists(dotenv_file):
+    dotenv.load_dotenv(dotenv_file)
 
 # Quick-start development settings - unsuitable for production
 # See https://docs.djangoproject.com/en/4.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
-SECRET_KEY = "django-insecure-3l(vm@zmjb5rp)pcs@f4ht_73ex3k45h(8xq_c(_)9ww$old8s"
+SECRET_KEY = getenv("DJANGO_SECRET_KEY", get_random_secret_key())
 
 # SECURITY WARNING: don't run with debug turned on in production!
-DEBUG = True
+DEBUG = getenv("DJANGO_DEBUG", "True") == "True"
 
-ALLOWED_HOSTS = ["*"]
+ALLOWED_HOSTS = getenv("DJANGO_ALLOWED_HOSTS",
+                       '127.0.0.1,localhost').split(",")
 
 
 # Application definition
@@ -34,9 +43,11 @@ INSTALLED_APPS = [
     "django.contrib.staticfiles",
     "corsheaders",
     "rest_framework",
+    'djoser',
     "master_data",
     "django_filters",
-    # "users",
+    "users",
+    "coreapi"
 ]
 
 MIDDLEWARE = [
@@ -82,6 +93,16 @@ DATABASES = {
     }
 }
 
+# Email settings
+EMAIL_BACKEND = 'django_ses.SESBackend'
+DEFAULT_FROM_EMAIL = getenv("AWS_SES_FROM_EMAIL")
+
+AWS_ACCESS_KEY_ID = getenv("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = getenv("AWS_SECRET_ACCESS_KEY")
+AWS_SES_REGION_NAME = getenv("AWS_SES_REGION_NAME")
+AWS_SES_REGION_ENDPOINT = getenv("AWS_SES_REGION_ENDPOINT")
+AWS_SES_FROM_EMAIL = getenv("AWS_SES_FROM_EMAIL")
+USE_SES_V2 = True
 
 # Password validation
 # https://docs.djangoproject.com/en/4.0/ref/settings/#auth-password-validators
@@ -104,37 +125,15 @@ AUTH_PASSWORD_VALIDATORS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 
-REST_FRAMEWORK = {
-    'DEFAULT_AUTHENTICATION_CLASSES': [
-        # 'rest_framework_simplejwt.authentication.JWTAuthentication',
-    ],
-    'DEFAULT_PERMISSION_CLASSES': [
-        'rest_framework.permissions.AllowAny',
-    ],
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
-    'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
-}
-
 # Disable CSRF for development
-if DEBUG:
-    REST_FRAMEWORK['DEFAULT_AUTHENTICATION_CLASSES'] = []
-    REST_FRAMEWORK['DEFAULT_PERMISSION_CLASSES'] = [
-        'rest_framework.permissions.AllowAny']
-    CSRF_TRUSTED_ORIGINS = ['http://localhost:3000', 'http://127.0.0.1:3000']
-    CSRF_COOKIE_SECURE = False
-    CSRF_COOKIE_HTTPONLY = False
-    CSRF_COOKIE_SAMESITE = 'Lax'
-    CSRF_USE_SESSIONS = False
-    CSRF_COOKIE_NAME = 'csrftoken'
-    CSRF_HEADER_NAME = 'HTTP_X_CSRFTOKEN'
-    CSRF_COOKIE_DOMAIN = None
+
 
 # Custom user model
 # AUTH_USER_MODEL = 'users.NewUser'
 
 # Simple JWT settings
 SIMPLE_JWT = {
-    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=5),
+    "ACCESS_TOKEN_LIFETIME": timedelta(minutes=30),
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ROTATE_REFRESH_TOKENS": False,
     "BLACKLIST_AFTER_ROTATION": False,
@@ -220,10 +219,36 @@ USE_TZ = True
 # https://docs.djangoproject.com/en/4.0/howto/static-files/
 
 STATIC_URL = "static/"
-STATICFILES_DIRS = [os.path.join(BASE_DIR, "static")]
-STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
+STATICFILES_DIRS = [BASE_DIR / "static"]
+STATIC_ROOT = BASE_DIR / "staticfiles"
+
+REST_FRAMEWORK = {
+    'DEFAULT_AUTHENTICATION_CLASSES': [
+        'rest_framework_simplejwt.authentication.JWTAuthentication',
+    ],
+    'DEFAULT_PERMISSION_CLASSES': [
+        'rest_framework.permissions.IsAuthenticated',
+    ],
+    # 'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    # 'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+}
+
+# DJOSER settings
+DJOSER = {
+    'PASSWORD_RESET_CONFIRM_URL': 'password-reset/{uid}/{token}',
+    'SEND_ACTIVATION_EMAIL': False,
+    'ACTIVATION_URL': 'activation/{uid}/{token}',
+    'SEND_CONFIRMATION_EMAIL': False,
+    'USER_CREATE_PASSWORD_RETYPE': True,
+    'PASSWORD_RESET_CONFIRM_RETYPE': False,
+    'TOKEN_MODEL': None
+}
 
 # Default primary key field type
 # https://docs.djangoproject.com/en/4.0/ref/settings/#default-auto-field
 
 DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
+
+
+# Custom user model
+AUTH_USER_MODEL = 'users.UserAccount'

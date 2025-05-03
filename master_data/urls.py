@@ -13,7 +13,6 @@ from .views import (
     SubmissionViewSet,
     StringViewSet,
     StringDetailViewSet,
-    UserViewSet,
     SubmissionNestedViewSet,
 )
 
@@ -30,7 +29,6 @@ router.register("rule-nested", RuleNestedViewSet, basename="rule-nested")
 router.register("submissions", SubmissionViewSet)
 router.register("strings", StringViewSet)
 router.register("string-details", StringDetailViewSet)
-router.register("users", UserViewSet)
 router.register("nested-submissions", SubmissionNestedViewSet,
                 basename="nested-submissions")
 

@@ -31,6 +31,10 @@ urlpatterns = [
     path('api/', include('master_data.urls')),
     path('admin/', admin.site.urls),
 
+    # // djoser
+    path('api/', include('djoser.urls')),
+    path('api/', include('djoser.urls.jwt')),
+
     # API authentication
     path("api-auth/", include("rest_framework.urls"), name="rest_framework"),
 

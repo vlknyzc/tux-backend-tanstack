@@ -4,7 +4,6 @@ from .rule_views import RuleViewSet, RuleDetailViewSet, RuleNestedViewSet
 from .string_views import StringViewSet, StringDetailViewSet
 from .field_views import FieldViewSet
 from .submission_views import SubmissionViewSet
-from .user_views import UserViewSet
 from .nested_submission_views import SubmissionNestedViewSet
 
 __all__ = [
@@ -19,6 +18,5 @@ __all__ = [
     'StringDetailViewSet',
     'FieldViewSet',
     'SubmissionViewSet',
-    'UserViewSet',
     'SubmissionNestedViewSet',
 ]
