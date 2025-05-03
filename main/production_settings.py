@@ -24,6 +24,8 @@ CSRF_TRUSTED_ORIGINS = [
     "https://tux-frontend-next-singletenant.vercel.app",
 ]
 
+AUTH_USER_MODEL = "users.UserAccount"
+
 # ────────────────────────────────────────────────────────────────
 # Installed apps / middleware
 # ────────────────────────────────────────────────────────────────
