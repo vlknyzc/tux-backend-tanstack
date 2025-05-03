@@ -13,7 +13,7 @@ from .platform import PlatformSerializer, FieldSerializer, PlatformTemplateSeria
 from .string import StringSerializer, StringDetailSerializer
 from .workspace import WorkspaceSerializer
 from .submission import SubmissionSerializer
-from .user import UserSerializer, UserDetailSerializer, UserCreateSerializer, UserUpdateSerializer
+
 
 __all__ = [
     'DimensionSerializer',
@@ -28,8 +28,5 @@ __all__ = [
     'StringDetailSerializer',
     'WorkspaceSerializer',
     'SubmissionSerializer',
-    'UserSerializer',
-    'UserDetailSerializer',
-    'UserCreateSerializer',
-    'UserUpdateSerializer',
+
 ]

@@ -179,3 +179,8 @@ cython_debug/
 
 # Workspaces logos
 workspaces/
+
+# .env.local
+.env.local
+
+DS_Store
