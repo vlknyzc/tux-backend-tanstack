@@ -32,7 +32,8 @@ class Migration(migrations.Migration):
                 (
                     "status",
                     models.CharField(
-                        choices=[("active", "Active"), ("inactive", "Inactive")],
+                        choices=[("active", "Active"),
+                                 ("inactive", "Inactive")],
                         default="active",
                         max_length=30,
                     ),
@@ -61,7 +62,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"abstract": False,},
+            options={"abstract": False, },
         ),
         migrations.CreateModel(
             name="DimensionValue",
@@ -105,7 +106,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"unique_together": {("dimension", "value")},},
+            options={"unique_together": {("dimension", "value")}, },
         ),
         migrations.CreateModel(
             name="Field",
@@ -152,7 +153,7 @@ class Migration(migrations.Migration):
                 ("platform_type", models.CharField(max_length=30)),
                 ("name", models.CharField(max_length=30)),
             ],
-            options={"abstract": False,},
+            options={"abstract": False, },
         ),
         migrations.CreateModel(
             name="Rule",
@@ -173,7 +174,8 @@ class Migration(migrations.Migration):
                 (
                     "status",
                     models.CharField(
-                        choices=[("active", "Active"), ("inactive", "Inactive")],
+                        choices=[("active", "Active"),
+                                 ("inactive", "Inactive")],
                         default="active",
                         max_length=30,
                     ),
@@ -187,7 +189,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"abstract": False,},
+            options={"abstract": False, },
         ),
         migrations.CreateModel(
             name="String",
@@ -262,7 +264,8 @@ class Migration(migrations.Migration):
                 (
                     "status",
                     models.CharField(
-                        choices=[("active", "Active"), ("inactive", "Inactive")],
+                        choices=[("active", "Active"),
+                                 ("inactive", "Inactive")],
                         default="active",
                         max_length=30,
                     ),
@@ -276,7 +279,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"abstract": False,},
+            options={"abstract": False, },
         ),
         migrations.CreateModel(
             name="Submission",
@@ -337,7 +340,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"abstract": False,},
+            options={"abstract": False, },
         ),
         migrations.CreateModel(
             name="StringDetail",
@@ -384,7 +387,7 @@ class Migration(migrations.Migration):
                     ),
                 ),
             ],
-            options={"abstract": False,},
+            options={"abstract": False, },
         ),
         migrations.AddField(
             model_name="string",
