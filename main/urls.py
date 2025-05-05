@@ -33,7 +33,7 @@ urlpatterns = [
 
     # // djoser
     path('api/', include('djoser.urls')),
-    path('api/', include('djoser.urls.jwt')),
+    path('api/', include('users.urls')),
 
     # API authentication
     path("api-auth/", include("rest_framework.urls"), name="rest_framework"),

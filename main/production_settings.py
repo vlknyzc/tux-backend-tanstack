@@ -25,6 +25,7 @@ CSRF_TRUSTED_ORIGINS = [
 ]
 
 AUTH_USER_MODEL = "users.UserAccount"
+AUTH_COOKIE = "access"
 
 # ────────────────────────────────────────────────────────────────
 # Installed apps / middleware
@@ -105,7 +106,7 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ────────────────────────────────────────────────────────────────
 REST_FRAMEWORK = {
     "DEFAULT_AUTHENTICATION_CLASSES": [
-        "rest_framework_simplejwt.authentication.JWTAuthentication",
+        'users.authentication.CustomJWTAuthentication',
     ],
     "DEFAULT_PERMISSION_CLASSES": ["rest_framework.permissions.AllowAny"],
     "DEFAULT_SCHEMA_CLASS": "rest_framework.schemas.coreapi.AutoSchema",
@@ -126,7 +127,7 @@ CORS_ORIGIN_ALLOW_ALL = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "https://*.up.railway.app",
-    "https://tux-frontend-next-singletenant.vercel.app",
+    "https://tux-frontend-next-singletenant*.vercel.app",
 ]
 CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
 CORS_ALLOW_HEADERS = [
