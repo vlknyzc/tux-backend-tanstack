@@ -126,7 +126,7 @@ SIMPLE_JWT = {
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
-    "https://tux-frontend-next-singletenant-git-dev-vlknyzcs-projects.vercel.app"
+    "https://tux-frontend-next-singletenant-git-dev-vlknyzcs-projects.vercel.app",
     "https://tux-dev.up.railway.app",
 ]
 CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
