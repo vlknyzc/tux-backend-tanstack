@@ -16,12 +16,12 @@ DEBUG = False
 
 ALLOWED_HOSTS = [
     ".up.railway.app",
-    "tux-frontend-next-singletenant.vercel.app",
+    "tux-frontend-next-singletenant*.vercel.app",
 ]
 
 CSRF_TRUSTED_ORIGINS = [
     "https://*.up.railway.app",
-    "https://tux-frontend-next-singletenant.vercel.app",
+    "https://tux-frontend-next-singletenant*.vercel.app",
 ]
 
 AUTH_USER_MODEL = "users.UserAccount"
