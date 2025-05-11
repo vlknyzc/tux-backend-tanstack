@@ -1,78 +1,59 @@
 from rest_framework import serializers
-from django.db.models import Max
+from django.db import transaction
 from .. import models
 
 
+class RuleDetailNestedSerializer(serializers.ModelSerializer):
+    field = serializers.PrimaryKeyRelatedField(
+        queryset=models.Field.objects.all())
+    dimension = serializers.PrimaryKeyRelatedField(
+        queryset=models.Dimension.objects.all())
+    dimension_order = serializers.IntegerField()
+    field_level = serializers.IntegerField(source='field.field_level')
+    field_name = serializers.CharField(source='field.name')
+
+    class Meta:
+        model = models.RuleDetail
+        fields = ['field', 'dimension', 'dimension_order',
+                  'prefix', 'suffix', 'delimiter', 'field_level', 'field_name']
+
+
 class RuleNestedSerializer(serializers.ModelSerializer):
-    field_details = serializers.SerializerMethodField()
-    name = serializers.CharField()  # Remove the source='rule.name'
-    platform = serializers.IntegerField(
-        source='platform.id')  # Update this line
+    rule_details = RuleDetailNestedSerializer(many=True)
+    platform = serializers.PrimaryKeyRelatedField(
+        queryset=models.Platform.objects.all())
+
     platform_name = serializers.CharField(source='platform.name')
 
     class Meta:
         model = models.Rule
-        fields = ['id', 'name', 'status', 'platform',
-                  'platform_name', 'field_details']
+        fields = ['id', 'name', 'description',
+                  'platform', 'status', 'rule_details', 'platform_name']
 
-    def get_field_details(self, obj):
-        # Get all rule details for this rule
-        rule_details = obj.rule_details.all()
+    @transaction.atomic
+    def create(self, validated_data):
+        rule_details_data = validated_data.pop('rule_details')
+        rule = models.Rule.objects.create(**validated_data)
 
-        # Create a dictionary to group by field
-        grouped_details = {}
+        for rule_detail_data in rule_details_data:
+            models.RuleDetail.objects.create(rule=rule, **rule_detail_data)
 
-        for detail in rule_details:
-            field_id = detail.field.id
+        return rule
 
-            if field_id not in grouped_details:
-                # Initialize the field group with field information
-                grouped_details[field_id] = {
-                    'field': field_id,
-                    'field_name': detail.field.name,
-                    'field_level': detail.field.field_level,
-                    'next_field': detail.field.next_field.name if detail.field.next_field_id else None,
-                    'dimensions': []
-                }
+    @transaction.atomic
+    def update(self, instance, validated_data):
+        rule_details_data = validated_data.pop('rule_details')
 
-            # Add dimension information
-            dimension_info = {
-                'id': detail.id,
-                'dimension': detail.dimension.id,
-                'dimension_name': detail.dimension.name,
-                'dimension_type': detail.dimension.type,
-                'dimension_order': detail.dimension_order,
-                'prefix': detail.prefix or '',  # Convert None to empty string
-                'suffix': detail.suffix or '',  # Convert None to empty string
-                'delimiter': detail.delimiter or '',  # Convert None to empty string
-                'parent_dimension_name': (detail.dimension.parent.name
-                                          if detail.dimension.parent_id else None),
-                'parent_dimension_id': detail.dimension.parent_id,
-                'dimension_values': [
-                    {
-                        'id': value.id,
-                        'value': value.value,
-                        'label': value.label,
-                        'utm': value.utm,
-                    } for value in detail.dimension.dimension_values.all()
-                ]
-            }
+        # Update rule fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
 
-            grouped_details[field_id]['dimensions'].append(dimension_info)
+        # Delete existing rule details
+        instance.rule_details.all().delete()
 
-            # combine dimensions to form field_rule
-            dimension_names = [
-                (dim.get('prefix', '') or '') +  # Handle None values
-                (dim.get('dimension_name', '') or '') +
-                (dim.get('suffix', '') or '') +
-                (dim.get('delimiter', '') or '')
-                for dim in sorted(
-                    grouped_details[field_id]['dimensions'],
-                    key=lambda x: x['dimension_order']
-                )
-            ]
-            field_rule = ''.join(dimension_names)
-            grouped_details[field_id]['field_rule'] = field_rule
+        # Create new rule details
+        for rule_detail_data in rule_details_data:
+            models.RuleDetail.objects.create(rule=instance, **rule_detail_data)
 
-        # Convert dictionary to list
-        return list(grouped_details.values())
+        return instance
