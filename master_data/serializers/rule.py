@@ -210,7 +210,6 @@ class RuleSerializer(serializers.ModelSerializer):
         model = models.Rule
         fields = [
             'id',
-            # 'convention',
             'platform',
             'platform_name',
             'status',
