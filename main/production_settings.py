@@ -154,6 +154,7 @@ CORS_ORIGIN_ALLOW_ALL = False
 CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "https://tux-frontend-next-singletenant-git-dev-vlknyzcs-projects.vercel.app",
+    "https://tux-frontend-next-singletenant-vercel.app",
     "https://tux-dev.up.railway.app",
     "https://tux-test.up.railway.app",
     "https://tux-prod.up.railway.app",
