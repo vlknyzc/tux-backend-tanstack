@@ -22,7 +22,10 @@ ALLOWED_HOSTS = [
 
 CSRF_TRUSTED_ORIGINS = [
     "https://tux-frontend-next-singletenant-git-dev-vlknyzcs-projects.vercel.app",
+    "https://tux-frontend-next-singletenant-vercel.app",
     "https://tux-dev.up.railway.app",
+    "https://tux-test.up.railway.app",
+    "https://tux-prod.up.railway.app",
 ]
 
 AUTH_USER_MODEL = "users.UserAccount"
@@ -152,6 +155,8 @@ CORS_ALLOW_CREDENTIALS = True
 CORS_ALLOWED_ORIGINS = [
     "https://tux-frontend-next-singletenant-git-dev-vlknyzcs-projects.vercel.app",
     "https://tux-dev.up.railway.app",
+    "https://tux-test.up.railway.app",
+    "https://tux-prod.up.railway.app",
 ]
 CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
 CORS_ALLOW_HEADERS = [
