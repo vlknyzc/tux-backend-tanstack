@@ -9,6 +9,7 @@ class PlatformSerializer(serializers.ModelSerializer):
             "id",
             "platform_type",
             "name",
+            "icon_name",
         ]
 
 

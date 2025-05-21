@@ -7,6 +7,7 @@ class Platform(TimeStampModel):
     # Fields
     platform_type = models.CharField(max_length=30)
     name = models.CharField(max_length=30)
+    icon_name = models.CharField(max_length=30, null=True, blank=True)
 
     def __str__(self):
         return str(self.name)

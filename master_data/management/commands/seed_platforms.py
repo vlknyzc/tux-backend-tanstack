@@ -2,8 +2,37 @@ from django.core.management.base import BaseCommand
 from master_data.models import Platform, Field
 
 PLATFORMS = [
-    {'platform_type': 'social_media', 'name': 'Meta'},
-    {'platform_type': 'DSP',          'name': 'DV360'},
+    {'platform_type': 'social_media', 'name': 'Meta',             'icon_name': 'meta'},
+    {'platform_type': 'DSP',          'name': 'DV360',
+        'icon_name': 'googledisplayandvideo360'},
+    {'platform_type': 'social_media', 'name': 'Twitter',
+        'icon_name': 'x'},  # Twitter is now X
+    {'platform_type': 'social_media',
+        'name': 'TikTok',           'icon_name': 'tiktok'},
+    {'platform_type': 'social_media',
+        'name': 'Snapchat',         'icon_name': 'snapchat'},
+    {'platform_type': 'social_media',
+        'name': 'LinkedIn',         'icon_name': 'linkedin'},
+    {'platform_type': 'social_media', 'name': 'Pinterest',
+        'icon_name': 'pinterest'},
+    {'platform_type': 'social_media',
+        'name': 'Reddit',           'icon_name': 'reddit'},
+    {'platform_type': 'search',       'name': 'Google Ads',
+        'icon_name': 'googleads'},
+    {'platform_type': 'search',       'name': 'Microsoft Ads',
+        'icon_name': 'microsoftadvertising'},
+    {'platform_type': 'video',        'name': 'YouTube',
+        'icon_name': 'youtube'},
+    {'platform_type': 'retail_media',
+        'name': 'Amazon Ads',       'icon_name': 'amazons'},
+    {'platform_type': 'retail_media', 'name': 'Walmart Connect',
+        'icon_name': None},  # not in Simple Icons
+    {'platform_type': 'retail_media', 'name': 'Criteo',
+        'icon_name': None},  # not in Simple Icons
+    {'platform_type': 'DSP',          'name': 'The Trade Desk',
+        'icon_name': None},  # not in Simple Icons
+    {'platform_type': 'DSP',          'name': 'Xandr',
+        'icon_name': None},  # not in Simple Icons
 ]
 
 FIELDS = {
@@ -21,6 +50,93 @@ FIELDS = {
         {'name': 'Line Item',       'field_level': 4},
         {'name': 'Creative',        'field_level': 5},
     ],
+    'Twitter': [
+        {'name': 'Business Manager', 'field_level': 1},
+        {'name': 'Account',          'field_level': 2},
+        {'name': 'Campaign',         'field_level': 3},
+        {'name': 'Ad Group',         'field_level': 4},
+        {'name': 'Ad',               'field_level': 5},
+    ],
+    'TikTok': [
+        {'name': 'Advertiser', 'field_level': 1},
+        {'name': 'Campaign',   'field_level': 2},
+        {'name': 'Ad Group',   'field_level': 3},
+        {'name': 'Ad',         'field_level': 4},
+    ],
+    'Snapchat': [
+        {'name': 'Advertiser', 'field_level': 1},
+        {'name': 'Campaign',   'field_level': 2},
+        {'name': 'Ad Squad',   'field_level': 3},
+        {'name': 'Ad',         'field_level': 4},
+    ],
+    'LinkedIn': [
+        {'name': 'Advertiser',      'field_level': 1},
+        {'name': 'Campaign Group',  'field_level': 2},
+        {'name': 'Campaign',        'field_level': 3},
+        {'name': 'Ad',              'field_level': 4},
+    ],
+    'Pinterest': [
+        {'name': 'Advertiser',      'field_level': 1},
+        {'name': 'Campaign',        'field_level': 2},
+        {'name': 'Ad Group',        'field_level': 3},
+        {'name': 'Pin Promotion',   'field_level': 4},
+    ],
+    'Reddit': [
+        {'name': 'Advertiser', 'field_level': 1},
+        {'name': 'Campaign',   'field_level': 2},
+        {'name': 'Ad Group',   'field_level': 3},
+        {'name': 'Ad',         'field_level': 4},
+    ],
+    'Google Ads': [
+        {'name': 'Manager Account', 'field_level': 1},
+        {'name': 'Account',         'field_level': 2},
+        {'name': 'Campaign',        'field_level': 3},
+        {'name': 'Ad Group',        'field_level': 4},
+        {'name': 'Ad',              'field_level': 5},
+    ],
+    'Microsoft Ads': [
+        {'name': 'Manager Account', 'field_level': 1},
+        {'name': 'Account',         'field_level': 2},
+        {'name': 'Campaign',        'field_level': 3},
+        {'name': 'Ad Group',        'field_level': 4},
+        {'name': 'Ad',              'field_level': 5},
+    ],
+    'YouTube': [
+        {'name': 'Google Account',  'field_level': 1},
+        {'name': 'Campaign',        'field_level': 2},
+        {'name': 'Ad Group',        'field_level': 3},
+        {'name': 'Video Ad',        'field_level': 4},
+    ],
+    'Amazon Ads': [
+        {'name': 'Advertiser',         'field_level': 1},
+        {'name': 'Campaign',           'field_level': 2},
+        {'name': 'Ad Group',           'field_level': 3},
+        {'name': 'Sponsored Product',  'field_level': 4},
+    ],
+    'Walmart Connect': [
+        {'name': 'Advertiser',     'field_level': 1},
+        {'name': 'Campaign',       'field_level': 2},
+        {'name': 'Ad Group',       'field_level': 3},
+        {'name': 'Creative',       'field_level': 4},
+    ],
+    'Criteo': [
+        {'name': 'Account',        'field_level': 1},
+        {'name': 'Campaign',       'field_level': 2},
+        {'name': 'Ad Set',         'field_level': 3},
+        {'name': 'Creative',       'field_level': 4},
+    ],
+    'The Trade Desk': [
+        {'name': 'Advertiser',     'field_level': 1},
+        {'name': 'Campaign',       'field_level': 2},
+        {'name': 'Ad Group',       'field_level': 3},
+        {'name': 'Creative',       'field_level': 4},
+    ],
+    'Xandr': [
+        {'name': 'Buyer',          'field_level': 1},
+        {'name': 'Campaign',       'field_level': 2},
+        {'name': 'Line Item',      'field_level': 3},
+        {'name': 'Creative',       'field_level': 4},
+    ],
 }
 
 
@@ -35,7 +151,10 @@ class Command(BaseCommand):
             platform, _ = Platform.objects.update_or_create(
                 platform_type=pdata['platform_type'],
                 name=pdata['name'],
-                defaults=pdata
+                defaults={
+                    'platform_type': pdata['platform_type'],
+                    'icon_name': pdata.get('icon_name')
+                }
             )
             created_platforms[platform.name] = platform
 
