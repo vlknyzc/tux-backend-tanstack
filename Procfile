@@ -1,1 +1,1 @@
-web: gunicorn tux-backend.wsgi
+web: gunicorn main.wsgi
