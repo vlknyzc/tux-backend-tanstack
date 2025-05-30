@@ -11,6 +11,7 @@ class StringFilter(filters.FilterSet):
     workspace = filters.NumberFilter(method='filter_workspace_id')
     field = filters.NumberFilter(method='filter_field_id')
     field_level = filters.NumberFilter(method='filter_field_level')
+    platform_id = filters.NumberFilter(method='filter_platform_id')
 
     class Meta:
         model = models.String
@@ -24,6 +25,9 @@ class StringFilter(filters.FilterSet):
 
     def filter_field_level(self, queryset, name, value):
         return queryset.filter(field__field_level=value)
+
+    def filter_platform_id(self, queryset, name, value):
+        return queryset.filter(field__platform__id=value)
 
 
 class StringViewSet(viewsets.ModelViewSet):
