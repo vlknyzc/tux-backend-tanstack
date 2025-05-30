@@ -279,6 +279,7 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                 'id': instance.rule.id,
                 'name': instance.rule.name,
                 'platform': instance.rule.platform.name,
+                'platform_slug': instance.rule.platform.slug,
             }
 
         if instance.starting_field:

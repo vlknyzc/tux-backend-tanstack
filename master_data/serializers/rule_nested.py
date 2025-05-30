@@ -16,13 +16,15 @@ class RuleNestedSerializer(serializers.ModelSerializer):
     platform = serializers.IntegerField(source='platform.id')
     platform_name = serializers.CharField(
         source='platform.name', read_only=True)
+    platform_slug = serializers.CharField(
+        source='platform.slug', read_only=True)
     rule_details = RuleDetailCreateSerializer(many=True, write_only=True)
     description = serializers.CharField(allow_blank=True, required=False)
 
     class Meta:
         model = models.Rule
         fields = ['id', 'name', 'description', 'status', 'platform',
-                  'platform_name', 'field_details', 'rule_details']
+                  'platform_name', 'platform_slug', 'field_details', 'rule_details']
 
     def create(self, validated_data):
         rule_details_data = validated_data.pop('rule_details')

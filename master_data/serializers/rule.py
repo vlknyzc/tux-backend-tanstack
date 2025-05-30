@@ -90,6 +90,7 @@ from .. import models
 class RuleDetailSerializer(serializers.ModelSerializer):
     platform_id = serializers.SerializerMethodField()
     platform_name = serializers.SerializerMethodField()
+    platform_slug = serializers.SerializerMethodField()
     rule_name = serializers.SerializerMethodField()
     dimension_name = serializers.SerializerMethodField()
     dimension_type = serializers.SerializerMethodField()
@@ -111,6 +112,7 @@ class RuleDetailSerializer(serializers.ModelSerializer):
             "rule_name",
             "platform_id",
             "platform_name",
+            "platform_slug",
             "field",
             "field_id",
             "field_name",
@@ -143,6 +145,9 @@ class RuleDetailSerializer(serializers.ModelSerializer):
 
     def get_platform_name(self, obj):
         return obj.rule.platform.name
+
+    def get_platform_slug(self, obj):
+        return obj.rule.platform.slug
 
     def get_dimension_name(self, obj):
         return obj.dimension.name
@@ -205,6 +210,7 @@ class RuleDetailSerializer(serializers.ModelSerializer):
 
 class RuleSerializer(serializers.ModelSerializer):
     platform_name = serializers.SerializerMethodField()
+    platform_slug = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Rule
@@ -212,6 +218,7 @@ class RuleSerializer(serializers.ModelSerializer):
             'id',
             'platform',
             'platform_name',
+            'platform_slug',
             'status',
             'name',
 
@@ -219,6 +226,9 @@ class RuleSerializer(serializers.ModelSerializer):
 
     def get_platform_name(self, obj):
         return obj.platform.name
+
+    def get_platform_slug(self, obj):
+        return obj.platform.slug
 
 
 class RuleNestedSerializer(serializers.ModelSerializer):

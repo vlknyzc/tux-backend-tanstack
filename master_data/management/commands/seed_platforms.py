@@ -1,38 +1,40 @@
 from django.core.management.base import BaseCommand
+from django.utils.text import slugify
 from master_data.models import Platform, Field
 
 PLATFORMS = [
-    {'platform_type': 'social_media', 'name': 'Meta',             'icon_name': 'meta'},
+    {'platform_type': 'social_media', 'name': 'Meta',
+        'slug': 'meta',               'icon_name': 'meta'},
     {'platform_type': 'DSP',          'name': 'DV360',
-        'icon_name': 'googledisplayandvideo360'},
+        'slug': 'dv360',              'icon_name': 'googledisplayandvideo360'},
     {'platform_type': 'social_media', 'name': 'Twitter',
-        'icon_name': 'x'},  # Twitter is now X
-    {'platform_type': 'social_media',
-        'name': 'TikTok',           'icon_name': 'tiktok'},
-    {'platform_type': 'social_media',
-        'name': 'Snapchat',         'icon_name': 'snapchat'},
-    {'platform_type': 'social_media',
-        'name': 'LinkedIn',         'icon_name': 'linkedin'},
+        'slug': 'twitter',            'icon_name': 'x'},  # Twitter is now X
+    {'platform_type': 'social_media', 'name': 'TikTok',
+        'slug': 'tiktok',             'icon_name': 'tiktok'},
+    {'platform_type': 'social_media', 'name': 'Snapchat',
+        'slug': 'snapchat',           'icon_name': 'snapchat'},
+    {'platform_type': 'social_media', 'name': 'LinkedIn',
+        'slug': 'linkedin',           'icon_name': 'linkedin'},
     {'platform_type': 'social_media', 'name': 'Pinterest',
-        'icon_name': 'pinterest'},
-    {'platform_type': 'social_media',
-        'name': 'Reddit',           'icon_name': 'reddit'},
+        'slug': 'pinterest',          'icon_name': 'pinterest'},
+    {'platform_type': 'social_media', 'name': 'Reddit',
+        'slug': 'reddit',             'icon_name': 'reddit'},
     {'platform_type': 'search',       'name': 'Google Ads',
-        'icon_name': 'googleads'},
+        'slug': 'google-ads',         'icon_name': 'googleads'},
     {'platform_type': 'search',       'name': 'Microsoft Ads',
-        'icon_name': 'microsoftadvertising'},
+        'slug': 'microsoft-ads',      'icon_name': 'microsoftadvertising'},
     {'platform_type': 'video',        'name': 'YouTube',
-        'icon_name': 'youtube'},
-    {'platform_type': 'retail_media',
-        'name': 'Amazon Ads',       'icon_name': 'amazons'},
+        'slug': 'youtube',            'icon_name': 'youtube'},
+    {'platform_type': 'retail_media', 'name': 'Amazon Ads',
+        'slug': 'amazon-ads',         'icon_name': 'amazons'},
     {'platform_type': 'retail_media', 'name': 'Walmart Connect',
-        'icon_name': None},  # not in Simple Icons
+        'slug': 'walmart-connect',    'icon_name': None},  # not in Simple Icons
     {'platform_type': 'retail_media', 'name': 'Criteo',
-        'icon_name': None},  # not in Simple Icons
+        'slug': 'criteo',             'icon_name': None},  # not in Simple Icons
     {'platform_type': 'DSP',          'name': 'The Trade Desk',
-        'icon_name': None},  # not in Simple Icons
+        'slug': 'the-trade-desk',     'icon_name': None},  # not in Simple Icons
     {'platform_type': 'DSP',          'name': 'Xandr',
-        'icon_name': None},  # not in Simple Icons
+        'slug': 'xandr',              'icon_name': None},  # not in Simple Icons
 ]
 
 FIELDS = {
@@ -153,7 +155,8 @@ class Command(BaseCommand):
                 name=pdata['name'],
                 defaults={
                     'platform_type': pdata['platform_type'],
-                    'icon_name': pdata.get('icon_name')
+                    'icon_name': pdata.get('icon_name'),
+                    'slug': pdata.get('slug')
                 }
             )
             created_platforms[platform.name] = platform

@@ -9,6 +9,7 @@ class StringSerializer(serializers.ModelSerializer):
     field_level = serializers.SerializerMethodField()
     platform_id = serializers.SerializerMethodField()
     platform_name = serializers.SerializerMethodField()
+    platform_slug = serializers.SerializerMethodField()
     submission_name = serializers.SerializerMethodField()
     rule_id = serializers.SerializerMethodField()
     rule_name = serializers.SerializerMethodField()
@@ -28,6 +29,7 @@ class StringSerializer(serializers.ModelSerializer):
             "field_level",
             "platform_id",
             "platform_name",
+            "platform_slug",
             "string_uuid",
             "value",
             "parent",
@@ -54,6 +56,9 @@ class StringSerializer(serializers.ModelSerializer):
 
     def get_platform_name(self, obj):
         return obj.field.platform.name if obj.field and obj.field.platform else None
+
+    def get_platform_slug(self, obj):
+        return obj.field.platform.slug if obj.field and obj.field.platform else None
 
     def get_rule_id(self, obj):
         return obj.submission.rule.id if obj.submission and obj.submission.rule else None

@@ -9,6 +9,7 @@ class PlatformSerializer(serializers.ModelSerializer):
             "id",
             "platform_type",
             "name",
+            "slug",
             "icon_name",
         ]
 
@@ -48,5 +49,6 @@ class PlatformTemplateSerializer(serializers.ModelSerializer):
         fields = [
             "id",
             "name",
+            "slug",
             "fields"
         ]
