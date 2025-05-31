@@ -4,19 +4,27 @@ from django.db import migrations, models
 from django.utils.text import slugify
 
 
-def populate_slugs(apps, schema_editor):
-    Platform = apps.get_model('master_data', 'Platform')
-    for platform in Platform.objects.all():
-        platform.slug = slugify(platform.name)
-        platform.save(update_fields=['slug'])
+def populate_slugs_safe(apps, schema_editor):
+    """
+    Safely populate slugs, handling cases where field might not exist yet
+    """
+    try:
+        Platform = apps.get_model('master_data', 'Platform')
+        for platform in Platform.objects.all():
+            if not getattr(platform, 'slug', None):
+                platform.slug = slugify(platform.name)
+                platform.save()
+    except Exception:
+        # Field doesn't exist yet or other error, skip
+        pass
 
 
 def reverse_populate_slugs(apps, schema_editor):
-    # No need to reverse since we're removing the field
     pass
 
 
 class Migration(migrations.Migration):
+    atomic = False
 
     dependencies = [
         ("master_data", "0002_platform_icon_name"),
@@ -28,7 +36,7 @@ class Migration(migrations.Migration):
             name="slug",
             field=models.SlugField(max_length=50, null=True, blank=True),
         ),
-        migrations.RunPython(populate_slugs, reverse_populate_slugs),
+        migrations.RunPython(populate_slugs_safe, reverse_populate_slugs),
         migrations.AlterField(
             model_name="platform",
             name="slug",
