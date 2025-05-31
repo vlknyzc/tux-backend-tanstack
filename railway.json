@@ -5,7 +5,7 @@
   },
   "deploy": {
     "preDeployCommand": "python manage.py migrate --fake-initial && python manage.py migrate && python manage.py collectstatic --noinput",
-    "startCommand": "python manage.py seed_platforms && gunicorn --timeout 500 main.wsgi",
+    "startCommand": "gunicorn --timeout 500 main.wsgi",
     "restartPolicyType": "NEVER",
     "restartPolicyMaxRetries": 10
   }
