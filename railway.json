@@ -4,7 +4,7 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "preDeployCommand": "python manage.py migrate && python manage.py collectstatic --noinput",
+    "preDeployCommand": "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py seed_platforms",
     "startCommand": "gunicorn --timeout 500 main.wsgi",
     "restartPolicyType": "NEVER",
     "restartPolicyMaxRetries": 10
