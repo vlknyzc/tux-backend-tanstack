@@ -177,24 +177,30 @@ class StringNestedSerializer(serializers.ModelSerializer):
     def create(self, validated_data):
         block_items_data = validated_data.pop('string_details', [])
         value = validated_data.pop('value', None)
+        string_uuid = validated_data.pop('string_uuid', None)
 
         # Remove non-model fields
         validated_data.pop('next_field_name', None)
         validated_data.pop('next_field_code', None)
+        validated_data.pop('field_name', None)
+        validated_data.pop('field_level', None)
+
+        # Preserve string_uuid if provided
+        if string_uuid:
+            validated_data['string_uuid'] = string_uuid
 
         string = models.String.objects.create(value=value, **validated_data)
 
         for block_item_data in block_items_data:
             # Remove non-model fields
-            block_item_data.pop('name', None)
-            block_item_data.pop('type', None)
-            block_item_data.pop('order', None)
+            block_item_data.pop('dimension_name', None)
+            block_item_data.pop('dimension_type', None)
+            block_item_data.pop('dimension_order', None)
             block_item_data.pop('value', None)
             block_item_data.pop('dimension_values', None)
             block_item_data.pop('delimiter', None)
             block_item_data.pop('prefix', None)
             block_item_data.pop('suffix', None)
-            block_item_data.pop('dimension_order', None)
 
             models.StringDetail.objects.create(
                 string=string, **block_item_data)
@@ -204,16 +210,21 @@ class StringNestedSerializer(serializers.ModelSerializer):
     def update(self, instance, validated_data):
         block_items_data = validated_data.pop('string_details', [])
         value = validated_data.pop('value', None)
+        string_uuid = validated_data.pop('string_uuid', None)
 
         # Remove non-model fields
         validated_data.pop('next_field_name', None)
         validated_data.pop('next_field_code', None)
+        validated_data.pop('field_name', None)
+        validated_data.pop('field_level', None)
 
         # Update String instance
         for attr, val in validated_data.items():
             setattr(instance, attr, val)
         if value is not None:
             instance.value = value
+        if string_uuid is not None:
+            instance.string_uuid = string_uuid
         instance.save()
 
         # Handle block_items
@@ -224,15 +235,14 @@ class StringNestedSerializer(serializers.ModelSerializer):
             # Create new items
             for block_item_data in block_items_data:
                 # Remove non-model fields
-                block_item_data.pop('name', None)
-                block_item_data.pop('type', None)
-                block_item_data.pop('order', None)
+                block_item_data.pop('dimension_name', None)
+                block_item_data.pop('dimension_type', None)
+                block_item_data.pop('dimension_order', None)
                 block_item_data.pop('value', None)
                 block_item_data.pop('dimension_values', None)
                 block_item_data.pop('delimiter', None)
                 block_item_data.pop('prefix', None)
                 block_item_data.pop('suffix', None)
-                block_item_data.pop('dimension_order', None)
 
                 # Handle dimension_value_id
                 dimension_value_id = block_item_data.pop(
@@ -248,7 +258,7 @@ class StringNestedSerializer(serializers.ModelSerializer):
 
 class SubmissionNestedSerializer(serializers.ModelSerializer):
     blocks = StringNestedSerializer(
-        source='strings', many=True, required=False)
+        source='submission_strings', many=True, required=False)
     rule = serializers.PrimaryKeyRelatedField(
         queryset=models.Rule.objects.all(), required=True)
     selected_parent = serializers.PrimaryKeyRelatedField(
@@ -257,6 +267,7 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
         allow_null=True,
         source='selected_parent_string'
     )
+    created_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Submission
@@ -269,7 +280,14 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
             "status",
             "rule",
             "blocks",
+            "created_by",
+            "created_by_name",
         ]
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return None
 
     def to_representation(self, instance):
         ret = super().to_representation(instance)
@@ -302,7 +320,7 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
         return value
 
     def create(self, validated_data):
-        blocks_data = validated_data.pop('strings', [])
+        blocks_data = validated_data.pop('submission_strings', [])
         submission = models.Submission.objects.create(**validated_data)
 
         # Create strings and their details
@@ -310,11 +328,18 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
             # Handle nested block_items
             block_items_data = block_data.pop('string_details', [])
 
+            # Extract and preserve string_uuid from frontend
+            string_uuid = block_data.pop('string_uuid', None)
+
             # Remove non-model fields
             block_data.pop('field_name', None)
             block_data.pop('field_level', None)
             block_data.pop('next_field_name', None)
             block_data.pop('next_field_code', None)
+
+            # Preserve string_uuid if provided
+            if string_uuid:
+                block_data['string_uuid'] = string_uuid
 
             # Create string
             string = models.String.objects.create(
@@ -325,15 +350,14 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
             # Create string details
             for detail_data in block_items_data:
                 # Remove non-model fields
-                detail_data.pop('name', None)
-                detail_data.pop('type', None)
-                detail_data.pop('order', None)
+                detail_data.pop('dimension_name', None)
+                detail_data.pop('dimension_type', None)
+                detail_data.pop('dimension_order', None)
                 detail_data.pop('value', None)
                 detail_data.pop('dimension_values', None)
                 detail_data.pop('delimiter', None)
                 detail_data.pop('prefix', None)
                 detail_data.pop('suffix', None)
-                detail_data.pop('dimension_order', None)
 
                 # Handle dimension_value_id
                 dimension_value_id = detail_data.pop(
@@ -349,7 +373,7 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
         return submission
 
     def update(self, instance, validated_data):
-        blocks_data = validated_data.pop('strings', [])
+        blocks_data = validated_data.pop('submission_strings', [])
 
         # Handle rule data if it comes as a dict
         rule = validated_data.pop('rule', None)
@@ -363,13 +387,30 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
 
         # Handle blocks
         if blocks_data:
+            # Create UUID mapping to preserve parent-child relationships
+            uuid_mapping = {}  # old_uuid -> new_uuid
+
+            # First, collect all UUIDs from the payload to build mapping
+            for block_data in blocks_data:
+                old_uuid = block_data.get('string_uuid')
+                if old_uuid:
+                    uuid_mapping[old_uuid] = old_uuid  # preserve the same UUID
+
             # First, delete all existing strings to avoid unique constraint conflicts
-            instance.strings.all().delete()
+            instance.submission_strings.all().delete()
 
             # Create new strings
             for block_data in blocks_data:
                 # Handle nested block_items
                 block_items_data = block_data.pop('string_details', [])
+
+                # Extract and preserve string_uuid from frontend
+                string_uuid = block_data.pop('string_uuid', None)
+
+                # Update parent_uuid if it exists in our mapping
+                parent_uuid = block_data.get('parent_uuid')
+                if parent_uuid and parent_uuid in uuid_mapping:
+                    block_data['parent_uuid'] = uuid_mapping[parent_uuid]
 
                 # Remove non-model fields
                 block_data.pop('field_name', None)
@@ -379,10 +420,14 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                 block_data.pop('dimensions', None)
                 block_data.pop('field_rule', None)
 
-                # Create new string
+                # Create new string with preserved UUID
                 new_string_data = block_data.copy()
                 if 'id' in new_string_data:
                     del new_string_data['id']
+
+                # Explicitly set the string_uuid if provided
+                if string_uuid:
+                    new_string_data['string_uuid'] = string_uuid
 
                 string = models.String.objects.create(
                     submission=instance,

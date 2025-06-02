@@ -25,3 +25,10 @@ class SubmissionViewSet(viewsets.ModelViewSet):
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = SubmissionFilter
+
+    def perform_create(self, serializer):
+        """Set created_by to the current user when creating a new submission"""
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user)
+        else:
+            serializer.save()

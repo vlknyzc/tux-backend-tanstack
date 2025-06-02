@@ -38,11 +38,11 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
         return models.Submission.objects.all().select_related(
             'rule'
         ).prefetch_related(
-            'strings',
-            'strings__field',
-            'strings__string_details',
-            'strings__string_details__dimension',
-            'strings__string_details__dimension_value'
+            'submission_strings',
+            'submission_strings__field',
+            'submission_strings__string_details',
+            'submission_strings__string_details__dimension',
+            'submission_strings__string_details__dimension_value'
         )
 
     def list(self, request, *args, **kwargs):
@@ -119,6 +119,13 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
     def create(self, request, *args, **kwargs):
         """Create a submission with nested strings and string details atomically"""
         return super().create(request, *args, **kwargs)
+
+    def perform_create(self, serializer):
+        """Set created_by to the current user when creating a new submission"""
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user)
+        else:
+            serializer.save()
 
     @transaction.atomic
     def update(self, request, *args, **kwargs):

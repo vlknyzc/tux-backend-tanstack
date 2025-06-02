@@ -1,38 +1,50 @@
+"""
+Workspace model for the master_data app.
+"""
+
 from django.db import models
 from django.urls import reverse
 from django.conf import settings
 
 from .base import TimeStampModel, default_workspace_logo
+from ..constants import STANDARD_NAME_LENGTH, StatusChoices, WORKSPACE_LOGO_UPLOAD_PATH
 
 
 class Workspace(TimeStampModel):
-    ACTIVE = "active"
-    INACTIVE = "inactive"
-    STATUSES = [
-        (ACTIVE, 'Active'),
-        (INACTIVE, 'Inactive'),
-    ]
+    """
+    Represents a workspace in the system.
 
-    # Relationships
-    created_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL, on_delete=models.CASCADE, related_name="workspace")
+    A workspace is a logical grouping or organization unit that contains
+    multiple projects, rules, and naming conventions.
+    """
 
     # Fields
-    name = models.CharField(max_length=30, unique=True)
+    name = models.CharField(
+        max_length=STANDARD_NAME_LENGTH,
+        unique=True,
+        help_text="Unique name for this workspace"
+    )
     logo = models.ImageField(
-        upload_to='workspaces/logos/',
+        upload_to=WORKSPACE_LOGO_UPLOAD_PATH,
         default=default_workspace_logo,
         null=True,
-        blank=True
+        blank=True,
+        help_text="Logo image for this workspace"
     )
     status = models.CharField(
-        max_length=30,
-        choices=STATUSES,
-        default=ACTIVE,
+        max_length=STANDARD_NAME_LENGTH,
+        choices=StatusChoices.choices,
+        default=StatusChoices.ACTIVE,
+        help_text="Current status of this workspace"
     )
 
+    class Meta:
+        verbose_name = "Workspace"
+        verbose_name_plural = "Workspaces"
+        ordering = ['name']
+
     def __str__(self):
-        return str(self.name)
+        return self.name
 
     def get_absolute_url(self):
         return reverse("master_data_Workspace_detail", args=(self.pk,))

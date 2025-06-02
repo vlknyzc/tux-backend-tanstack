@@ -1,17 +1,49 @@
+"""
+Platform model for the master_data app.
+"""
+
 from django.db import models
 from django.urls import reverse
 from .base import TimeStampModel
+from ..constants import STANDARD_NAME_LENGTH, SLUG_LENGTH
 
 
 class Platform(TimeStampModel):
+    """
+    Represents different platforms in the system.
+
+    A platform is a target environment or system where naming conventions apply.
+    Examples: AWS, Azure, Kubernetes, etc.
+    """
+
     # Fields
-    platform_type = models.CharField(max_length=30)
-    name = models.CharField(max_length=30)
-    slug = models.SlugField(max_length=50, unique=True)
-    icon_name = models.CharField(max_length=30, null=True, blank=True)
+    platform_type = models.CharField(
+        max_length=STANDARD_NAME_LENGTH,
+        help_text="Type or category of this platform"
+    )
+    name = models.CharField(
+        max_length=STANDARD_NAME_LENGTH,
+        help_text="Human-readable name of the platform"
+    )
+    slug = models.SlugField(
+        max_length=SLUG_LENGTH,
+        unique=True,
+        help_text="URL-friendly identifier for this platform"
+    )
+    icon_name = models.CharField(
+        max_length=STANDARD_NAME_LENGTH,
+        null=True,
+        blank=True,
+        help_text="Name of the icon to display for this platform"
+    )
+
+    class Meta:
+        verbose_name = "Platform"
+        verbose_name_plural = "Platforms"
+        ordering = ['name']
 
     def __str__(self):
-        return str(self.name)
+        return self.name
 
     def get_absolute_url(self):
         return reverse("master_data_Platform_detail", args=(self.pk,))
