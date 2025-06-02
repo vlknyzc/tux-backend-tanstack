@@ -3,6 +3,8 @@ from .. import models
 
 
 class PlatformSerializer(serializers.ModelSerializer):
+    created_by_name = serializers.SerializerMethodField()
+
     class Meta:
         model = models.Platform
         fields = [
@@ -11,12 +13,22 @@ class PlatformSerializer(serializers.ModelSerializer):
             "name",
             "slug",
             "icon_name",
+            "created_by",
+            "created_by_name",
+            "created",
+            "last_updated",
         ]
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return None
 
 
 class FieldSerializer(serializers.ModelSerializer):
     next_field_name = serializers.SerializerMethodField()
     platform_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Field
@@ -28,6 +40,10 @@ class FieldSerializer(serializers.ModelSerializer):
             "field_level",
             "next_field",
             "next_field_name",
+            "created_by",
+            "created_by_name",
+            "created",
+            "last_updated",
         ]
 
     def get_next_field_name(self, obj):
@@ -39,6 +55,11 @@ class FieldSerializer(serializers.ModelSerializer):
 
     def get_platform_name(self, obj):
         return obj.platform.name
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return None
 
 
 class PlatformTemplateSerializer(serializers.ModelSerializer):

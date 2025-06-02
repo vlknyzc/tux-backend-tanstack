@@ -97,6 +97,7 @@ class RuleDetailSerializer(serializers.ModelSerializer):
     dimension_type = serializers.SerializerMethodField()
     parent_dimension_id = serializers.SerializerMethodField()
     parent_dimension_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
 
     field_id = serializers.SerializerMethodField()
     field_name = serializers.SerializerMethodField()
@@ -130,11 +131,15 @@ class RuleDetailSerializer(serializers.ModelSerializer):
             "suffix",
             "delimiter",
             "effective_delimiter",
-            "is_required",  # New field
+            "is_required",
             "parent_dimension_name",
             "parent_dimension_id",
             "in_parent_field",
             "is_max_field_level",
+            "created_by",
+            "created_by_name",
+            "created",
+            "last_updated",
         ]
 
     def get_field_id(self, obj):
@@ -210,10 +215,16 @@ class RuleDetailSerializer(serializers.ModelSerializer):
         """Get the effective delimiter for this rule detail."""
         return obj.get_effective_delimiter()
 
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return None
+
 
 class RuleSerializer(serializers.ModelSerializer):
     platform_name = serializers.SerializerMethodField()
     platform_slug = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
 
     # New business logic fields
     configuration_errors = serializers.SerializerMethodField()
@@ -223,17 +234,22 @@ class RuleSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Rule
         fields = [
-            'id',
-            'platform',
-            'platform_name',
-            'platform_slug',
-            'status',
-            'name',
-            'description',
-            'is_default',  # New field
-            'configuration_errors',
-            'required_dimensions',
-            'fields_with_rules',
+            "id",
+            "name",
+            "slug",
+            "description",
+            "status",
+            "is_default",
+            "platform",
+            "platform_name",
+            "platform_slug",
+            "configuration_errors",
+            "required_dimensions",
+            "fields_with_rules",
+            "created_by",
+            "created_by_name",
+            "created",
+            "last_updated",
         ]
 
     def get_platform_name(self, obj):
@@ -241,6 +257,11 @@ class RuleSerializer(serializers.ModelSerializer):
 
     def get_platform_slug(self, obj):
         return obj.platform.slug
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return None
 
     def get_configuration_errors(self, obj):
         """Get configuration validation errors."""
@@ -267,20 +288,26 @@ class RuleNestedSerializer(serializers.ModelSerializer):
     configuration_errors = serializers.SerializerMethodField()
     platform_name = serializers.SerializerMethodField()
     platform_slug = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Rule
         fields = [
-            'id',
-            'name',
-            'description',
-            'status',
-            'is_default',
-            'platform',
-            'platform_name',
-            'platform_slug',
-            'configuration_errors',
-            'field_details'
+            "id",
+            "name",
+            "slug",
+            "description",
+            "status",
+            "is_default",
+            "platform",
+            "platform_name",
+            "platform_slug",
+            "configuration_errors",
+            "field_details",
+            "created_by",
+            "created_by_name",
+            "created",
+            "last_updated",
         ]
 
     def get_platform_name(self, obj):
@@ -288,6 +315,11 @@ class RuleNestedSerializer(serializers.ModelSerializer):
 
     def get_platform_slug(self, obj):
         return obj.platform.slug
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return None
 
     def get_configuration_errors(self, obj):
         """Get configuration validation errors."""
@@ -409,17 +441,25 @@ class RuleValidationSerializer(serializers.ModelSerializer):
     configuration_errors = serializers.SerializerMethodField()
     can_generate_for_fields = serializers.SerializerMethodField()
     required_dimensions_by_field = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Rule
         fields = [
-            'id',
-            'name',
-            'status',
-            'is_default',
-            'configuration_errors',
-            'can_generate_for_fields',
-            'required_dimensions_by_field',
+            "id",
+            "name",
+            "slug",
+            "description",
+            "status",
+            "is_default",
+            "platform",
+            "configuration_errors",
+            "can_generate_for_fields",
+            "required_dimensions_by_field",
+            "created_by",
+            "created_by_name",
+            "created",
+            "last_updated",
         ]
 
     def get_configuration_errors(self, obj):
@@ -445,6 +485,11 @@ class RuleValidationSerializer(serializers.ModelSerializer):
                     "generation_order": obj.get_generation_order(field)
                 }
         return result
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return None
 
 
 class RuleDetailCreateSerializer(serializers.ModelSerializer):

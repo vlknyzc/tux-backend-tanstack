@@ -43,6 +43,13 @@ class RuleViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter
 
+    def perform_create(self, serializer):
+        """Set created_by to the current user when creating a new rule"""
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user)
+        else:
+            serializer.save()
+
     @action(detail=True, methods=['post'])
     def preview(self, request, pk=None):
         """Generate a preview of string generation for this rule."""
@@ -191,6 +198,13 @@ class RuleDetailViewSet(viewsets.ModelViewSet):
             return serializers.RuleDetailCreateSerializer
         return serializers.RuleDetailSerializer
 
+    def perform_create(self, serializer):
+        """Set created_by to the current user when creating a new rule detail"""
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user)
+        else:
+            serializer.save()
+
     @action(detail=False, methods=['post'])
     def validate_order(self, request):
         """Validate dimension order for a rule and field combination."""
@@ -240,6 +254,13 @@ class RuleNestedViewSet(viewsets.ModelViewSet):
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter
+
+    def perform_create(self, serializer):
+        """Set created_by to the current user when creating a new rule"""
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user)
+        else:
+            serializer.save()
 
     @action(detail=True, methods=['post'])
     def clone(self, request, pk=None):

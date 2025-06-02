@@ -22,9 +22,23 @@ class WorkspaceViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = WorkspaceFilter
 
+    def perform_create(self, serializer):
+        """Set created_by to the current user when creating a new workspace"""
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user)
+        else:
+            serializer.save()
+
 
 class PlatformViewSet(viewsets.ModelViewSet):
     queryset = models.Platform.objects.all()
     serializer_class = serializers.PlatformSerializer
     permission_classes = [permissions.AllowAny] if settings.DEBUG else [
         permissions.IsAuthenticated]
+
+    def perform_create(self, serializer):
+        """Set created_by to the current user when creating a new platform"""
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user)
+        else:
+            serializer.save()

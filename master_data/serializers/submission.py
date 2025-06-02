@@ -7,8 +7,8 @@ class SubmissionSerializer(serializers.ModelSerializer):
 
     class Meta:
         model = models.Submission
-        fields = ['id', 'name', 'description', 'status',
-                  'rule', 'selected_parent_string', 'starting_field', 'created_by', 'created_by_name']
+        fields = ['id', 'name', 'slug', 'description', 'status',
+                  'rule', 'selected_parent_string', 'starting_field', 'created_by', 'created_by_name', 'created', 'last_updated']
 
     def get_created_by_name(self, obj):
         if obj.created_by:

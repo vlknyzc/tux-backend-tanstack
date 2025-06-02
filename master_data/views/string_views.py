@@ -56,6 +56,13 @@ class StringViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = StringFilter
 
+    def perform_create(self, serializer):
+        """Set created_by to the current user when creating a new string"""
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user)
+        else:
+            serializer.save()
+
     @action(detail=False, methods=['post'])
     def generate(self, request):
         """Generate a new string using business logic."""
@@ -279,3 +286,10 @@ class StringDetailViewSet(viewsets.ModelViewSet):
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = StringDetailFilter
+
+    def perform_create(self, serializer):
+        """Set created_by to the current user when creating a new string detail"""
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user)
+        else:
+            serializer.save()

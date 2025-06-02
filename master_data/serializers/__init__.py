@@ -1,4 +1,9 @@
-from .dimension import DimensionSerializer, DimensionValueSerializer
+from .dimension import (
+    DimensionSerializer,
+    DimensionValueSerializer,
+    DimensionBulkCreateSerializer,
+    DimensionValueBulkCreateSerializer
+)
 from .rule import (
     RuleSerializer,
     RuleDetailSerializer,
@@ -29,6 +34,8 @@ from .submission import SubmissionSerializer
 __all__ = [
     'DimensionSerializer',
     'DimensionValueSerializer',
+    'DimensionBulkCreateSerializer',
+    'DimensionValueBulkCreateSerializer',
     'RuleSerializer',
     'RuleDetailSerializer',
     'RuleNestedSerializer',

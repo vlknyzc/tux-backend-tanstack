@@ -10,8 +10,9 @@ from django.core.exceptions import ValidationError
 from .base import TimeStampModel
 from ..constants import (
     LONG_NAME_LENGTH, DESCRIPTION_LENGTH, PREFIX_SUFFIX_LENGTH,
-    DELIMITER_LENGTH, STANDARD_NAME_LENGTH, StatusChoices
+    DELIMITER_LENGTH, STANDARD_NAME_LENGTH, SLUG_LENGTH, StatusChoices
 )
+from ..utils import generate_unique_slug
 
 
 class RuleQuerySet(models.QuerySet):
@@ -65,6 +66,12 @@ class Rule(TimeStampModel):
         max_length=LONG_NAME_LENGTH,
         help_text="Name of this naming rule"
     )
+    slug = models.SlugField(
+        max_length=SLUG_LENGTH,
+        unique=True,
+        blank=True,
+        help_text="URL-friendly version of the name (auto-generated)"
+    )
     description = models.TextField(
         max_length=DESCRIPTION_LENGTH,
         null=True,
@@ -94,6 +101,12 @@ class Rule(TimeStampModel):
             models.Index(fields=['platform', 'status']),
             models.Index(fields=['is_default']),
         ]
+
+    def save(self, *args, **kwargs):
+        """Override save to generate slug automatically."""
+        if not self.slug:
+            self.slug = generate_unique_slug(self, 'name', 'slug', SLUG_LENGTH)
+        super().save(*args, **kwargs)
 
     def clean(self):
         """Validate rule configuration."""

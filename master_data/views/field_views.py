@@ -19,3 +19,10 @@ class FieldViewSet(viewsets.ModelViewSet):
 
     def filter_platform_id(self, queryset, name, value):
         return queryset.filter(platform__id=value)
+
+    def perform_create(self, serializer):
+        """Set created_by to the current user when creating a new field"""
+        if self.request.user.is_authenticated:
+            serializer.save(created_by=self.request.user)
+        else:
+            serializer.save()

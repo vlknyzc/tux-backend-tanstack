@@ -570,6 +570,75 @@ Updates dimension information.
 
 **Request Body:** Same as Create Dimension
 
+#### 5. Bulk Create Dimensions
+
+**POST** `/api/dimensions/bulk_create/`
+
+Creates multiple dimensions in a single request with transaction safety.
+
+**Request Body:**
+
+```json
+{
+  "dimensions": [
+    {
+      "name": "Environment",
+      "description": "Deployment environment",
+      "type": "list",
+      "status": "active",
+      "parent": null
+    },
+    {
+      "name": "Region",
+      "description": "Geographic region",
+      "type": "list",
+      "status": "active",
+      "parent": null
+    }
+  ]
+}
+```
+
+**Response Format:**
+
+```json
+{
+  "success_count": 2,
+  "error_count": 0,
+  "results": [
+    {
+      "id": 1,
+      "name": "Environment",
+      "slug": "environment",
+      "description": "Deployment environment",
+      "type": "list",
+      "parent": null,
+      "parent_name": null,
+      "status": "active",
+      "created_by": 1,
+      "created_by_name": "John Doe",
+      "created": "2023-12-01T10:00:00Z",
+      "last_updated": "2023-12-01T10:00:00Z"
+    },
+    {
+      "id": 2,
+      "name": "Region",
+      "slug": "region",
+      "description": "Geographic region",
+      "type": "list",
+      "parent": null,
+      "parent_name": null,
+      "status": "active",
+      "created_by": 1,
+      "created_by_name": "John Doe",
+      "created": "2023-12-01T10:00:00Z",
+      "last_updated": "2023-12-01T10:00:00Z"
+    }
+  ],
+  "errors": []
+}
+```
+
 ### Dimension Values API
 
 #### Base URL
@@ -596,18 +665,22 @@ Retrieves a list of all dimension values.
   {
     "id": number,
     "valid_from": string (datetime),
-    "definition": string,
-    "dimension_value": string,
+    "description": string,
+    "value": string,
     "valid_until": string (datetime),
-    "dimension_value_label": string,
-    "dimension_value_utm": string,
+    "label": string,
+    "utm": string,
     "dimension": number,
     "dimension_name": string,
     "dimension_parent_name": string,
     "dimension_parent": number,
     "parent": number,
     "parent_name": string,
-    "parent_value": string
+    "parent_value": string,
+    "created_by": number,
+    "created_by_name": string,
+    "created": string (datetime),
+    "last_updated": string (datetime)
   }
 ]
 ```
@@ -631,11 +704,11 @@ Creates a new dimension value.
 ```json
 {
   "valid_from": string (datetime),
-  "definition": string,
-  "dimension_value": string,
+  "description": string,
+  "value": string,
   "valid_until": string (datetime),
-  "dimension_value_label": string,
-  "dimension_value_utm": string,
+  "label": string,
+  "utm": string,
   "dimension": number,
   "parent": number
 }
@@ -649,378 +722,117 @@ Updates dimension value information.
 
 **Request Body:** Same as Create Dimension Value
 
+#### 5. Bulk Create Dimension Values
+
+**POST** `/api/dimension-values/bulk_create/`
+
+Creates multiple dimension values in a single request with transaction safety.
+
+**Request Body:**
+
+```json
+{
+  "dimension_values": [
+    {
+      "dimension": 1,
+      "value": "prod",
+      "label": "Production",
+      "utm": "prod",
+      "description": "Production environment",
+      "valid_from": "2023-01-01",
+      "valid_until": null,
+      "parent": null
+    },
+    {
+      "dimension": 1,
+      "value": "dev",
+      "label": "Development",
+      "utm": "dev",
+      "description": "Development environment",
+      "valid_from": "2023-01-01",
+      "valid_until": null,
+      "parent": null
+    }
+  ]
+}
+```
+
+**Response Format:**
+
+```json
+{
+  "success_count": 2,
+  "error_count": 0,
+  "results": [
+    {
+      "id": 1,
+      "valid_from": "2023-01-01",
+      "description": "Production environment",
+      "value": "prod",
+      "valid_until": null,
+      "label": "Production",
+      "utm": "prod",
+      "dimension": 1,
+      "dimension_name": "Environment",
+      "dimension_parent_name": null,
+      "dimension_parent": null,
+      "parent": null,
+      "parent_name": null,
+      "parent_value": null,
+      "created_by": 1,
+      "created_by_name": "John Doe",
+      "created": "2023-12-01T10:00:00Z",
+      "last_updated": "2023-12-01T10:00:00Z"
+    },
+    {
+      "id": 2,
+      "valid_from": "2023-01-01",
+      "description": "Development environment",
+      "value": "dev",
+      "valid_until": null,
+      "label": "Development",
+      "utm": "dev",
+      "dimension": 1,
+      "dimension_name": "Environment",
+      "dimension_parent_name": null,
+      "dimension_parent": null,
+      "parent": null,
+      "parent_name": null,
+      "parent_value": null,
+      "created_by": 1,
+      "created_by_name": "John Doe",
+      "created": "2023-12-01T10:00:00Z",
+      "last_updated": "2023-12-01T10:00:00Z"
+    }
+  ],
+  "errors": []
+}
+```
+
+**Error Response Example:**
+
+```json
+{
+  "success_count": 1,
+  "error_count": 1,
+  "results": [
+    // ... successful creations
+  ],
+  "errors": [
+    {
+      "index": 1,
+      "dimension_value": "duplicate_value",
+      "dimension_id": 1,
+      "error": "UNIQUE constraint failed: master_data_dimensionvalue.dimension_id, master_data_dimensionvalue.value"
+    }
+  ]
+}
+```
+
 ## Workspaces API
 
 ### Base URL
 
 ```
-/api/workspaces/
-```
-
-### Endpoints
-
-#### 1. List Workspaces
-
-**GET** `/api/workspaces/`
-
-Retrieves a list of all workspaces.
-
-**Query Parameters:**
-
-- `id` (number, optional): Filter by workspace ID
-
-**Response Format:**
-
-```json
-[
-  {
-    "id": number,
-    "name": string,
-    "logo": string (url),
-    "created_by": number,
-    "created": string (datetime),
-    "last_updated": string (datetime)
-  }
-]
-```
-
-#### 2. Get Single Workspace
-
-**GET** `/api/workspaces/{id}/`
-
-Retrieves detailed information about a specific workspace.
-
-**Response Format:** Same as List Workspaces
-
-#### 3. Create Workspace
-
-**POST** `/api/workspaces/`
-
-Creates a new workspace.
-
-**Request Body:**
-
-```json
-{
-  "name": string,
-  "logo": string (url),
-  "created_by": number
-}
-```
-
-#### 4. Update Workspace
-
-**PUT/PATCH** `/api/workspaces/{id}/`
-
-Updates workspace information.
-
-**Request Body:** Same as Create Workspace
-
-### Platforms API
-
-#### Base URL
 
 ```
-/api/platforms/
-```
-
-#### 1. List Platforms
-
-**GET** `/api/platforms/`
-
-Retrieves a list of all platforms.
-
-**Response Format:**
-
-```json
-[
-  {
-    "id": number,
-    "platform_type": string,
-    "name": string
-  }
-]
-```
-
-#### 2. Get Single Platform
-
-**GET** `/api/platforms/{id}/`
-
-Retrieves detailed information about a specific platform.
-
-**Response Format:** Same as List Platforms
-
-#### 3. Create Platform
-
-**POST** `/api/platforms/`
-
-Creates a new platform.
-
-**Request Body:**
-
-```json
-{
-  "platform_type": string,
-  "name": string
-}
-```
-
-#### 4. Update Platform
-
-**PUT/PATCH** `/api/platforms/{id}/`
-
-Updates platform information.
-
-**Request Body:** Same as Create Platform
-
-### Platform Fields API
-
-#### Base URL
-
-```
-/api/fields/
-```
-
-#### 1. List Fields
-
-**GET** `/api/fields/`
-
-Retrieves a list of all platform fields.
-
-**Response Format:**
-
-```json
-[
-  {
-    "id": number,
-    "platform": number,
-    "platform_name": string,
-    "name": string,
-    "field_level": number,
-    "next_field": number,
-    "next_field_name": string
-  }
-]
-```
-
-#### 2. Get Single Field
-
-**GET** `/api/fields/{id}/`
-
-Retrieves detailed information about a specific field.
-
-**Response Format:** Same as List Fields
-
-#### 3. Create Field
-
-**POST** `/api/fields/`
-
-Creates a new field.
-
-**Request Body:**
-
-```json
-{
-  "platform": number,
-  "name": string,
-  "field_level": number,
-  "next_field": number
-}
-```
-
-#### 4. Update Field
-
-**PUT/PATCH** `/api/fields/{id}/`
-
-Updates field information.
-
-**Request Body:** Same as Create Field
-
-## Submissions API
-
-### Base URL
-
-```
-/api/submissions/
-```
-
-### Endpoints
-
-#### 1. List Submissions
-
-**GET** `/api/submissions/`
-
-Retrieves a list of all submissions.
-
-**Query Parameters:**
-
-- `workspace` (number, optional): Filter by workspace ID
-
-**Response Format:**
-
-```json
-[
-  {
-    "id": number,
-    "name": string,
-    "description": string,
-    "status": string
-  }
-]
-```
-
-#### 2. Get Single Submission
-
-**GET** `/api/submissions/{id}/`
-
-Retrieves detailed information about a specific submission.
-
-**Response Format:** Same as List Submissions
-
-#### 3. Create Submission
-
-**POST** `/api/submissions/`
-
-Creates a new submission.
-
-**Request Body:**
-
-```json
-{
-  "name": string,
-  "description": string,
-  "status": string
-}
-```
-
-#### 4. Update Submission
-
-**PUT/PATCH** `/api/submissions/{id}/`
-
-Updates submission information.
-
-**Request Body:** Same as Create Submission
-
-## Authentication and Security
-
-### Development vs Production
-
-- In development mode (DEBUG=True):
-  - Most endpoints are publicly accessible
-  - Authentication is not required for most operations
-- In production mode:
-  - Most endpoints require authentication
-  - Some endpoints require specific permissions (e.g., admin privileges)
-  - JWT authentication is used
-
-### Common Headers
-
-For authenticated requests in production:
-
-```
-Authorization: Bearer <your_jwt_token>
-Content-Type: application/json
-```
-
-### Error Handling
-
-All endpoints follow standard HTTP status codes:
-
-- `200 OK`: Successful GET, PUT, PATCH requests
-- `201 Created`: Successful POST request
-- `400 Bad Request`: Invalid data provided
-- `401 Unauthorized`: Authentication required
-- `403 Forbidden`: Insufficient permissions
-- `404 Not Found`: Resource not found
-- `500 Internal Server Error`: Server-side error
-
-### Pagination
-
-List endpoints return paginated results in the following format:
-
-```json
-{
-  "count": number,
-  "next": string (url),
-  "previous": string (url),
-  "results": array
-}
-```
-
-## Data Relationships
-
-### Workspace Hierarchy
-
-- Workspaces contain multiple platforms
-- Each platform has multiple fields
-- Fields can have parent-child relationships
-
-### Rules and Dimensions
-
-- Rules are associated with platforms and fields
-- Dimensions can have parent-child relationships
-- Dimension values are associated with dimensions
-
-### Strings and Submissions
-
-- Strings are associated with submissions and fields
-- String details link strings with rules and dimension values
-
-## Best Practices
-
-### Rate Limiting
-
-- Production API has rate limiting enabled
-- Implement appropriate caching on the frontend
-- Use bulk operations where available
-
-### Error Handling
-
-- Always check response status codes
-- Handle validation errors appropriately
-- Implement proper error messages in the UI
-
-### Data Validation
-
-- Validate data on the frontend before submission
-- Handle required fields appropriately
-- Follow the data type specifications in the API
-
-### Security
-
-- Never store sensitive data in client-side storage
-- Always use HTTPS in production
-- Implement proper token management
-- Handle session expiration gracefully
-
-## Getting Started
-
-1. **Authentication**
-
-   - Obtain JWT token through authentication endpoint
-   - Include token in all subsequent requests
-
-2. **Workspace Setup**
-
-   - Create a workspace
-   - Add platforms and fields
-   - Configure dimensions and rules
-
-3. **Data Management**
-
-   - Create submissions
-   - Add strings and string details
-   - Manage dimension values
-
-4. **Error Handling**
-   - Implement proper error handling
-   - Show appropriate error messages
-   - Handle network issues gracefully
-
-## Support
-
-For additional support or questions:
-
-- Check the API status endpoint
-- Contact the backend team for technical issues
-- Refer to the internal documentation for detailed information

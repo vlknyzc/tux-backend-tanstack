@@ -13,6 +13,7 @@ class StringSerializer(serializers.ModelSerializer):
     submission_name = serializers.SerializerMethodField()
     rule_id = serializers.SerializerMethodField()
     rule_name = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
 
     # New fields for enhanced business logic
     dimension_values = serializers.SerializerMethodField()
@@ -29,8 +30,10 @@ class StringSerializer(serializers.ModelSerializer):
             "submission_name",
             "rule_id",
             "rule_name",
-            "last_updated",
+            "created_by",
+            "created_by_name",
             "created",
+            "last_updated",
             "field",
             "field_name",
             "field_level",
@@ -77,6 +80,11 @@ class StringSerializer(serializers.ModelSerializer):
     def get_rule_name(self, obj):
         return obj.submission.rule.name if obj.submission and obj.submission.rule else None
 
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return None
+
     def get_dimension_values(self, obj):
         """Get dimension values used to generate this string."""
         return obj.get_dimension_values()
@@ -109,6 +117,7 @@ class StringDetailSerializer(serializers.ModelSerializer):
     dimension_type = serializers.SerializerMethodField()
     submission_name = serializers.SerializerMethodField()
     effective_value = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
 
     class Meta:
         model = models.StringDetail
@@ -124,6 +133,8 @@ class StringDetailSerializer(serializers.ModelSerializer):
             "dimension_value_label",
             "dimension_value_freetext",
             "effective_value",
+            "created_by",
+            "created_by_name",
             "created",
             "last_updated",
         ]
@@ -147,6 +158,11 @@ class StringDetailSerializer(serializers.ModelSerializer):
     def get_effective_value(self, obj):
         """Get the effective value (either from dimension_value or freetext)."""
         return obj.get_effective_value()
+
+    def get_created_by_name(self, obj):
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return None
 
 
 class StringGenerationRequestSerializer(serializers.Serializer):
