@@ -5,8 +5,8 @@
   },
   "deploy": {
     "preDeployCommand": "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py seed_platforms",
-    "startCommand": "gunicorn --timeout 500 main.wsgi",
-    "restartPolicyType": "NEVER",
-    "restartPolicyMaxRetries": 10
+    "startCommand": "gunicorn --timeout 600 --worker-connections 1000 --max-requests 1000 --max-requests-jitter 100 main.wsgi",
+    "restartPolicyType": "ON_FAILURE",
+    "restartPolicyMaxRetries": 3
   }
 }

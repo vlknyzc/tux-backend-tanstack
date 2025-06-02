@@ -1,12 +1,16 @@
-from rest_framework import viewsets, permissions, response
+from rest_framework import viewsets, permissions, response, status
 from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django.conf import settings
-from django.db import transaction
+from django.db import transaction, IntegrityError
 from django.db.models import Prefetch, Q
+from django.core.exceptions import ValidationError
+import logging
 
 from .. import models
 from ..serializers.nested_submission import SubmissionNestedSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class SubmissionNestedFilter(filters.FilterSet):
@@ -118,7 +122,44 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         """Create a submission with nested strings and string details atomically"""
-        return super().create(request, *args, **kwargs)
+        try:
+            logger.info(
+                f"Creating nested submission. Payload size: {len(str(request.data))} bytes")
+            return super().create(request, *args, **kwargs)
+        except IntegrityError as e:
+            logger.error(
+                f"IntegrityError in nested submission creation: {str(e)}")
+            logger.error(f"Request data: {request.data}")
+            return response.Response(
+                {
+                    'error': 'Data integrity constraint violation. This submission conflicts with existing data.',
+                    'details': str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except ValidationError as e:
+            logger.error(
+                f"ValidationError in nested submission creation: {str(e)}")
+            logger.error(f"Request data: {request.data}")
+            return response.Response(
+                {
+                    'error': 'Validation failed for submission data.',
+                    'details': str(e)
+                },
+                status=status.HTTP_400_BAD_REQUEST
+            )
+        except Exception as e:
+            logger.error(
+                f"Unexpected error in nested submission creation: {str(e)}")
+            logger.error(f"Error type: {type(e).__name__}")
+            logger.error(f"Request data: {request.data}")
+            return response.Response(
+                {
+                    'error': 'An unexpected error occurred while creating the submission.',
+                    'details': str(e)
+                },
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def perform_create(self, serializer):
         """Set created_by to the current user when creating a new submission"""

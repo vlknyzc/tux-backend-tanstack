@@ -93,6 +93,11 @@ DATABASES = {
         "PASSWORD": os.environ["PGPASSWORD"],
         "HOST":     os.environ["PGHOST"],
         "PORT":     os.environ["PGPORT"],
+        "OPTIONS": {
+            "MAX_CONNS": 20,
+            "application_name": "tux-backend",
+        },
+        "CONN_MAX_AGE": 300,  # 5 minutes
     }
 }
 
@@ -196,3 +201,48 @@ LANGUAGE_CODE = "en-us"
 TIME_ZONE = "UTC"
 USE_I18N = True
 USE_TZ = True
+
+# ────────────────────────────────────────────────────────────────
+# Logging Configuration
+# ────────────────────────────────────────────────────────────────
+LOGGING = {
+    'version': 1,
+    'disable_existing_loggers': False,
+    'formatters': {
+        'verbose': {
+            'format': '{levelname} {asctime} {module} {process:d} {thread:d} {message}',
+            'style': '{',
+        },
+        'simple': {
+            'format': '{levelname} {message}',
+            'style': '{',
+        },
+    },
+    'handlers': {
+        'console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'verbose',
+        },
+    },
+    'root': {
+        'handlers': ['console'],
+        'level': 'INFO',
+    },
+    'loggers': {
+        'django': {
+            'handlers': ['console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'django.db.backends': {
+            'handlers': ['console'],
+            'level': 'ERROR',  # Log database errors
+            'propagate': False,
+        },
+        'master_data': {
+            'handlers': ['console'],
+            'level': 'DEBUG',
+            'propagate': False,
+        },
+    },
+}

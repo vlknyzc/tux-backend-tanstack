@@ -1,7 +1,12 @@
 from rest_framework import serializers
+from django.db import IntegrityError, transaction
+from django.core.exceptions import ValidationError
+import logging
 from .. import models
 from .string import StringSerializer, StringDetailSerializer
 from .submission import SubmissionSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class StringDetailNestedSerializer(serializers.ModelSerializer):
@@ -321,56 +326,113 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         blocks_data = validated_data.pop('submission_strings', [])
-        submission = models.Submission.objects.create(**validated_data)
 
-        # Create strings and their details
-        for block_data in blocks_data:
-            # Handle nested block_items
-            block_items_data = block_data.pop('string_details', [])
+        try:
+            # Validate required fields
+            if not validated_data.get('rule'):
+                raise serializers.ValidationError("Rule is required")
 
-            # Extract and preserve string_uuid from frontend
-            string_uuid = block_data.pop('string_uuid', None)
+            # Check for potential UUID conflicts before creating
+            string_uuids = []
+            for block_data in blocks_data:
+                string_uuid = block_data.get('string_uuid')
+                if string_uuid:
+                    if string_uuid in string_uuids:
+                        raise serializers.ValidationError(
+                            f"Duplicate string_uuid: {string_uuid}")
+                    string_uuids.append(string_uuid)
 
-            # Remove non-model fields
-            block_data.pop('field_name', None)
-            block_data.pop('field_level', None)
-            block_data.pop('next_field_name', None)
-            block_data.pop('next_field_code', None)
+                    # Check if UUID already exists in database
+                    if models.String.objects.filter(string_uuid=string_uuid).exists():
+                        raise serializers.ValidationError(
+                            f"String with UUID {string_uuid} already exists")
 
-            # Preserve string_uuid if provided
-            if string_uuid:
-                block_data['string_uuid'] = string_uuid
+            submission = models.Submission.objects.create(**validated_data)
+            logger.info(f"Created submission {submission.id}")
 
-            # Create string
-            string = models.String.objects.create(
-                submission=submission,
-                **block_data
-            )
+            # Create strings and their details
+            for i, block_data in enumerate(blocks_data):
+                try:
+                    # Handle nested block_items
+                    block_items_data = block_data.pop('string_details', [])
 
-            # Create string details
-            for detail_data in block_items_data:
-                # Remove non-model fields
-                detail_data.pop('dimension_name', None)
-                detail_data.pop('dimension_type', None)
-                detail_data.pop('dimension_order', None)
-                detail_data.pop('value', None)
-                detail_data.pop('dimension_values', None)
-                detail_data.pop('delimiter', None)
-                detail_data.pop('prefix', None)
-                detail_data.pop('suffix', None)
+                    # Extract and preserve string_uuid from frontend
+                    string_uuid = block_data.pop('string_uuid', None)
 
-                # Handle dimension_value_id
-                dimension_value_id = detail_data.pop(
-                    'dimension_value_id', None)
-                if dimension_value_id:
-                    detail_data['dimension_value'] = dimension_value_id
+                    # Remove non-model fields
+                    block_data.pop('field_name', None)
+                    block_data.pop('field_level', None)
+                    block_data.pop('next_field_name', None)
+                    block_data.pop('next_field_code', None)
 
-                models.StringDetail.objects.create(
-                    string=string,
-                    **detail_data
-                )
+                    # Preserve string_uuid if provided
+                    if string_uuid:
+                        block_data['string_uuid'] = string_uuid
 
-        return submission
+                    # Validate required fields for string
+                    if not block_data.get('field'):
+                        raise serializers.ValidationError(
+                            f"Field is required for string at index {i}")
+                    if not block_data.get('value'):
+                        raise serializers.ValidationError(
+                            f"Value is required for string at index {i}")
+
+                    # Create string
+                    string = models.String.objects.create(
+                        submission=submission,
+                        **block_data
+                    )
+                    logger.debug(
+                        f"Created string {string.id} with UUID {string.string_uuid}")
+
+                    # Create string details
+                    for j, detail_data in enumerate(block_items_data):
+                        try:
+                            # Remove non-model fields
+                            detail_data.pop('dimension_name', None)
+                            detail_data.pop('dimension_type', None)
+                            detail_data.pop('dimension_order', None)
+                            detail_data.pop('value', None)
+                            detail_data.pop('dimension_values', None)
+                            detail_data.pop('delimiter', None)
+                            detail_data.pop('prefix', None)
+                            detail_data.pop('suffix', None)
+
+                            # Handle dimension_value_id
+                            dimension_value_id = detail_data.pop(
+                                'dimension_value_id', None)
+                            if dimension_value_id:
+                                detail_data['dimension_value'] = dimension_value_id
+
+                            # Validate required fields for string detail
+                            if not detail_data.get('dimension'):
+                                raise serializers.ValidationError(
+                                    f"Dimension is required for string detail at string {i}, detail {j}")
+
+                            models.StringDetail.objects.create(
+                                string=string,
+                                **detail_data
+                            )
+                        except IntegrityError as e:
+                            logger.error(
+                                f"IntegrityError creating string detail {j} for string {i}: {str(e)}")
+                            raise serializers.ValidationError(
+                                f"Constraint violation in string detail {j}: {str(e)}")
+
+                except IntegrityError as e:
+                    logger.error(
+                        f"IntegrityError creating string {i}: {str(e)}")
+                    raise serializers.ValidationError(
+                        f"Constraint violation in string {i}: {str(e)}")
+
+            return submission
+
+        except IntegrityError as e:
+            logger.error(f"IntegrityError in submission creation: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in submission creation: {str(e)}")
+            raise
 
     def update(self, instance, validated_data):
         blocks_data = validated_data.pop('submission_strings', [])
