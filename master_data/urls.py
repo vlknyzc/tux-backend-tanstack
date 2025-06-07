@@ -14,6 +14,13 @@ from .views import (
     StringViewSet,
     StringDetailViewSet,
     SubmissionNestedViewSet,
+    # Rule configuration views
+    LightweightRuleView,
+    FieldSpecificRuleView,
+    RuleValidationView,
+    GenerationPreviewView,
+    CacheManagementView,
+    RuleConfigurationView,
 )
 
 router = routers.DefaultRouter()
@@ -34,4 +41,35 @@ router.register("nested-submissions", SubmissionNestedViewSet,
 
 urlpatterns = [
     path("", include(router.urls)),
+
+    # Rule configuration endpoint
+    path("rules/<int:rule_id>/configuration/",
+         RuleConfigurationView.as_view(),
+         name="rule-configuration"),
+
+    # Additional rule endpoints
+    path("rules/<int:rule_id>/lightweight/",
+         LightweightRuleView.as_view(),
+         name="rule-lightweight"),
+
+    path("rules/<int:rule_id>/fields/<int:field_id>/",
+         FieldSpecificRuleView.as_view(),
+         name="rule-field-specific"),
+
+    path("rules/<int:rule_id>/validation/",
+         RuleValidationView.as_view(),
+         name="rule-validation"),
+
+    path("rules/generation-preview/",
+         GenerationPreviewView.as_view(),
+         name="rule-generation-preview"),
+
+    # Cache management endpoints
+    path("rules/cache/invalidate/",
+         CacheManagementView.as_view(),
+         name="rule-cache-invalidate"),
+
+    path("rules/<int:rule_id>/metrics/",
+         CacheManagementView.as_view(),
+         name="rule-performance-metrics"),
 ]
