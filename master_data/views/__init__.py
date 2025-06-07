@@ -5,6 +5,14 @@ from .string_views import StringViewSet, StringDetailViewSet
 from .field_views import FieldViewSet
 from .submission_views import SubmissionViewSet
 from .nested_submission_views import SubmissionNestedViewSet
+from .rule_configuration_views import (
+    LightweightRuleView,
+    FieldSpecificRuleView,
+    RuleValidationView,
+    GenerationPreviewView,
+    CacheManagementView,
+    RuleConfigurationView,
+)
 
 __all__ = [
     'DimensionViewSet',
@@ -19,4 +27,11 @@ __all__ = [
     'FieldViewSet',
     'SubmissionViewSet',
     'SubmissionNestedViewSet',
+    # Rule configuration views
+    'LightweightRuleView',
+    'FieldSpecificRuleView',
+    'RuleValidationView',
+    'GenerationPreviewView',
+    'CacheManagementView',
+    'RuleConfigurationView',
 ]

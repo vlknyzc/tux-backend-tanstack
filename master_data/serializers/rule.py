@@ -340,6 +340,16 @@ class RuleNestedSerializer(serializers.ModelSerializer):
         # Create a dictionary to group by field
         grouped_details = {}
 
+        # Create a lookup for parent-child relationships
+        # Key: (rule_id, dimension_id, field_level), Value: rule_detail
+        rule_detail_lookup = {}
+
+        # First pass: build the lookup table
+        for detail in rule_details:
+            key = (detail.rule_id, detail.dimension_id,
+                   detail.field.field_level)
+            rule_detail_lookup[key] = detail
+
         for detail in rule_details:
             field_id = detail.field.id
 
@@ -354,6 +364,21 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                     'can_generate': obj.can_generate_for_field(detail.field),
                     'dimensions': []
                 }
+
+            # Check for parent-child relationship
+            parent_rule_detail_id = None
+            inherits_from_parent = False
+
+            # Look for a rule detail with same rule and dimension but smaller field_level
+            current_field_level = detail.field.field_level
+            for check_field_level in range(1, current_field_level):
+                parent_key = (detail.rule_id, detail.dimension_id,
+                              check_field_level)
+                if parent_key in rule_detail_lookup:
+                    parent_rule_detail = rule_detail_lookup[parent_key]
+                    parent_rule_detail_id = parent_rule_detail.id
+                    inherits_from_parent = True
+                    break  # Found the parent (smallest field_level)
 
             # Add comprehensive dimension information
             dimension_info = {
@@ -371,6 +396,9 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                 'parent_dimension_name': (detail.dimension.parent.name
                                           if detail.dimension.parent_id else None),
                 'parent_dimension_id': detail.dimension.parent_id,
+                # New parent-child relationship fields
+                'inherits_from_parent': inherits_from_parent,
+                'parent_rule_detail_id': parent_rule_detail_id,
                 'dimension_values': [
                     {
                         'id': value.id,

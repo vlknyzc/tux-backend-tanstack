@@ -1,5 +1,5 @@
 """
-Business logic services for master_data app.
+Business logic services for string generation.
 Handles string generation, validation, and naming conventions.
 """
 
@@ -7,7 +7,7 @@ import uuid
 from typing import Dict, List, Optional, Tuple
 from django.core.exceptions import ValidationError
 from django.db import transaction
-from .models import String, StringDetail, Rule, RuleDetail, DimensionValue
+from ..models import String, StringDetail, Rule, RuleDetail, DimensionValue
 
 
 class NamingConventionError(Exception):
@@ -125,7 +125,7 @@ class StringGenerationService:
     @staticmethod
     def _is_valid_dimension_value(dimension_name: str, value: str) -> bool:
         """Check if a dimension value is valid (exists in DimensionValue table)."""
-        from .models import Dimension, DimensionValue
+        from ..models import Dimension, DimensionValue
 
         try:
             dimension = Dimension.objects.get(name=dimension_name)
@@ -251,51 +251,3 @@ class StringGenerationService:
             )
 
         return string
-
-
-class NamingPatternValidator:
-    """Validates naming patterns and rule configurations."""
-
-    @staticmethod
-    def validate_rule_configuration(rule: Rule) -> List[str]:
-        """
-        Validate that a rule has proper configuration.
-
-        Returns:
-            List of validation error messages
-        """
-        errors = []
-
-        rule_details = rule.rule_details.all()
-
-        if not rule_details.exists():
-            errors.append("Rule has no rule details configured")
-            return errors
-
-        # Check for missing dimension orders
-        orders = list(rule_details.values_list('dimension_order', flat=True))
-        expected_orders = list(range(1, len(orders) + 1))
-
-        if sorted(orders) != expected_orders:
-            errors.append(
-                "Rule details have gaps or duplicates in dimension_order")
-
-        # Check for delimiter consistency
-        delimiters = set(rule_details.values_list('delimiter', flat=True))
-        delimiters.discard(None)
-        delimiters.discard('')
-
-        if len(delimiters) > 1:
-            errors.append("Rule details have inconsistent delimiters")
-
-        return errors
-
-    @staticmethod
-    def get_naming_preview(rule: Rule, field, sample_values: Dict[str, str]) -> str:
-        """
-        Generate a preview of what the naming would look like with sample values.
-        """
-        try:
-            return StringGenerationService.generate_string_value(rule, field, sample_values)
-        except Exception as e:
-            return f"Preview failed: {str(e)}"
