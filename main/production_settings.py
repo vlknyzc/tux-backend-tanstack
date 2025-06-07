@@ -15,18 +15,56 @@ BASE_DIR = Path(__file__).resolve().parent.parent
 SECRET_KEY = os.environ["SECRET_KEY"]
 DEBUG = False
 
-ALLOWED_HOSTS = [
-    ".up.railway.app",
-    "tux-frontend-next-singletenant*.vercel.app",
-]
+# Multi-tenant domain configuration
+BASE_DOMAIN = os.environ.get("BASE_DOMAIN", "up.railway.app")
+CLIENT_SUBDOMAIN = os.environ.get("CLIENT_SUBDOMAIN", "tux-prod")
 
-CSRF_TRUSTED_ORIGINS = [
-    "https://tux-frontend-next-singletenant-git-dev-vlknyzcs-projects.vercel.app",
-    "https://tux-frontend-next-singletenant.vercel.app",
-    "https://tux-dev.up.railway.app",
-    "https://tux-test.up.railway.app",
-    "https://tux-prod.up.railway.app",
-]
+# Dynamic allowed hosts for multi-tenant deployment
+
+
+def get_allowed_hosts():
+    hosts = [f".{BASE_DOMAIN}"]  # Wildcard for all subdomains
+
+    # Add specific client subdomain if provided
+    if CLIENT_SUBDOMAIN:
+        hosts.append(f"{CLIENT_SUBDOMAIN}.{BASE_DOMAIN}")
+
+    # Add any additional hosts from environment
+    additional_hosts = os.environ.get("ADDITIONAL_ALLOWED_HOSTS", "")
+    if additional_hosts:
+        hosts.extend(additional_hosts.split(","))
+
+    return hosts
+
+
+ALLOWED_HOSTS = get_allowed_hosts()
+
+# Dynamic CSRF trusted origins
+
+
+def get_csrf_trusted_origins():
+    origins = []
+
+    # Add client-specific backend URL
+    if CLIENT_SUBDOMAIN:
+        origins.append(f"https://{CLIENT_SUBDOMAIN}.{BASE_DOMAIN}")
+
+    # Add frontend URLs (could be different domain)
+    frontend_domain = os.environ.get("FRONTEND_DOMAIN", "vercel.app")
+    frontend_subdomain = os.environ.get("FRONTEND_SUBDOMAIN", CLIENT_SUBDOMAIN)
+
+    if frontend_subdomain:
+        origins.append(f"https://{frontend_subdomain}.{frontend_domain}")
+
+    # Add any additional origins from environment
+    additional_origins = os.environ.get("ADDITIONAL_CSRF_ORIGINS", "")
+    if additional_origins:
+        origins.extend(additional_origins.split(","))
+
+    return origins
+
+
+CSRF_TRUSTED_ORIGINS = get_csrf_trusted_origins()
 
 AUTH_USER_MODEL = "users.UserAccount"
 AUTH_COOKIE = "access"
@@ -85,17 +123,31 @@ WSGI_APPLICATION = "main.wsgi.application"
 # ────────────────────────────────────────────────────────────────
 # Database (Railway injects env vars: PGHOST, PGPORT, PGUSER …)
 # ────────────────────────────────────────────────────────────────
+# Multi-tenant database configuration
+
+
+def get_database_name():
+    base_db = os.environ["PGDATABASE"]
+    client_id = os.environ.get("CLIENT_ID", "")
+
+    # Option 1: Separate database per client
+    if client_id and os.environ.get("USE_CLIENT_DATABASE", "false").lower() == "true":
+        return f"{base_db}_{client_id}"
+
+    # Option 2: Same database (use tenant filtering in models)
+    return base_db
+
+
 DATABASES = {
     "default": {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME":     os.environ["PGDATABASE"],
+        "NAME":     get_database_name(),
         "USER":     os.environ["PGUSER"],
         "PASSWORD": os.environ["PGPASSWORD"],
         "HOST":     os.environ["PGHOST"],
         "PORT":     os.environ["PGPORT"],
         "OPTIONS": {
-            "MAX_CONNS": 20,
-            "application_name": "tux-backend",
+            "application_name": f"tux-backend-{CLIENT_SUBDOMAIN}",
         },
         "CONN_MAX_AGE": 300,  # 5 minutes
     }
@@ -157,13 +209,8 @@ SIMPLE_JWT = {
 # ────────────────────────────────────────────────────────────────
 CORS_ORIGIN_ALLOW_ALL = False
 CORS_ALLOW_CREDENTIALS = True
-CORS_ALLOWED_ORIGINS = [
-    "https://tux-frontend-next-singletenant-git-dev-vlknyzcs-projects.vercel.app",
-    "https://tux-frontend-next-singletenant.vercel.app",
-    "https://tux-dev.up.railway.app",
-    "https://tux-test.up.railway.app",
-    "https://tux-prod.up.railway.app",
-]
+# Dynamic CORS allowed origins (same as CSRF for consistency)
+CORS_ALLOWED_ORIGINS = get_csrf_trusted_origins()
 CORS_ALLOW_METHODS = ["DELETE", "GET", "OPTIONS", "PATCH", "POST", "PUT"]
 CORS_ALLOW_HEADERS = [
     "accept",
