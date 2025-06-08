@@ -25,14 +25,16 @@
          name="name" value="{{ object.name }}">
   </div>
   <div class="form-group row">
-      <label class="col-sm-2 col-form-label" for="platform_field">platform_field: </label>
+      <label class="col-sm-2 col-form-label" for="slug">slug: </label>
       <input class="form-control col-sm-10"'
-         id="platform_field" type="text"
-         name="platform_field" value="{{ object.platform_field }}">
+         id="slug" type="text"
+         name="slug" value="{{ object.slug }}">
   </div>
   <div class="form-group row">
-      <label class="col-sm-2 col-form-label" for="workspace">workspace: </label>
-      {{ form.workspace }}
+      <label class="col-sm-2 col-form-label" for="icon_name">icon_name: </label>
+      <input class="form-control col-sm-10"'
+         id="icon_name" type="text"
+         name="icon_name" value="{{ object.icon_name }}">
   </div>
   <input type="submit" value="Save" class="btn btn-primary">
 </form>

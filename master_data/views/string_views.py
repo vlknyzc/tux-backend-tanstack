@@ -5,6 +5,7 @@ from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django.conf import settings
 from django.db import transaction
+from django.core.exceptions import PermissionDenied
 
 from .. import serializers
 from .. import models
@@ -12,7 +13,6 @@ from ..services import StringGenerationService, NamingConventionError
 
 
 class StringFilter(filters.FilterSet):
-    workspace = filters.NumberFilter(method='filter_workspace_id')
     field = filters.NumberFilter(method='filter_field_id')
     field_level = filters.NumberFilter(method='filter_field_level')
     platform_id = filters.NumberFilter(method='filter_platform_id')
@@ -22,11 +22,8 @@ class StringFilter(filters.FilterSet):
 
     class Meta:
         model = models.String
-        fields = ['id', 'workspace', 'field', 'parent',
+        fields = ['id', 'field', 'parent',
                   'field_level', 'rule_id', 'is_auto_generated']
-
-    def filter_workspace_id(self, queryset, name, value):
-        return queryset.filter(workspace__id=value)
 
     def filter_field_id(self, queryset, name, value):
         return queryset.filter(field__id=value)
@@ -47,25 +44,49 @@ class StringFilter(filters.FilterSet):
 
 
 class StringViewSet(viewsets.ModelViewSet):
-    queryset = models.String.objects.all().select_related(
-        'field', 'submission', 'rule', 'field__platform'
-    ).prefetch_related('string_details__dimension', 'string_details__dimension_value')
     serializer_class = serializers.StringSerializer
     permission_classes = [permissions.AllowAny] if settings.DEBUG else [
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = StringFilter
 
+    def get_queryset(self):
+        """Get strings filtered by workspace context"""
+        # If user is superuser, they can see all workspaces
+        if hasattr(self.request, 'user') and self.request.user.is_superuser:
+            return models.String.objects.all_workspaces().select_related(
+                'field', 'submission', 'rule', 'field__platform'
+            ).prefetch_related('string_details__dimension', 'string_details__dimension_value')
+
+        # For regular users, automatic workspace filtering is applied by managers
+        return models.String.objects.all().select_related(
+            'field', 'submission', 'rule', 'field__platform'
+        ).prefetch_related('string_details__dimension', 'string_details__dimension_value')
+
     def perform_create(self, serializer):
-        """Set created_by to the current user when creating a new string"""
+        """Set created_by and workspace when creating a new string"""
+        workspace_id = getattr(self.request, 'workspace_id', None)
+        if not workspace_id:
+            raise PermissionDenied("No workspace context available")
+
+        # Validate user has access to this workspace
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+            raise PermissionDenied("Access denied to this workspace")
+
+        kwargs = {}
         if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user)
-        else:
-            serializer.save()
+            kwargs['created_by'] = self.request.user
+
+        # Workspace is auto-set by WorkspaceMixin.save()
+        serializer.save(**kwargs)
 
     @action(detail=False, methods=['post'])
     def generate(self, request):
         """Generate a new string using business logic."""
+        workspace_id = getattr(request, 'workspace_id', None)
+        if not workspace_id:
+            raise PermissionDenied("No workspace context available")
+
         serializer = serializers.StringGenerationRequestSerializer(
             data=request.data)
         if serializer.is_valid():
@@ -179,6 +200,10 @@ class StringViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def bulk_generate(self, request):
         """Generate multiple strings in a single request."""
+        workspace_id = getattr(request, 'workspace_id', None)
+        if not workspace_id:
+            raise PermissionDenied("No workspace context available")
+
         serializer = serializers.StringBulkGenerationRequestSerializer(
             data=request.data)
 
@@ -202,8 +227,13 @@ class StringViewSet(viewsets.ModelViewSet):
                                 submission, field, dimension_values
                             )
 
-                            string_serializer = self.get_serializer(string)
-                            results.append(string_serializer.data)
+                            string_data = serializers.StringSerializer(
+                                string).data
+                            results.append({
+                                'field_id': field.id,
+                                'string_id': string.id,
+                                'string': string_data
+                            })
 
                         except Exception as e:
                             errors.append({
@@ -212,11 +242,12 @@ class StringViewSet(viewsets.ModelViewSet):
                             })
 
                     return Response({
-                        'success_count': len(results),
-                        'error_count': len(errors),
+                        'total_requested': len(serializer.validated_data['generation_requests']),
+                        'successful': len(results),
+                        'failed': len(errors),
                         'results': results,
                         'errors': errors
-                    })
+                    }, status=status.HTTP_201_CREATED if results else status.HTTP_400_BAD_REQUEST)
 
             except models.Submission.DoesNotExist:
                 return Response(
@@ -233,27 +264,34 @@ class StringViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['get'])
     def hierarchy(self, request, pk=None):
-        """Get the full hierarchy for a string."""
+        """Get the complete hierarchy for a string (parents and children)."""
         string = self.get_object()
-        hierarchy_path = string.get_hierarchy_path()
-        child_strings = string.get_child_strings()
 
-        hierarchy_serializer = self.get_serializer(hierarchy_path, many=True)
-        children_serializer = self.get_serializer(child_strings, many=True)
+        # Get all parent hierarchy
+        parents = []
+        current = string.parent
+        while current:
+            parents.insert(0, serializers.StringSerializer(current).data)
+            current = current.parent
+
+        # Get all children hierarchy
+        children = []
+        for child in string.children.all():
+            children.append(serializers.StringSerializer(child).data)
 
         return Response({
-            'string_id': string.id,
-            'hierarchy_path': hierarchy_serializer.data,
-            'child_strings': children_serializer.data,
-            'can_have_children': string.can_have_children(),
-            'suggested_child_field': string.suggest_child_field().name if string.suggest_child_field() else None
+            'string': serializers.StringSerializer(string).data,
+            'parents': parents,
+            'children': children,
+            'depth_level': len(parents),
+            'has_children': bool(children)
         })
 
     @action(detail=False, methods=['get'])
     def conflicts(self, request):
-        """Get all strings with naming conflicts."""
-        conflicted_strings = models.String.objects.with_conflicts()
-        serializer = self.get_serializer(conflicted_strings, many=True)
+        """Get all strings that have naming conflicts in current workspace."""
+        conflicts = models.String.objects.with_conflicts()
+        serializer = self.get_serializer(conflicts, many=True)
         return Response(serializer.data)
 
 
@@ -264,8 +302,8 @@ class StringDetailFilter(filters.FilterSet):
 
     class Meta:
         model = models.StringDetail
-        fields = ['id', 'string', 'dimension', 'dimension_value',
-                  'dimension_value_freetext', 'dimension_type']
+        fields = ['id', 'string', 'dimension',
+                  'dimension_value', 'dimension_value_freetext']
 
     def filter_string_id(self, queryset, name, value):
         return queryset.filter(string__id=value)
@@ -274,22 +312,42 @@ class StringDetailFilter(filters.FilterSet):
         return queryset.filter(dimension__id=value)
 
     def filter_dimension_type(self, queryset, name, value):
-        return queryset.filter(dimension__type=value)
+        return queryset.filter(dimension__dimension_type=value)
 
 
 class StringDetailViewSet(viewsets.ModelViewSet):
-    queryset = models.StringDetail.objects.all().select_related(
-        'string', 'dimension', 'dimension_value'
-    )
     serializer_class = serializers.StringDetailSerializer
     permission_classes = [permissions.AllowAny] if settings.DEBUG else [
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = StringDetailFilter
 
+    def get_queryset(self):
+        """Get string details filtered by workspace context"""
+        # If user is superuser, they can see all workspaces
+        if hasattr(self.request, 'user') and self.request.user.is_superuser:
+            return models.StringDetail.objects.all_workspaces().select_related(
+                'string', 'dimension', 'dimension_value'
+            )
+
+        # For regular users, automatic workspace filtering is applied by managers
+        return models.StringDetail.objects.all().select_related(
+            'string', 'dimension', 'dimension_value'
+        )
+
     def perform_create(self, serializer):
-        """Set created_by to the current user when creating a new string detail"""
+        """Set created_by and workspace when creating a new string detail"""
+        workspace_id = getattr(self.request, 'workspace_id', None)
+        if not workspace_id:
+            raise PermissionDenied("No workspace context available")
+
+        # Validate user has access to this workspace
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+            raise PermissionDenied("Access denied to this workspace")
+
+        kwargs = {}
         if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user)
-        else:
-            serializer.save()
+            kwargs['created_by'] = self.request.user
+
+        # Workspace is auto-set by WorkspaceMixin.save()
+        serializer.save(**kwargs)

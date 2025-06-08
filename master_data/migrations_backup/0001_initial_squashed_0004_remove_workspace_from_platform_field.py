@@ -9,7 +9,12 @@ import uuid
 
 class Migration(migrations.Migration):
 
-    initial = True
+    replaces = [
+        ("master_data", "0001_initial"),
+        ("master_data", "0002_add_slug_fields"),
+        ("master_data", "0003_add_workspace_to_models"),
+        ("master_data", "0004_remove_workspace_from_platform_field"),
+    ]
 
     dependencies = [
         migrations.swappable_dependency(settings.AUTH_USER_MODEL),
@@ -69,8 +74,7 @@ class Migration(migrations.Migration):
                 (
                     "status",
                     models.CharField(
-                        choices=[("active", "Active"),
-                                 ("inactive", "Inactive")],
+                        choices=[("active", "Active"), ("inactive", "Inactive")],
                         default="active",
                         help_text="Current status of this dimension",
                         max_length=30,
@@ -393,8 +397,7 @@ class Migration(migrations.Migration):
                 (
                     "status",
                     models.CharField(
-                        choices=[("active", "Active"),
-                                 ("inactive", "Inactive")],
+                        choices=[("active", "Active"), ("inactive", "Inactive")],
                         default="active",
                         help_text="Current status of this rule",
                         max_length=30,
@@ -591,8 +594,7 @@ class Migration(migrations.Migration):
                 (
                     "status",
                     models.CharField(
-                        choices=[("active", "Active"),
-                                 ("inactive", "Inactive")],
+                        choices=[("active", "Active"), ("inactive", "Inactive")],
                         default="active",
                         help_text="Current status of this workspace",
                         max_length=30,
@@ -945,8 +947,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AddIndex(
             model_name="string",
-            index=models.Index(
-                fields=["value"], name="master_data_value_62f6c7_idx"),
+            index=models.Index(fields=["value"], name="master_data_value_62f6c7_idx"),
         ),
         migrations.AlterUniqueTogether(
             name="string", unique_together={("rule", "field", "value")},
@@ -960,8 +961,7 @@ class Migration(migrations.Migration):
         ),
         migrations.AlterUniqueTogether(
             name="ruledetail",
-            unique_together={
-                ("rule", "field", "dimension", "dimension_order")},
+            unique_together={("rule", "field", "dimension", "dimension_order")},
         ),
         migrations.AddIndex(
             model_name="rule",
@@ -1110,15 +1110,12 @@ class Migration(migrations.Migration):
         migrations.RemoveIndex(
             model_name="string", name="master_data_value_62f6c7_idx",
         ),
-        migrations.AlterUniqueTogether(
-            name="dimensionvalue", unique_together=set(),),
+        migrations.AlterUniqueTogether(name="dimensionvalue", unique_together=set(),),
         migrations.AlterUniqueTogether(name="field", unique_together=set(),),
         migrations.AlterUniqueTogether(name="rule", unique_together=set(),),
-        migrations.AlterUniqueTogether(
-            name="ruledetail", unique_together=set(),),
+        migrations.AlterUniqueTogether(name="ruledetail", unique_together=set(),),
         migrations.AlterUniqueTogether(name="string", unique_together=set(),),
-        migrations.AlterUniqueTogether(
-            name="stringdetail", unique_together=set(),),
+        migrations.AlterUniqueTogether(name="stringdetail", unique_together=set(),),
         migrations.AddField(
             model_name="dimension",
             name="workspace",
@@ -1382,8 +1379,7 @@ class Migration(migrations.Migration):
         migrations.AlterUniqueTogether(
             name="field", unique_together={("platform", "name", "field_level")},
         ),
-        migrations.AlterUniqueTogether(
-            name="platform", unique_together={("slug",)},),
+        migrations.AlterUniqueTogether(name="platform", unique_together={("slug",)},),
         migrations.RemoveField(model_name="field", name="workspace",),
         migrations.RemoveField(model_name="platform", name="workspace",),
     ]

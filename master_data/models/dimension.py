@@ -5,7 +5,7 @@ Dimension models for the master_data app.
 from django.db import models
 from django.urls import reverse
 
-from .base import TimeStampModel
+from .base import TimeStampModel, WorkspaceMixin
 from ..constants import (
     STANDARD_NAME_LENGTH, LONG_NAME_LENGTH, DESCRIPTION_LENGTH,
     UTM_LENGTH, SLUG_LENGTH, StatusChoices, DimensionTypeChoices
@@ -13,7 +13,7 @@ from ..constants import (
 from ..utils import generate_unique_slug
 
 
-class Dimension(TimeStampModel):
+class Dimension(TimeStampModel, WorkspaceMixin):
     """
     Represents a dimension for categorizing and structuring naming conventions.
 
@@ -34,12 +34,10 @@ class Dimension(TimeStampModel):
     # Fields
     name = models.CharField(
         max_length=STANDARD_NAME_LENGTH,
-        unique=True,
-        help_text="Unique name for this dimension"
+        help_text="Name for this dimension (unique per workspace)"
     )
     slug = models.SlugField(
         max_length=SLUG_LENGTH,
-        unique=True,
         blank=True,
         help_text="URL-friendly version of the name (auto-generated)"
     )
@@ -65,7 +63,8 @@ class Dimension(TimeStampModel):
     class Meta:
         verbose_name = "Dimension"
         verbose_name_plural = "Dimensions"
-        ordering = ['name']
+        ordering = ['workspace', 'name']
+        unique_together = [('workspace', 'name')]  # Name unique per workspace
 
     def save(self, *args, **kwargs):
         """Override save to generate slug automatically."""
@@ -83,7 +82,7 @@ class Dimension(TimeStampModel):
         return reverse("master_data_Dimension_update", args=(self.pk,))
 
 
-class DimensionValue(TimeStampModel):
+class DimensionValue(TimeStampModel, WorkspaceMixin):
     """
     Represents a specific value within a dimension.
 
@@ -140,8 +139,9 @@ class DimensionValue(TimeStampModel):
     class Meta:
         verbose_name = "Dimension Value"
         verbose_name_plural = "Dimension Values"
-        unique_together = ('dimension', 'value')
-        ordering = ['dimension', 'value']
+        # Value unique per workspace+dimension
+        unique_together = [('workspace', 'dimension', 'value')]
+        ordering = ['workspace', 'dimension', 'value']
 
     def __str__(self):
         return f"{self.dimension.name}: {self.value}"

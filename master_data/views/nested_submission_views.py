@@ -4,7 +4,7 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.conf import settings
 from django.db import transaction, IntegrityError
 from django.db.models import Prefetch, Q
-from django.core.exceptions import ValidationError
+from django.core.exceptions import ValidationError, PermissionDenied
 import logging
 
 from .. import models
@@ -36,9 +36,21 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """
-        Optimize queryset with appropriate prefetch and select related
-        to minimize database queries
+        Get submissions with optimized prefetch and workspace filtering
         """
+        # If user is superuser, they can see all workspaces
+        if hasattr(self.request, 'user') and self.request.user.is_superuser:
+            return models.Submission.objects.all_workspaces().select_related(
+                'rule'
+            ).prefetch_related(
+                'submission_strings',
+                'submission_strings__field',
+                'submission_strings__string_details',
+                'submission_strings__string_details__dimension',
+                'submission_strings__string_details__dimension_value'
+            )
+
+        # For regular users, automatic workspace filtering is applied by managers
         return models.Submission.objects.all().select_related(
             'rule'
         ).prefetch_related(
@@ -162,11 +174,21 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
             )
 
     def perform_create(self, serializer):
-        """Set created_by to the current user when creating a new submission"""
+        """Set created_by and workspace when creating a new submission"""
+        workspace_id = getattr(self.request, 'workspace_id', None)
+        if not workspace_id:
+            raise PermissionDenied("No workspace context available")
+
+        # Validate user has access to this workspace
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+            raise PermissionDenied("Access denied to this workspace")
+
+        kwargs = {}
         if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user)
-        else:
-            serializer.save()
+            kwargs['created_by'] = self.request.user
+
+        # Workspace is auto-set by WorkspaceMixin.save()
+        serializer.save(**kwargs)
 
     @transaction.atomic
     def update(self, request, *args, **kwargs):

@@ -5,36 +5,52 @@ from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django.conf import settings
 from django.db import transaction
+from django.core.exceptions import PermissionDenied
 
 from .. import serializers
 from .. import models
 
 
 class DimensionFilter(filters.FilterSet):
-    workspace = filters.NumberFilter(method='filter_workspace_id')
-
+    # Remove workspace filter since it's now handled by middleware/managers
     class Meta:
         model = models.Dimension
-        fields = ['id', 'workspace', 'type']
-
-    def filter_workspace_id(self, queryset, name, value):
-        return queryset.filter(workspace__id=value)
+        fields = ['id', 'type', 'status']
 
 
 class DimensionViewSet(viewsets.ModelViewSet):
-    queryset = models.Dimension.objects.all()
+    queryset = models.Dimension.objects.all()  # Default queryset for router
     serializer_class = serializers.DimensionSerializer
     permission_classes = [permissions.AllowAny] if settings.DEBUG else [
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = DimensionFilter
 
+    def get_queryset(self):
+        """Get dimensions filtered by workspace context"""
+        # If user is superuser, they can see all workspaces
+        if hasattr(self.request, 'user') and self.request.user.is_superuser:
+            return models.Dimension.objects.all_workspaces()
+
+        # For regular users, automatic workspace filtering is applied by managers
+        return models.Dimension.objects.all()
+
     def perform_create(self, serializer):
-        """Set created_by to the current user when creating a new dimension"""
+        """Set created_by and workspace when creating a new dimension"""
+        workspace_id = getattr(self.request, 'workspace_id', None)
+        if not workspace_id:
+            raise PermissionDenied("No workspace context available")
+
+        # Validate user has access to this workspace
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+            raise PermissionDenied("Access denied to this workspace")
+
+        kwargs = {}
         if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user)
-        else:
-            serializer.save()
+            kwargs['created_by'] = self.request.user
+
+        # Workspace is auto-set by WorkspaceMixin.save()
+        serializer.save(**kwargs)
 
     def _create_dimensions_with_dependencies(self, dimensions_data, user):
         """Create dimensions handling parent dependencies within the same batch."""
@@ -98,6 +114,20 @@ class DimensionViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def bulk_create(self, request):
         """Create multiple dimensions in a single request."""
+        workspace_id = getattr(request, 'workspace_id', None)
+        if not workspace_id:
+            return Response(
+                {'error': 'No workspace context available'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate user has access to this workspace
+        if not request.user.is_superuser and not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         serializer = serializers.DimensionBulkCreateSerializer(
             data=request.data)
 
@@ -126,38 +156,67 @@ class DimensionViewSet(viewsets.ModelViewSet):
 
 
 class DimensionValueFilter(filters.FilterSet):
-    workspace = filters.NumberFilter(method='filter_workspace_id')
     dimension = filters.NumberFilter(method='filter_dimension_id')
 
     class Meta:
         model = models.DimensionValue
-        fields = ['workspace']
-
-    def filter_workspace_id(self, queryset, name, value):
-        return queryset.filter(dimension__workspace__id=value)
+        fields = ['dimension']
 
     def filter_dimension_id(self, queryset, name, value):
         return queryset.filter(dimension__id=value)
 
 
 class DimensionValueViewSet(viewsets.ModelViewSet):
-    queryset = models.DimensionValue.objects.all()
+    queryset = models.DimensionValue.objects.all()  # Default queryset for router
     serializer_class = serializers.DimensionValueSerializer
     permission_classes = [permissions.AllowAny] if settings.DEBUG else [
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = DimensionValueFilter
 
+    def get_queryset(self):
+        """Get dimension values filtered by workspace context"""
+        # If user is superuser, they can see all workspaces
+        if hasattr(self.request, 'user') and self.request.user.is_superuser:
+            return models.DimensionValue.objects.all_workspaces()
+
+        # For regular users, automatic workspace filtering is applied by managers
+        return models.DimensionValue.objects.all()
+
     def perform_create(self, serializer):
-        """Set created_by to the current user when creating a new dimension value"""
+        """Set created_by and workspace when creating a new dimension value"""
+        workspace_id = getattr(self.request, 'workspace_id', None)
+        if not workspace_id:
+            raise PermissionDenied("No workspace context available")
+
+        # Validate user has access to this workspace
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+            raise PermissionDenied("Access denied to this workspace")
+
+        kwargs = {}
         if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user)
-        else:
-            serializer.save()
+            kwargs['created_by'] = self.request.user
+
+        # Workspace is auto-set by WorkspaceMixin.save()
+        serializer.save(**kwargs)
 
     @action(detail=False, methods=['post'])
     def bulk_create(self, request):
         """Create multiple dimension values in a single request."""
+        workspace_id = getattr(request, 'workspace_id', None)
+        if not workspace_id:
+            return Response(
+                {'error': 'No workspace context available'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate user has access to this workspace
+        if not request.user.is_superuser and not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
         serializer = serializers.DimensionValueBulkCreateSerializer(
             data=request.data)
 

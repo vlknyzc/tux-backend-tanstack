@@ -27,7 +27,6 @@ class Platform(TimeStampModel):
     )
     slug = models.SlugField(
         max_length=SLUG_LENGTH,
-        unique=True,
         help_text="URL-friendly identifier for this platform"
     )
     icon_name = models.CharField(
@@ -41,6 +40,7 @@ class Platform(TimeStampModel):
         verbose_name = "Platform"
         verbose_name_plural = "Platforms"
         ordering = ['name']
+        unique_together = [('slug',)]  # Slug unique globally
 
     def __str__(self):
         return self.name

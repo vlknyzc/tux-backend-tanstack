@@ -5,6 +5,7 @@ from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend
 from django.conf import settings
 from django.db import transaction
+from django.core.exceptions import PermissionDenied
 
 from .. import serializers
 from .. import models
@@ -35,20 +36,39 @@ class RuleFilter(filters.FilterSet):
 
 
 class RuleViewSet(viewsets.ModelViewSet):
-    queryset = models.Rule.objects.all().select_related(
-        'platform').prefetch_related('rule_details')
     serializer_class = serializers.RuleSerializer
     permission_classes = [permissions.AllowAny] if settings.DEBUG else [
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter
 
+    def get_queryset(self):
+        """Get rules filtered by workspace context"""
+        # If user is superuser, they can see all workspaces
+        if hasattr(self.request, 'user') and self.request.user.is_superuser:
+            return models.Rule.objects.all_workspaces().select_related(
+                'platform').prefetch_related('rule_details')
+
+        # For regular users, automatic workspace filtering is applied by managers
+        return models.Rule.objects.all().select_related(
+            'platform').prefetch_related('rule_details')
+
     def perform_create(self, serializer):
-        """Set created_by to the current user when creating a new rule"""
+        """Set created_by and workspace when creating a new rule"""
+        workspace_id = getattr(self.request, 'workspace_id', None)
+        if not workspace_id:
+            raise PermissionDenied("No workspace context available")
+
+        # Validate user has access to this workspace
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+            raise PermissionDenied("Access denied to this workspace")
+
+        kwargs = {}
         if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user)
-        else:
-            serializer.save()
+            kwargs['created_by'] = self.request.user
+
+        # Workspace is auto-set by WorkspaceMixin.save()
+        serializer.save(**kwargs)
 
     @action(detail=True, methods=['post'])
     def preview(self, request, pk=None):
@@ -97,13 +117,14 @@ class RuleViewSet(viewsets.ModelViewSet):
 
     @action(detail=True, methods=['post'])
     def set_default(self, request, pk=None):
-        """Set this rule as the default for its platform."""
+        """Set this rule as the default for its platform within the workspace."""
         rule = self.get_object()
 
         try:
             with transaction.atomic():
-                # Unset any existing default for this platform
+                # Unset any existing default for this platform in the workspace
                 models.Rule.objects.filter(
+                    workspace=rule.workspace,
                     platform=rule.platform,
                     is_default=True
                 ).update(is_default=False)
@@ -113,9 +134,10 @@ class RuleViewSet(viewsets.ModelViewSet):
                 rule.save()
 
                 return Response({
-                    'message': f'Rule "{rule.name}" is now the default for platform "{rule.platform.name}"',
+                    'message': f'Rule "{rule.name}" is now the default for platform "{rule.platform.name}" in workspace "{rule.workspace.name}"',
                     'rule_id': rule.id,
-                    'platform_id': rule.platform.id
+                    'platform_id': rule.platform.id,
+                    'workspace_id': rule.workspace.id
                 })
 
         except Exception as e:
@@ -126,9 +148,9 @@ class RuleViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['get'])
     def defaults(self, request):
-        """Get all default rules by platform."""
+        """Get all default rules by platform in current workspace."""
         default_rules = models.Rule.objects.filter(
-            is_default=True).select_related('platform')
+            is_default=True).select_related('platform', 'workspace')
         serializer = self.get_serializer(default_rules, many=True)
         return Response(serializer.data)
 
@@ -138,7 +160,10 @@ class RuleViewSet(viewsets.ModelViewSet):
         rule = self.get_object()
 
         result = {}
-        fields = models.Field.objects.filter(platform=rule.platform)
+        fields = models.Field.objects.filter(
+            workspace=rule.workspace,
+            platform=rule.platform
+        )
 
         for field in fields:
             if rule.can_generate_for_field(field):
@@ -153,12 +178,13 @@ class RuleViewSet(viewsets.ModelViewSet):
             'rule_id': rule.id,
             'rule_name': rule.name,
             'platform': rule.platform.name,
+            'workspace': rule.workspace.name,
             'fields': result
         })
 
     @action(detail=False, methods=['get'])
     def active(self, request):
-        """Get all active rules."""
+        """Get all active rules in current workspace."""
         active_rules = models.Rule.objects.active()
 
         # Filter by platform if provided
@@ -184,13 +210,23 @@ class RuleDetailFilter(filters.FilterSet):
 
 
 class RuleDetailViewSet(viewsets.ModelViewSet):
-    queryset = models.RuleDetail.objects.all().select_related(
-        'rule', 'field', 'dimension', 'rule__platform'
-    )
     permission_classes = [permissions.AllowAny] if settings.DEBUG else [
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleDetailFilter
+
+    def get_queryset(self):
+        """Get rule details filtered by workspace context"""
+        # If user is superuser, they can see all workspaces
+        if hasattr(self.request, 'user') and self.request.user.is_superuser:
+            return models.RuleDetail.objects.all_workspaces().select_related(
+                'rule', 'field', 'dimension', 'rule__platform'
+            )
+
+        # For regular users, automatic workspace filtering is applied by managers
+        return models.RuleDetail.objects.all().select_related(
+            'rule', 'field', 'dimension', 'rule__platform'
+        )
 
     def get_serializer_class(self):
         """Use different serializers for create vs read operations."""
@@ -199,95 +235,113 @@ class RuleDetailViewSet(viewsets.ModelViewSet):
         return serializers.RuleDetailSerializer
 
     def perform_create(self, serializer):
-        """Set created_by to the current user when creating a new rule detail"""
+        """Set created_by and workspace when creating a new rule detail"""
+        workspace_id = getattr(self.request, 'workspace_id', None)
+        if not workspace_id:
+            raise PermissionDenied("No workspace context available")
+
+        # Validate user has access to this workspace
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+            raise PermissionDenied("Access denied to this workspace")
+
+        kwargs = {}
         if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user)
-        else:
-            serializer.save()
+            kwargs['created_by'] = self.request.user
+
+        # Workspace is auto-set by WorkspaceMixin.save()
+        serializer.save(**kwargs)
 
     @action(detail=False, methods=['post'])
     def validate_order(self, request):
-        """Validate dimension order for a rule and field combination."""
-        rule_id = request.data.get('rule_id')
-        field_id = request.data.get('field_id')
+        """Validate dimension order for a rule and field."""
+        serializer = serializers.RuleDetailCreateSerializer(data=request.data)
 
-        if not rule_id or not field_id:
-            return Response(
-                {'error': 'rule_id and field_id are required'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        if serializer.is_valid():
+            rule_id = serializer.validated_data['rule'].id
+            field_id = serializer.validated_data['field'].id
+            dimension_order = serializer.validated_data['dimension_order']
 
-        try:
-            rule = models.Rule.objects.get(id=rule_id)
-            field = models.Field.objects.get(id=field_id)
+            # Check for existing orders
+            existing_orders = models.RuleDetail.objects.filter(
+                rule_id=rule_id,
+                field_id=field_id
+            ).values_list('dimension_order', flat=True)
 
-            rule_details = models.RuleDetail.objects.filter(
-                rule=rule, field=field
-            ).order_by('dimension_order')
-
-            # Check for gaps in dimension order
-            orders = [rd.dimension_order for rd in rule_details]
-            expected_orders = list(range(1, len(orders) + 1))
-
-            has_gaps = orders != expected_orders
+            existing_orders_list = list(existing_orders)
 
             return Response({
                 'rule_id': rule_id,
                 'field_id': field_id,
-                'current_orders': orders,
-                'expected_orders': expected_orders,
-                'has_gaps': has_gaps,
-                'is_valid': not has_gaps
+                'requested_order': dimension_order,
+                'existing_orders': existing_orders_list,
+                'is_valid': dimension_order not in existing_orders_list,
+                'next_available_order': max(existing_orders_list, default=0) + 1 if existing_orders_list else 1
             })
 
-        except models.Rule.DoesNotExist:
-            return Response({'error': 'Rule not found'}, status=status.HTTP_404_NOT_FOUND)
-        except models.Field.DoesNotExist:
-            return Response({'error': 'Field not found'}, status=status.HTTP_404_NOT_FOUND)
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class RuleNestedViewSet(viewsets.ModelViewSet):
-    queryset = models.Rule.objects.all().prefetch_related(
-        'rule_details__field', 'rule_details__dimension')
     serializer_class = serializers.RuleNestedSerializer
     permission_classes = [permissions.AllowAny] if settings.DEBUG else [
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter
 
+    def get_queryset(self):
+        """Get rules with nested details filtered by workspace context"""
+        # If user is superuser, they can see all workspaces
+        if hasattr(self.request, 'user') and self.request.user.is_superuser:
+            return models.Rule.objects.all_workspaces().prefetch_related(
+                'rule_details__field', 'rule_details__dimension')
+
+        # For regular users, automatic workspace filtering is applied by managers
+        return models.Rule.objects.all().prefetch_related(
+            'rule_details__field', 'rule_details__dimension')
+
     def perform_create(self, serializer):
-        """Set created_by to the current user when creating a new rule"""
+        """Set created_by and workspace when creating a new rule"""
+        workspace_id = getattr(self.request, 'workspace_id', None)
+        if not workspace_id:
+            raise PermissionDenied("No workspace context available")
+
+        # Validate user has access to this workspace
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+            raise PermissionDenied("Access denied to this workspace")
+
+        kwargs = {}
         if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user)
-        else:
-            serializer.save()
+            kwargs['created_by'] = self.request.user
+
+        # Workspace is auto-set by WorkspaceMixin.save()
+        serializer.save(**kwargs)
 
     @action(detail=True, methods=['post'])
     def clone(self, request, pk=None):
-        """Clone a rule with all its rule details."""
+        """Clone a rule with all its details within the same workspace."""
         original_rule = self.get_object()
-        new_name = request.data.get('name')
 
-        if not new_name:
-            return Response(
-                {'error': 'name is required for cloning'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
+        data = request.data
+        new_name = data.get('name', f"{original_rule.name} (Copy)")
 
         try:
             with transaction.atomic():
                 # Create new rule
                 new_rule = models.Rule.objects.create(
+                    workspace=original_rule.workspace,
                     platform=original_rule.platform,
                     name=new_name,
-                    description=f"Cloned from {original_rule.name}",
+                    description=data.get(
+                        'description', original_rule.description),
                     status=original_rule.status,
-                    is_default=False  # Never clone as default
+                    is_default=False,  # Cloned rules are never default
+                    created_by=self.request.user if self.request.user.is_authenticated else None
                 )
 
                 # Clone all rule details
                 for detail in original_rule.rule_details.all():
                     models.RuleDetail.objects.create(
+                        workspace=original_rule.workspace,
                         rule=new_rule,
                         field=detail.field,
                         dimension=detail.dimension,
@@ -295,18 +349,15 @@ class RuleNestedViewSet(viewsets.ModelViewSet):
                         suffix=detail.suffix,
                         delimiter=detail.delimiter,
                         dimension_order=detail.dimension_order,
-                        is_required=detail.is_required
+                        is_required=detail.is_required,
+                        created_by=self.request.user if self.request.user.is_authenticated else None
                     )
 
                 serializer = self.get_serializer(new_rule)
-                return Response({
-                    'message': f'Rule cloned successfully as "{new_name}"',
-                    'original_rule_id': original_rule.id,
-                    'new_rule': serializer.data
-                }, status=status.HTTP_201_CREATED)
+                return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
             return Response(
-                {'error': f'Cloning failed: {str(e)}'},
+                {'error': f'Failed to clone rule: {str(e)}'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

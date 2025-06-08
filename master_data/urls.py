@@ -21,26 +21,36 @@ from .views import (
     GenerationPreviewView,
     CacheManagementView,
     RuleConfigurationView,
+    # Version views
+    APIVersionView,
+    APIHealthView,
+    VersionDemoView,
 )
 
 router = routers.DefaultRouter()
-router.register("dimensions", DimensionViewSet)
-router.register("dimension-values", DimensionValueViewSet)
-router.register("workspaces", WorkspaceViewSet)
-router.register("platforms", PlatformViewSet)
-router.register("fields", FieldViewSet)
-router.register("rules", RuleViewSet)
-router.register("rule-details", RuleDetailViewSet)
+router.register("dimensions", DimensionViewSet, basename="dimension")
+router.register("dimension-values", DimensionValueViewSet,
+                basename="dimensionvalue")
+router.register("workspaces", WorkspaceViewSet, basename="workspace")
+router.register("platforms", PlatformViewSet, basename="platform")
+router.register("fields", FieldViewSet, basename="field")
+router.register("rules", RuleViewSet, basename="rule")
+router.register("rule-details", RuleDetailViewSet, basename="ruledetail")
 router.register("rule-nested", RuleNestedViewSet, basename="rule-nested")
 
-router.register("submissions", SubmissionViewSet)
-router.register("strings", StringViewSet)
-router.register("string-details", StringDetailViewSet)
+router.register("submissions", SubmissionViewSet, basename="submission")
+router.register("strings", StringViewSet, basename="string")
+router.register("string-details", StringDetailViewSet, basename="stringdetail")
 router.register("nested-submissions", SubmissionNestedViewSet,
                 basename="nested-submissions")
 
 urlpatterns = [
     path("", include(router.urls)),
+
+    # API version and health endpoints
+    path("version/", APIVersionView.as_view(), name="api-version"),
+    path("health/", APIHealthView.as_view(), name="api-health"),
+    path("demo/", VersionDemoView.as_view(), name="api-version-demo"),
 
     # Rule configuration endpoint
     path("rules/<int:rule_id>/configuration/",
