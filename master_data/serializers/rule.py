@@ -225,6 +225,8 @@ class RuleSerializer(serializers.ModelSerializer):
     platform_name = serializers.SerializerMethodField()
     platform_slug = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
+    workspace_id = serializers.SerializerMethodField()
+    workspace_name = serializers.SerializerMethodField()
 
     # New business logic fields
     configuration_errors = serializers.SerializerMethodField()
@@ -243,6 +245,8 @@ class RuleSerializer(serializers.ModelSerializer):
             "platform",
             "platform_name",
             "platform_slug",
+            "workspace_id",
+            "workspace_name",
             "configuration_errors",
             "required_dimensions",
             "fields_with_rules",
@@ -262,6 +266,12 @@ class RuleSerializer(serializers.ModelSerializer):
         if obj.created_by:
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
         return None
+
+    def get_workspace_id(self, obj):
+        return obj.workspace.id if obj.workspace else None
+
+    def get_workspace_name(self, obj):
+        return obj.workspace.name if obj.workspace else None
 
     def get_configuration_errors(self, obj):
         """Get configuration validation errors."""

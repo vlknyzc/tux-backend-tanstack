@@ -14,6 +14,8 @@ class StringSerializer(serializers.ModelSerializer):
     rule_id = serializers.SerializerMethodField()
     rule_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
+    workspace_name = serializers.SerializerMethodField()
+    workspace_id = serializers.SerializerMethodField()
 
     # New fields for enhanced business logic
     dimension_values = serializers.SerializerMethodField()
@@ -21,6 +23,86 @@ class StringSerializer(serializers.ModelSerializer):
     can_have_children = serializers.SerializerMethodField()
     suggested_child_field = serializers.SerializerMethodField()
     naming_conflicts = serializers.SerializerMethodField()
+
+    # Workspace field for write operations
+    workspace = serializers.IntegerField(
+        write_only=True, required=False, allow_null=True)
+
+    def validate_workspace(self, value):
+        """Validate workspace field and user access"""
+        if value is not None:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user'):
+                try:
+                    workspace = models.Workspace.objects.get(id=value)
+                    # Check if user has access to this workspace
+                    if not request.user.is_superuser and not request.user.has_workspace_access(value):
+                        raise serializers.ValidationError(
+                            f"Access denied to workspace {value}")
+                    return workspace
+                except models.Workspace.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"Workspace {value} does not exist")
+            else:
+                # Allow without request context during testing
+                try:
+                    workspace = models.Workspace.objects.get(id=value)
+                    return workspace
+                except models.Workspace.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"Workspace {value} does not exist")
+        return value
+
+    def validate_submission(self, value):
+        """Validate that submission belongs to accessible workspace"""
+        if value:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user') and not request.user.is_superuser:
+                if not request.user.has_workspace_access(value.workspace_id):
+                    raise serializers.ValidationError(
+                        "Access denied to submission's workspace")
+        return value
+
+    def validate_field(self, value):
+        """Validate that field belongs to accessible workspace"""
+        if value:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user') and not request.user.is_superuser:
+                if not request.user.has_workspace_access(value.workspace_id):
+                    raise serializers.ValidationError(
+                        "Access denied to field's workspace")
+        return value
+
+    def validate_parent(self, value):
+        """Validate that parent string belongs to accessible workspace"""
+        if value:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user') and not request.user.is_superuser:
+                if not request.user.has_workspace_access(value.workspace_id):
+                    raise serializers.ValidationError(
+                        "Access denied to parent string's workspace")
+        return value
+
+    def validate(self, attrs):
+        """Cross-field validation for workspace consistency"""
+        # Validate related objects belong to same workspace
+        submission = attrs.get('submission')
+        field = attrs.get('field')
+        parent = attrs.get('parent')
+
+        if submission and field:
+            if submission.workspace_id != field.workspace_id:
+                raise serializers.ValidationError(
+                    "Submission and field must belong to the same workspace"
+                )
+
+        if parent and submission:
+            if parent.workspace_id != submission.workspace_id:
+                raise serializers.ValidationError(
+                    "Parent string and submission must belong to the same workspace"
+                )
+
+        return attrs
 
     class Meta:
         model = models.String
@@ -44,6 +126,9 @@ class StringSerializer(serializers.ModelSerializer):
             "value",
             "parent",
             "parent_uuid",
+            "workspace",
+            "workspace_id",
+            "workspace_name",
             # New business logic fields
             "is_auto_generated",
             "generation_metadata",
@@ -53,8 +138,8 @@ class StringSerializer(serializers.ModelSerializer):
             "suggested_child_field",
             "naming_conflicts",
         ]
-        read_only_fields = ["string_uuid",
-                            "rule_id", "created", "last_updated"]
+        read_only_fields = ["string_uuid", "rule_id", "created",
+                            "last_updated", "workspace_name", "workspace_id"]
 
     def get_field_name(self, obj):
         return obj.field.name
@@ -84,6 +169,12 @@ class StringSerializer(serializers.ModelSerializer):
         if obj.created_by:
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
         return None
+
+    def get_workspace_name(self, obj):
+        return obj.workspace.name if obj.workspace else None
+
+    def get_workspace_id(self, obj):
+        return obj.workspace.id if obj.workspace else None
 
     def get_dimension_values(self, obj):
         """Get dimension values used to generate this string."""
@@ -118,6 +209,87 @@ class StringDetailSerializer(serializers.ModelSerializer):
     submission_name = serializers.SerializerMethodField()
     effective_value = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
+    workspace_name = serializers.SerializerMethodField()
+    workspace_id = serializers.SerializerMethodField()
+
+    # Workspace field for write operations
+    workspace = serializers.IntegerField(
+        write_only=True, required=False, allow_null=True)
+
+    def validate_workspace(self, value):
+        """Validate workspace field and user access"""
+        if value is not None:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user'):
+                try:
+                    workspace = models.Workspace.objects.get(id=value)
+                    # Check if user has access to this workspace
+                    if not request.user.is_superuser and not request.user.has_workspace_access(value):
+                        raise serializers.ValidationError(
+                            f"Access denied to workspace {value}")
+                    return workspace
+                except models.Workspace.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"Workspace {value} does not exist")
+            else:
+                # Allow without request context during testing
+                try:
+                    workspace = models.Workspace.objects.get(id=value)
+                    return workspace
+                except models.Workspace.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"Workspace {value} does not exist")
+        return value
+
+    def validate_string(self, value):
+        """Validate that string belongs to accessible workspace"""
+        if value:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user') and not request.user.is_superuser:
+                if not request.user.has_workspace_access(value.workspace_id):
+                    raise serializers.ValidationError(
+                        "Access denied to string's workspace")
+        return value
+
+    def validate_dimension(self, value):
+        """Validate that dimension belongs to accessible workspace"""
+        if value:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user') and not request.user.is_superuser:
+                if not request.user.has_workspace_access(value.workspace_id):
+                    raise serializers.ValidationError(
+                        "Access denied to dimension's workspace")
+        return value
+
+    def validate_dimension_value(self, value):
+        """Validate that dimension value belongs to accessible workspace"""
+        if value:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user') and not request.user.is_superuser:
+                if not request.user.has_workspace_access(value.workspace_id):
+                    raise serializers.ValidationError(
+                        "Access denied to dimension value's workspace")
+        return value
+
+    def validate(self, attrs):
+        """Cross-field validation for workspace consistency"""
+        string_obj = attrs.get('string')
+        dimension = attrs.get('dimension')
+        dimension_value = attrs.get('dimension_value')
+
+        if string_obj and dimension:
+            if string_obj.workspace_id != dimension.workspace_id:
+                raise serializers.ValidationError(
+                    "String and dimension must belong to the same workspace"
+                )
+
+        if dimension and dimension_value:
+            if dimension.workspace_id != dimension_value.workspace_id:
+                raise serializers.ValidationError(
+                    "Dimension and dimension value must belong to the same workspace"
+                )
+
+        return attrs
 
     class Meta:
         model = models.StringDetail
@@ -133,12 +305,16 @@ class StringDetailSerializer(serializers.ModelSerializer):
             "dimension_value_label",
             "dimension_value_freetext",
             "effective_value",
+            "workspace",
+            "workspace_id",
+            "workspace_name",
             "created_by",
             "created_by_name",
             "created",
             "last_updated",
         ]
-        read_only_fields = ["created", "last_updated"]
+        read_only_fields = ["created", "last_updated",
+                            "workspace_name", "workspace_id"]
 
     def get_submission_name(self, obj):
         return obj.string.submission.name if obj.string and obj.string.submission else None
@@ -164,6 +340,12 @@ class StringDetailSerializer(serializers.ModelSerializer):
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
         return None
 
+    def get_workspace_name(self, obj):
+        return obj.workspace.name if obj.workspace else None
+
+    def get_workspace_id(self, obj):
+        return obj.workspace.id if obj.workspace else None
+
 
 class StringGenerationRequestSerializer(serializers.Serializer):
     """Serializer for string generation requests."""
@@ -177,33 +359,76 @@ class StringGenerationRequestSerializer(serializers.Serializer):
         required=False, allow_null=True)
 
     def validate_submission_id(self, value):
-        """Validate that submission exists."""
+        """Validate that submission exists and user has access to its workspace"""
         try:
-            models.Submission.objects.get(id=value)
+            submission = models.Submission.objects.get(id=value)
+            # Check workspace access
+            request = self.context.get('request')
+            if request and hasattr(request, 'user') and not request.user.is_superuser:
+                if not request.user.has_workspace_access(submission.workspace_id):
+                    raise serializers.ValidationError(
+                        "Access denied to submission's workspace")
         except models.Submission.DoesNotExist:
             raise serializers.ValidationError("Submission does not exist")
         return value
 
     def validate_field_id(self, value):
-        """Validate that field exists."""
+        """Validate that field exists and user has access to its workspace"""
         try:
-            models.Field.objects.get(id=value)
+            field = models.Field.objects.get(id=value)
+            # Check workspace access
+            request = self.context.get('request')
+            if request and hasattr(request, 'user') and not request.user.is_superuser:
+                if not request.user.has_workspace_access(field.workspace_id):
+                    raise serializers.ValidationError(
+                        "Access denied to field's workspace")
         except models.Field.DoesNotExist:
             raise serializers.ValidationError("Field does not exist")
         return value
 
+    def validate_parent_string_id(self, value):
+        """Validate that parent string exists and user has access to its workspace"""
+        if value is not None:
+            try:
+                parent_string = models.String.objects.get(id=value)
+                # Check workspace access
+                request = self.context.get('request')
+                if request and hasattr(request, 'user') and not request.user.is_superuser:
+                    if not request.user.has_workspace_access(parent_string.workspace_id):
+                        raise serializers.ValidationError(
+                            "Access denied to parent string's workspace")
+            except models.String.DoesNotExist:
+                raise serializers.ValidationError(
+                    "Parent string does not exist")
+        return value
+
     def validate(self, attrs):
-        """Cross-field validation."""
+        """Cross-field validation with workspace awareness"""
         try:
             submission = models.Submission.objects.get(
                 id=attrs['submission_id'])
             field = models.Field.objects.get(id=attrs['field_id'])
+
+            # Validate submission and field belong to same workspace
+            if submission.workspace_id != field.workspace_id:
+                raise serializers.ValidationError(
+                    "Submission and field must belong to the same workspace"
+                )
 
             # Validate rule and field belong to same platform
             if submission.rule.platform != field.platform:
                 raise serializers.ValidationError(
                     "Rule and field must belong to the same platform"
                 )
+
+            # Validate parent string workspace consistency
+            parent_string_id = attrs.get('parent_string_id')
+            if parent_string_id:
+                parent_string = models.String.objects.get(id=parent_string_id)
+                if parent_string.workspace_id != submission.workspace_id:
+                    raise serializers.ValidationError(
+                        "Parent string and submission must belong to the same workspace"
+                    )
 
             # Validate dimension values
             validation_errors = StringGenerationService.validate_dimension_values(
@@ -218,6 +443,8 @@ class StringGenerationRequestSerializer(serializers.Serializer):
             raise serializers.ValidationError("Submission does not exist")
         except models.Field.DoesNotExist:
             raise serializers.ValidationError("Field does not exist")
+        except models.String.DoesNotExist:
+            raise serializers.ValidationError("Parent string does not exist")
 
         return attrs
 
@@ -238,6 +465,68 @@ class StringConflictCheckSerializer(serializers.Serializer):
     exclude_string_id = serializers.IntegerField(
         required=False, allow_null=True)
 
+    def validate_rule_id(self, value):
+        """Validate that rule exists and user has access to its workspace"""
+        try:
+            rule = models.Rule.objects.get(id=value)
+            # Check workspace access
+            request = self.context.get('request')
+            if request and hasattr(request, 'user') and not request.user.is_superuser:
+                if not request.user.has_workspace_access(rule.workspace_id):
+                    raise serializers.ValidationError(
+                        "Access denied to rule's workspace")
+        except models.Rule.DoesNotExist:
+            raise serializers.ValidationError("Rule does not exist")
+        return value
+
+    def validate_field_id(self, value):
+        """Validate that field exists and user has access to its workspace"""
+        try:
+            field = models.Field.objects.get(id=value)
+            # Check workspace access
+            request = self.context.get('request')
+            if request and hasattr(request, 'user') and not request.user.is_superuser:
+                if not request.user.has_workspace_access(field.workspace_id):
+                    raise serializers.ValidationError(
+                        "Access denied to field's workspace")
+        except models.Field.DoesNotExist:
+            raise serializers.ValidationError("Field does not exist")
+        return value
+
+    def validate_exclude_string_id(self, value):
+        """Validate that excluded string exists and user has access to its workspace"""
+        if value is not None:
+            try:
+                string = models.String.objects.get(id=value)
+                # Check workspace access
+                request = self.context.get('request')
+                if request and hasattr(request, 'user') and not request.user.is_superuser:
+                    if not request.user.has_workspace_access(string.workspace_id):
+                        raise serializers.ValidationError(
+                            "Access denied to string's workspace")
+            except models.String.DoesNotExist:
+                raise serializers.ValidationError("String does not exist")
+        return value
+
+    def validate(self, attrs):
+        """Cross-field validation with workspace awareness"""
+        try:
+            rule = models.Rule.objects.get(id=attrs['rule_id'])
+            field = models.Field.objects.get(id=attrs['field_id'])
+
+            # Validate rule and field belong to same workspace
+            if rule.workspace_id != field.workspace_id:
+                raise serializers.ValidationError(
+                    "Rule and field must belong to the same workspace"
+                )
+
+        except models.Rule.DoesNotExist:
+            raise serializers.ValidationError("Rule does not exist")
+        except models.Field.DoesNotExist:
+            raise serializers.ValidationError("Field does not exist")
+
+        return attrs
+
 
 class StringBulkGenerationRequestSerializer(serializers.Serializer):
     """Serializer for bulk string generation."""
@@ -247,8 +536,22 @@ class StringBulkGenerationRequestSerializer(serializers.Serializer):
         help_text="List of generation requests with field_id and dimension_values"
     )
 
+    def validate_submission_id(self, value):
+        """Validate that submission exists and user has access to its workspace"""
+        try:
+            submission = models.Submission.objects.get(id=value)
+            # Check workspace access
+            request = self.context.get('request')
+            if request and hasattr(request, 'user') and not request.user.is_superuser:
+                if not request.user.has_workspace_access(submission.workspace_id):
+                    raise serializers.ValidationError(
+                        "Access denied to submission's workspace")
+        except models.Submission.DoesNotExist:
+            raise serializers.ValidationError("Submission does not exist")
+        return value
+
     def validate_generation_requests(self, value):
-        """Validate each generation request in the list."""
+        """Validate each generation request in the list with workspace awareness"""
         for request in value:
             if 'field_id' not in request:
                 raise serializers.ValidationError(
@@ -256,4 +559,43 @@ class StringBulkGenerationRequestSerializer(serializers.Serializer):
             if 'dimension_values' not in request:
                 raise serializers.ValidationError(
                     "Each request must have dimension_values")
+
+            # Validate field access
+            field_id = request.get('field_id')
+            if field_id:
+                try:
+                    field = models.Field.objects.get(id=field_id)
+                    # Check workspace access
+                    request_context = self.context.get('request')
+                    if request_context and hasattr(request_context, 'user') and not request_context.user.is_superuser:
+                        if not request_context.user.has_workspace_access(field.workspace_id):
+                            raise serializers.ValidationError(
+                                f"Access denied to field {field_id}'s workspace")
+                except models.Field.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"Field {field_id} does not exist")
         return value
+
+    def validate(self, attrs):
+        """Cross-field validation with workspace awareness"""
+        try:
+            submission = models.Submission.objects.get(
+                id=attrs['submission_id'])
+
+            # Validate all fields belong to same workspace as submission
+            for request in attrs['generation_requests']:
+                field_id = request.get('field_id')
+                if field_id:
+                    field = models.Field.objects.get(id=field_id)
+                    if field.workspace_id != submission.workspace_id:
+                        raise serializers.ValidationError(
+                            f"Field {field_id} and submission must belong to the same workspace"
+                        )
+
+        except models.Submission.DoesNotExist:
+            raise serializers.ValidationError("Submission does not exist")
+        except models.Field.DoesNotExist:
+            raise serializers.ValidationError(
+                "One or more fields do not exist")
+
+        return attrs

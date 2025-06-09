@@ -12,10 +12,11 @@ from .. import models
 
 
 class DimensionFilter(filters.FilterSet):
-    # Remove workspace filter since it's now handled by middleware/managers
+    workspace_id = filters.NumberFilter(field_name='workspace__id')
+
     class Meta:
         model = models.Dimension
-        fields = ['id', 'type', 'status']
+        fields = ['id', 'type', 'status', 'workspace_id']
 
 
 class DimensionViewSet(viewsets.ModelViewSet):
@@ -28,6 +29,27 @@ class DimensionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get dimensions filtered by workspace context"""
+        # Check if workspace_id is explicitly provided in query params
+        workspace_id = self.request.query_params.get('workspace_id')
+
+        if workspace_id:
+            # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
+            try:
+                workspace_id = int(workspace_id)
+                # Validate user has access to this workspace (unless superuser)
+                if hasattr(self.request, 'user') and not self.request.user.is_superuser:
+                    if not self.request.user.has_workspace_access(workspace_id):
+                        # Return empty queryset for unauthorized access
+                        return models.Dimension.objects.none()
+
+                # Return queryset filtered by the specified workspace
+                return models.Dimension.objects.all_workspaces().filter(workspace_id=workspace_id)
+
+            except (ValueError, TypeError):
+                # Invalid workspace_id parameter, return empty queryset
+                return models.Dimension.objects.none()
+
+        # Default behavior when no workspace_id is specified
         # If user is superuser, they can see all workspaces
         if hasattr(self.request, 'user') and self.request.user.is_superuser:
             return models.Dimension.objects.all_workspaces()
@@ -38,6 +60,37 @@ class DimensionViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Set created_by and workspace when creating a new dimension"""
         workspace_id = getattr(self.request, 'workspace_id', None)
+
+        # Handle workspace context automatically based on user's access
+        if not workspace_id:
+            # Check if workspace is explicitly specified in the request data
+            workspace_data = serializer.validated_data.get('workspace')
+            if workspace_data:
+                workspace_id = workspace_data.id
+                # Verify user has access to this workspace
+                if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+                    raise PermissionDenied(
+                        f"Access denied to workspace {workspace_id}")
+                # Set the workspace context for this request
+                self.request.workspace_id = workspace_id
+            else:
+                # Try to auto-determine workspace from user's assignments
+                user_workspaces = self.request.user.get_accessible_workspaces()
+
+                if self.request.user.is_superuser:
+                    raise PermissionDenied(
+                        "Superusers must specify 'workspace' in the request data.")
+                elif len(user_workspaces) == 1:
+                    # User has access to only one workspace - use it automatically
+                    workspace_id = user_workspaces[0].id
+                    self.request.workspace_id = workspace_id
+                elif len(user_workspaces) > 1:
+                    raise PermissionDenied(
+                        "Multiple workspaces available. Please specify 'workspace' in the request data.")
+                else:
+                    raise PermissionDenied(
+                        "No workspace access available for this user.")
+
         if not workspace_id:
             raise PermissionDenied("No workspace context available")
 
@@ -157,10 +210,11 @@ class DimensionViewSet(viewsets.ModelViewSet):
 
 class DimensionValueFilter(filters.FilterSet):
     dimension = filters.NumberFilter(method='filter_dimension_id')
+    workspace_id = filters.NumberFilter(field_name='workspace__id')
 
     class Meta:
         model = models.DimensionValue
-        fields = ['dimension']
+        fields = ['dimension', 'workspace_id']
 
     def filter_dimension_id(self, queryset, name, value):
         return queryset.filter(dimension__id=value)
@@ -176,6 +230,27 @@ class DimensionValueViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get dimension values filtered by workspace context"""
+        # Check if workspace_id is explicitly provided in query params
+        workspace_id = self.request.query_params.get('workspace_id')
+
+        if workspace_id:
+            # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
+            try:
+                workspace_id = int(workspace_id)
+                # Validate user has access to this workspace (unless superuser)
+                if hasattr(self.request, 'user') and not self.request.user.is_superuser:
+                    if not self.request.user.has_workspace_access(workspace_id):
+                        # Return empty queryset for unauthorized access
+                        return models.DimensionValue.objects.none()
+
+                # Return queryset filtered by the specified workspace
+                return models.DimensionValue.objects.all_workspaces().filter(workspace_id=workspace_id)
+
+            except (ValueError, TypeError):
+                # Invalid workspace_id parameter, return empty queryset
+                return models.DimensionValue.objects.none()
+
+        # Default behavior when no workspace_id is specified
         # If user is superuser, they can see all workspaces
         if hasattr(self.request, 'user') and self.request.user.is_superuser:
             return models.DimensionValue.objects.all_workspaces()
@@ -186,6 +261,37 @@ class DimensionValueViewSet(viewsets.ModelViewSet):
     def perform_create(self, serializer):
         """Set created_by and workspace when creating a new dimension value"""
         workspace_id = getattr(self.request, 'workspace_id', None)
+
+        # Handle workspace context automatically based on user's access
+        if not workspace_id:
+            # Check if workspace is explicitly specified in the request data
+            workspace_data = serializer.validated_data.get('workspace')
+            if workspace_data:
+                workspace_id = workspace_data.id
+                # Verify user has access to this workspace
+                if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+                    raise PermissionDenied(
+                        f"Access denied to workspace {workspace_id}")
+                # Set the workspace context for this request
+                self.request.workspace_id = workspace_id
+            else:
+                # Try to auto-determine workspace from user's assignments
+                user_workspaces = self.request.user.get_accessible_workspaces()
+
+                if self.request.user.is_superuser:
+                    raise PermissionDenied(
+                        "Superusers must specify 'workspace' in the request data.")
+                elif len(user_workspaces) == 1:
+                    # User has access to only one workspace - use it automatically
+                    workspace_id = user_workspaces[0].id
+                    self.request.workspace_id = workspace_id
+                elif len(user_workspaces) > 1:
+                    raise PermissionDenied(
+                        "Multiple workspaces available. Please specify 'workspace' in the request data.")
+                else:
+                    raise PermissionDenied(
+                        "No workspace access available for this user.")
+
         if not workspace_id:
             raise PermissionDenied("No workspace context available")
 

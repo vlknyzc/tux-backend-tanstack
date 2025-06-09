@@ -1,39 +1,59 @@
-# TUX Backend - Multi-Tenant API Documentation
+# TUX Backend - API Documentation (Legacy)
 
-## Overview
+**📢 Notice**: This documentation has been split into multiple files for better organization. Please refer to the individual API documentation files for detailed information:
 
-The TUX Backend is a multi-tenant Django application that manages naming conventions and string generation for different clients. Each client has their own isolated workspace with data separation.
+- **[Main Documentation Index](README.md)** - Complete documentation structure
+- **[API Overview](api-overview.md)** - Authentication, multi-tenancy, versioning
+- **[Development Setup](development-setup.md)** - CORS, environment setup, testing
+- **[Migration Guide](migration-guide.md)** - Subdomain to flexible workspace migration
+- **[User Management API](api-users.md)** - User accounts and workspace assignments
+- **[Workspace Management API](api-workspaces.md)** - Workspace management and settings
 
-## Authentication & Authorization
+## Quick Reference
 
-All API endpoints require authentication via session-based authentication or token authentication.
+### Base URLs
 
-### Headers Required
+- **Development**: `http://localhost:8000/api/v1/`
+- **Production**: `https://yourdomain.com/api/v1/`
+
+### Authentication
+
+All endpoints require authentication via JWT tokens or session authentication:
 
 ```
-Authorization: Token <your-token>
-# OR
-Cookie: sessionid=<session-id>
+Authorization: Bearer your-jwt-token
 ```
 
 ## Multi-Tenancy
 
 ### Workspace Context
 
-The application uses subdomain-based workspace routing:
+The TUX Backend implements flexible workspace access that supports multiple deployment models:
 
-- `client1.yourdomain.com` → Client 1's workspace
-- `client2.yourdomain.com` → Client 2's workspace
+- **User-Based Access**: Users are assigned to specific workspaces through workspace assignments
+- **Role-Based Permissions**: Each workspace assignment includes a role (admin, user, viewer)
+- **API-Driven Selection**: Workspaces can be selected via API parameters or authentication context
+- **Legacy Subdomain Support**: Optional subdomain routing for backwards compatibility
 
 ### Access Control
 
-- **Regular Users**: Can only access workspaces they're assigned to
-- **Superusers**: Can access all workspaces across all clients
-- **Workspace Roles**: admin, user, viewer (different permission levels)
+- **Regular Users**: Can only access workspaces they're explicitly assigned to
+- **Superusers**: Can access all workspaces across the entire system
+- **Workspace Roles**:
+  - `admin` - Full management access within the workspace
+  - `user` - Read/write access to workspace data
+  - `viewer` - Read-only access to workspace data
 
-### Workspace Detection
+### Workspace Selection
 
-The system automatically detects the current workspace from the subdomain and filters all data accordingly.
+The system provides multiple ways to specify workspace context:
+
+1. **Authentication Context**: User's default or available workspaces
+2. **API Parameters**: Workspace selection via query parameters or request headers
+3. **Subdomain Routing** (Optional): `client1.yourdomain.com` for backwards compatibility
+4. **Direct Access**: Explicit workspace specification in API calls
+
+**Note**: The system no longer requires subdomain-based routing and supports direct API access with workspace context provided through user authentication and explicit workspace selection.
 
 ## API Versioning
 
@@ -55,14 +75,244 @@ The API version is specified in the URL path:
 
 ### Production
 
-- **Versioned (Recommended)**: `https://client1.yourdomain.com/api/v1/`
-- **Legacy**: `https://client1.yourdomain.com/api/`
-- Alternative clients: `https://client2.yourdomain.com/api/v1/`
+- **Primary API**: `https://yourdomain.com/api/v1/`
+- **Legacy**: `https://yourdomain.com/api/`
+- **Subdomain Support** (Optional): `https://client1.yourdomain.com/api/v1/`
 
 ### Development
 
-- **Versioned (Recommended)**: `http://client1.localhost:8000/api/v1/`
-- **Legacy**: `http://client1.localhost:8000/api/`
+- **Primary API (Recommended)**: `http://localhost:8000/api/v1/`
+- **Legacy**: `http://localhost:8000/api/`
+- **Subdomain Testing** (Optional): `http://client1.localhost:8000/api/v1/`
+
+### Workspace Access Methods
+
+1. **Direct API Access** (Recommended):
+
+   - Use primary API endpoint with authentication
+   - Workspace context determined by user permissions
+   - Frontend can list and select available workspaces
+
+2. **Subdomain Access** (Legacy/Optional):
+   - Maintains backwards compatibility
+   - Automatic workspace detection from subdomain
+   - Useful for existing deployments
+
+**Note**: The system supports both direct API access (recommended for new implementations) and optional subdomain routing (for backwards compatibility). When using direct API access, workspace context is managed through user authentication and explicit workspace selection rather than subdomain detection.
+
+## Migration from Subdomain-Based Access
+
+### For Existing Applications
+
+If you're migrating from a subdomain-based implementation:
+
+1. **Update API Base URLs**:
+
+   - **Old**: `https://client1.yourdomain.com/api/v1/`
+   - **New**: `https://yourdomain.com/api/v1/`
+
+2. **Implement Workspace Selection**:
+
+   - Add workspace listing via `/api/v1/workspaces/`
+   - Add workspace switcher in your frontend
+   - Store selected workspace in application state
+
+3. **Update Authentication Flow**:
+
+   - Users authenticate once for all accessible workspaces
+   - Frontend manages workspace context switching
+   - API automatically filters data based on user permissions
+
+4. **Optional**: Keep subdomain support for backwards compatibility during transition
+
+### Frontend Implementation Example
+
+```javascript
+// 1. Get user's accessible workspaces after authentication
+async function loadWorkspaces() {
+  const response = await fetch("/api/v1/workspaces/", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  return response.json();
+}
+
+// 2. User can switch between workspaces
+function selectWorkspace(workspaceId) {
+  // Store in app state, localStorage, etc.
+  setCurrentWorkspace(workspaceId);
+  // Reload workspace-specific data
+  loadWorkspaceData();
+}
+
+// 3. API calls work with any accessible workspace
+async function loadDimensions() {
+  const response = await fetch("/api/v1/dimensions/", {
+    headers: { Authorization: `Bearer ${token}` },
+  });
+  // Response automatically filtered by user's workspace access
+  return response.json();
+}
+```
+
+## Workspace Access & Context
+
+### How Workspace Access Works
+
+1. **User Authentication**: Users authenticate with the API using JWT tokens or session authentication
+2. **Workspace Discovery**: Authenticated users can list their accessible workspaces via `/api/v1/workspaces/`
+3. **Context Selection**: Frontend applications can switch between workspaces as needed
+4. **Data Filtering**: API automatically filters data based on user's workspace permissions
+
+### API Workspace Context
+
+#### Listing Available Workspaces
+
+```http
+GET /api/v1/workspaces/
+Authorization: Bearer your-jwt-token
+```
+
+**Response:**
+
+```json
+{
+  "count": 2,
+  "results": [
+    {
+      "id": 1,
+      "name": "Client A Workspace",
+      "status": "active",
+      "description": "Main workspace for Client A"
+    },
+    {
+      "id": 2,
+      "name": "Client B Workspace",
+      "status": "active",
+      "description": "Main workspace for Client B"
+    }
+  ]
+}
+```
+
+#### Workspace-Specific Data Access
+
+When accessing workspace-specific endpoints, the API automatically filters data based on:
+
+1. **User's workspace assignments**: Only workspaces the user has access to
+2. **User's role in each workspace**: admin, user, or viewer permissions
+3. **Superuser status**: Superusers can access all workspaces
+
+**Example - Getting dimensions for accessible workspaces:**
+
+```http
+GET /api/v1/dimensions/
+Authorization: Bearer your-jwt-token
+```
+
+The response will only include dimensions from workspaces the user has access to.
+
+#### Multi-Workspace Operations
+
+For users with access to multiple workspaces, you can:
+
+1. **Filter by workspace**: Use query parameters where supported
+2. **Switch context**: Frontend manages workspace selection
+3. **Batch operations**: Some endpoints support cross-workspace operations for superusers
+
+## Development Setup & CORS Configuration
+
+### Cross-Origin Resource Sharing (CORS)
+
+The TUX Backend is configured to support cross-origin requests from frontend applications running on different ports.
+
+#### Development CORS Settings
+
+For development environments, the following origins are automatically allowed:
+
+- `http://localhost:3000` (React/Next.js default)
+- `http://127.0.0.1:3000`
+- `http://localhost:8000` (Django development server)
+- `http://127.0.0.1:8000`
+
+#### Supported CORS Methods
+
+- `GET`, `POST`, `PUT`, `PATCH`, `DELETE`, `OPTIONS`
+
+#### Supported CORS Headers
+
+- `accept`, `accept-encoding`, `authorization`, `content-type`
+- `dnt`, `origin`, `user-agent`, `x-csrftoken`, `x-requested-with`
+
+#### CORS Configuration for Frontend
+
+When making requests from your frontend application (e.g., React app on localhost:3000), you can:
+
+1. **Make direct API calls** to `http://localhost:8000/api/v1/`
+2. **Include authentication headers** without CORS issues
+3. **Use credentials** in requests (`credentials: 'include'`)
+
+**Example JavaScript fetch:**
+
+```javascript
+// Health check request
+const response = await fetch("http://localhost:8000/api/v1/health/", {
+  method: "GET",
+  headers: {
+    "Content-Type": "application/json",
+  },
+});
+
+// Authenticated request
+const response = await fetch("http://localhost:8000/api/v1/workspaces/", {
+  method: "GET",
+  headers: {
+    "Content-Type": "application/json",
+    Authorization: "Bearer your-jwt-token",
+  },
+  credentials: "include",
+});
+```
+
+### CSRF Protection
+
+For development environments, CSRF protection is configured to work with frontend applications:
+
+#### CSRF Trusted Origins
+
+- `http://localhost:3000`
+- `http://127.0.0.1:3000`
+- `http://localhost:8000`
+- `http://127.0.0.1:8000`
+
+#### CSRF Settings
+
+- **CSRF_COOKIE_SECURE**: `False` (allows non-HTTPS in development)
+- **CSRF_COOKIE_HTTPONLY**: `False` (allows JavaScript access)
+- **CSRF_COOKIE_SAMESITE**: `'Lax'` (permissive for development)
+
+### Development vs Production
+
+| Setting                | Development            | Production    |
+| ---------------------- | ---------------------- | ------------- |
+| CORS_ALLOW_ALL_ORIGINS | `True`                 | `False`       |
+| CORS_ALLOW_CREDENTIALS | `True`                 | `True`        |
+| CSRF_COOKIE_SECURE     | `False`                | `True`        |
+| DEBUG                  | `True`                 | `False`       |
+| Workspace Middleware   | Bypassed for localhost | Always active |
+
+### Troubleshooting CORS Issues
+
+If you encounter CORS errors:
+
+1. **Check the origin**: Ensure your frontend is running on `localhost:3000`
+2. **Verify API URL**: Use `http://localhost:8000/api/v1/` (primary API endpoint)
+3. **Check headers**: Ensure proper `Content-Type` and `Authorization` headers
+4. **Network errors**: CORS issues manifest as network errors in browsers
+
+**Common Error Resolution:**
+
+- ❌ **"Network error - API server may be unreachable"**
+- ✅ **Should see proper HTTP status codes (200, 401, 403, etc.)**
 
 ## Version Management
 
@@ -244,6 +494,7 @@ GET /api/v1/users/{user_id}/
 
 ```http
 POST /api/v1/users/
+Authorization: Bearer your-jwt-token
 Content-Type: application/json
 
 {
@@ -258,10 +509,29 @@ Content-Type: application/json
 }
 ```
 
-#### Update User
+**Response (201 Created):**
+
+```json
+{
+  "id": 5,
+  "email": "newuser@example.com",
+  "first_name": "New",
+  "last_name": "User",
+  "full_name": "New User",
+  "is_active": true,
+  "is_staff": false,
+  "is_superuser": false,
+  "last_login": null,
+  "workspace_count": 0,
+  "primary_role": "user"
+}
+```
+
+#### Update User (Partial Update)
 
 ```http
 PATCH /api/v1/users/{user_id}/
+Authorization: Bearer your-jwt-token
 Content-Type: application/json
 
 {
@@ -270,6 +540,54 @@ Content-Type: application/json
   "is_active": true
 }
 ```
+
+**Response (200 OK):**
+
+```json
+{
+  "id": 2,
+  "email": "john.doe@client1.com",
+  "first_name": "Updated",
+  "last_name": "Name",
+  "full_name": "Updated Name",
+  "is_active": true,
+  "is_staff": false,
+  "is_superuser": false,
+  "last_login": "2024-01-01T10:30:00Z",
+  "workspace_count": 2,
+  "primary_role": "admin"
+}
+```
+
+#### Update User (Full Update)
+
+```http
+PUT /api/v1/users/{user_id}/
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "email": "john.doe@client1.com",
+  "first_name": "John",
+  "last_name": "Doe",
+  "is_active": true,
+  "is_staff": false,
+  "is_superuser": false
+}
+```
+
+**Response (200 OK):** Same format as PATCH response.
+
+#### Delete User (Superuser Only)
+
+```http
+DELETE /api/v1/users/{user_id}/
+Authorization: Bearer your-jwt-token
+```
+
+**Response (204 No Content):** Empty body
+
+**Note**: Deleting a user will also remove all their workspace assignments.
 
 #### Get User Authorizations
 
@@ -357,10 +675,36 @@ GET /api/v1/workspace-users/
 }
 ```
 
+#### Get Workspace Assignment Details
+
+```http
+GET /api/v1/workspace-users/{assignment_id}/
+Authorization: Bearer your-jwt-token
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "id": 1,
+  "user": 2,
+  "user_email": "john.doe@client1.com",
+  "user_name": "John Doe",
+  "workspace": 1,
+  "workspace_id": 1,
+  "workspace_name": "Client 1",
+  "role": "admin",
+  "is_active": true,
+  "created": "2023-12-01T09:15:00Z",
+  "updated": "2023-12-01T09:15:00Z"
+}
+```
+
 #### Assign User to Workspace
 
 ```http
 POST /api/v1/workspace-users/
+Authorization: Bearer your-jwt-token
 Content-Type: application/json
 
 {
@@ -371,10 +715,29 @@ Content-Type: application/json
 }
 ```
 
-#### Update User Role in Workspace
+**Response (201 Created):**
+
+```json
+{
+  "id": 5,
+  "user": 3,
+  "user_email": "newuser@example.com",
+  "user_name": "New User",
+  "workspace": 1,
+  "workspace_id": 1,
+  "workspace_name": "Client 1",
+  "role": "user",
+  "is_active": true,
+  "created": "2024-01-15T10:30:00Z",
+  "updated": "2024-01-15T10:30:00Z"
+}
+```
+
+#### Update User Role in Workspace (Partial Update)
 
 ```http
 PATCH /api/v1/workspace-users/{assignment_id}/
+Authorization: Bearer your-jwt-token
 Content-Type: application/json
 
 {
@@ -382,6 +745,50 @@ Content-Type: application/json
   "is_active": true
 }
 ```
+
+**Response (200 OK):**
+
+```json
+{
+  "id": 1,
+  "user": 2,
+  "user_email": "john.doe@client1.com",
+  "user_name": "John Doe",
+  "workspace": 1,
+  "workspace_id": 1,
+  "workspace_name": "Client 1",
+  "role": "admin",
+  "is_active": true,
+  "created": "2023-12-01T09:15:00Z",
+  "updated": "2024-01-15T11:00:00Z"
+}
+```
+
+#### Update User Assignment (Full Update)
+
+```http
+PUT /api/v1/workspace-users/{assignment_id}/
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "user": 2,
+  "workspace": 1,
+  "role": "admin",
+  "is_active": true
+}
+```
+
+**Response (200 OK):** Same format as PATCH response.
+
+#### Remove User from Workspace
+
+```http
+DELETE /api/v1/workspace-users/{assignment_id}/
+Authorization: Bearer your-jwt-token
+```
+
+**Response (204 No Content):** Empty body
 
 #### Bulk Assign Users (Superuser Only)
 
@@ -460,7 +867,13 @@ Manage client workspaces (admin-only for creation).
 
 ```http
 GET /api/v1/workspaces/
+Authorization: Bearer your-jwt-token
 ```
+
+**Query Parameters:**
+
+- `status`: Filter by status (active, inactive)
+- `search`: Search by name
 
 **Response:**
 
@@ -471,12 +884,48 @@ GET /api/v1/workspaces/
     {
       "id": 1,
       "name": "Client 1",
+      "slug": "client-1",
       "status": "active",
-      "description": "Client 1 workspace",
-      "created_at": "2024-01-01T00:00:00Z",
+      "logo": null,
+      "created": "2024-01-01T00:00:00Z",
+      "last_updated": "2024-01-01T00:00:00Z",
+      "created_by": 1
+    },
+    {
+      "id": 2,
+      "name": "Client 2",
+      "slug": "client-2",
+      "status": "active",
+      "logo": "/media/workspaces/client2-logo.png",
+      "created": "2024-01-02T00:00:00Z",
+      "last_updated": "2024-01-02T00:00:00Z",
       "created_by": 1
     }
   ]
+}
+```
+
+#### Get Workspace Details
+
+```http
+GET /api/v1/workspaces/{workspace_id}/
+Authorization: Bearer your-jwt-token
+```
+
+**Response:**
+
+```json
+{
+  "id": 1,
+  "name": "Client 1",
+  "slug": "client-1",
+  "status": "active",
+  "logo": null,
+  "created": "2024-01-01T00:00:00Z",
+  "last_updated": "2024-01-01T00:00:00Z",
+  "created_by": 1,
+  "user_count": 5,
+  "active_users": 4
 }
 ```
 
@@ -484,14 +933,83 @@ GET /api/v1/workspaces/
 
 ```http
 POST /api/v1/workspaces/
+Authorization: Bearer your-jwt-token
 Content-Type: application/json
 
 {
   "name": "New Client",
-  "description": "New client workspace",
   "status": "active"
 }
 ```
+
+**Response (201 Created):**
+
+```json
+{
+  "id": 3,
+  "name": "New Client",
+  "slug": "new-client",
+  "status": "active",
+  "logo": null,
+  "created": "2024-01-15T10:00:00Z",
+  "last_updated": "2024-01-15T10:00:00Z",
+  "created_by": 1
+}
+```
+
+#### Update Workspace (Partial Update)
+
+```http
+PATCH /api/v1/workspaces/{workspace_id}/
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "name": "Updated Client Name",
+  "status": "active"
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "id": 1,
+  "name": "Updated Client Name",
+  "slug": "client-1",
+  "status": "active",
+  "logo": null,
+  "created": "2024-01-01T00:00:00Z",
+  "last_updated": "2024-01-15T11:00:00Z",
+  "created_by": 1
+}
+```
+
+#### Update Workspace (Full Update)
+
+```http
+PUT /api/v1/workspaces/{workspace_id}/
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "name": "Complete Client Name",
+  "status": "active"
+}
+```
+
+**Response (200 OK):** Same format as PATCH response.
+
+#### Delete Workspace (Superuser Only)
+
+```http
+DELETE /api/v1/workspaces/{workspace_id}/
+Authorization: Bearer your-jwt-token
+```
+
+**Response (204 No Content):** Empty body
+
+**Warning**: Deleting a workspace will also delete all associated data (dimensions, rules, strings, etc.).
 
 ### 3. Platforms
 
@@ -503,12 +1021,14 @@ Manage data platforms. Platforms are global resources shared across all workspac
 
 ```http
 GET /api/v1/platforms/
+Authorization: Bearer your-jwt-token
 ```
 
 **Query Parameters:**
 
-- `id`: Filter by platform ID
-- `name`: Filter by platform name
+- `platform_type`: Filter by platform type
+- `name`: Search by platform name
+- `search`: General search across name and type
 
 **Response:**
 
@@ -526,8 +1046,43 @@ GET /api/v1/platforms/
       "created_by_name": null,
       "created": "2024-01-01T00:00:00Z",
       "last_updated": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": 2,
+      "name": "BigQuery",
+      "platform_type": "data_warehouse",
+      "slug": "bigquery",
+      "icon_name": "bigquery",
+      "created_by": 1,
+      "created_by_name": "Admin User",
+      "created": "2024-01-02T00:00:00Z",
+      "last_updated": "2024-01-02T00:00:00Z"
     }
   ]
+}
+```
+
+#### Get Platform Details
+
+```http
+GET /api/v1/platforms/{platform_id}/
+Authorization: Bearer your-jwt-token
+```
+
+**Response:**
+
+```json
+{
+  "id": 1,
+  "name": "Snowflake",
+  "platform_type": "data_warehouse",
+  "slug": "snowflake",
+  "icon_name": "snowflake",
+  "created_by": null,
+  "created_by_name": null,
+  "created": "2024-01-01T00:00:00Z",
+  "last_updated": "2024-01-01T00:00:00Z",
+  "field_count": 3
 }
 ```
 
@@ -535,15 +1090,87 @@ GET /api/v1/platforms/
 
 ```http
 POST /api/v1/platforms/
+Authorization: Bearer your-jwt-token
 Content-Type: application/json
 
 {
   "name": "BigQuery",
   "platform_type": "data_warehouse",
-  "slug": "bigquery",
   "icon_name": "bigquery"
 }
 ```
+
+**Response (201 Created):**
+
+```json
+{
+  "id": 3,
+  "name": "BigQuery",
+  "platform_type": "data_warehouse",
+  "slug": "bigquery",
+  "icon_name": "bigquery",
+  "created_by": 1,
+  "created_by_name": "Admin User",
+  "created": "2024-01-15T10:00:00Z",
+  "last_updated": "2024-01-15T10:00:00Z"
+}
+```
+
+#### Update Platform (Partial Update)
+
+```http
+PATCH /api/v1/platforms/{platform_id}/
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "name": "Google BigQuery",
+  "icon_name": "google-bigquery"
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "id": 2,
+  "name": "Google BigQuery",
+  "platform_type": "data_warehouse",
+  "slug": "bigquery",
+  "icon_name": "google-bigquery",
+  "created_by": 1,
+  "created_by_name": "Admin User",
+  "created": "2024-01-02T00:00:00Z",
+  "last_updated": "2024-01-15T11:00:00Z"
+}
+```
+
+#### Update Platform (Full Update)
+
+```http
+PUT /api/v1/platforms/{platform_id}/
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "name": "Google BigQuery",
+  "platform_type": "data_warehouse",
+  "icon_name": "google-bigquery"
+}
+```
+
+**Response (200 OK):** Same format as PATCH response.
+
+#### Delete Platform
+
+```http
+DELETE /api/v1/platforms/{platform_id}/
+Authorization: Bearer your-jwt-token
+```
+
+**Response (204 No Content):** Empty body
+
+**Warning**: Deleting a platform will also delete all associated fields and may affect rules that depend on it.
 
 ### 5. Dimensions
 
@@ -552,13 +1179,15 @@ Manage naming dimensions for rules.
 #### List Dimensions
 
 ```http
-GET /dimensions/
+GET /api/v1/dimensions/
+Authorization: Bearer your-jwt-token
 ```
 
 **Query Parameters:**
 
-- `dimension_type`: Filter by type (e.g., "environment", "data_classification")
-- `is_required`: Filter by required status (true/false)
+- `type`: Filter by dimension type
+- `status`: Filter by status (active, inactive)
+- `search`: Search by name or description
 
 **Response:**
 
@@ -569,28 +1198,147 @@ GET /dimensions/
     {
       "id": 1,
       "name": "Environment",
-      "dimension_type": "environment",
+      "slug": "environment",
       "description": "Data environment classification",
-      "is_required": true,
+      "type": "list",
+      "parent": null,
+      "parent_name": null,
+      "status": "active",
+      "created_by": 1,
+      "created_by_name": "Admin User",
+      "created": "2024-01-01T00:00:00Z",
+      "last_updated": "2024-01-01T00:00:00Z",
       "workspace": 1
     }
   ]
 }
 ```
 
+#### Get Dimension Details
+
+```http
+GET /api/v1/dimensions/{dimension_id}/
+Authorization: Bearer your-jwt-token
+```
+
+**Response:**
+
+```json
+{
+  "id": 1,
+  "name": "Environment",
+  "slug": "environment",
+  "description": "Data environment classification",
+  "type": "list",
+  "parent": null,
+  "parent_name": null,
+  "status": "active",
+  "created_by": 1,
+  "created_by_name": "Admin User",
+  "created": "2024-01-01T00:00:00Z",
+  "last_updated": "2024-01-01T00:00:00Z",
+  "workspace": 1,
+  "value_count": 3
+}
+```
+
 #### Create Dimension
 
 ```http
-POST /dimensions/
+POST /api/v1/dimensions/
+Authorization: Bearer your-jwt-token
 Content-Type: application/json
 
 {
   "name": "Data Classification",
-  "dimension_type": "data_classification",
   "description": "Classification of data sensitivity",
-  "is_required": true
+  "type": "list",
+  "status": "active",
+  "parent": null
 }
 ```
+
+**Response (201 Created):**
+
+```json
+{
+  "id": 2,
+  "name": "Data Classification",
+  "slug": "data-classification",
+  "description": "Classification of data sensitivity",
+  "type": "list",
+  "parent": null,
+  "parent_name": null,
+  "status": "active",
+  "created_by": 1,
+  "created_by_name": "Admin User",
+  "created": "2024-01-15T10:00:00Z",
+  "last_updated": "2024-01-15T10:00:00Z",
+  "workspace": 1
+}
+```
+
+#### Update Dimension (Partial Update)
+
+```http
+PATCH /api/v1/dimensions/{dimension_id}/
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "description": "Updated description for data classification",
+  "status": "active"
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "id": 2,
+  "name": "Data Classification",
+  "slug": "data-classification",
+  "description": "Updated description for data classification",
+  "type": "list",
+  "parent": null,
+  "parent_name": null,
+  "status": "active",
+  "created_by": 1,
+  "created_by_name": "Admin User",
+  "created": "2024-01-15T10:00:00Z",
+  "last_updated": "2024-01-15T11:00:00Z",
+  "workspace": 1
+}
+```
+
+#### Update Dimension (Full Update)
+
+```http
+PUT /api/v1/dimensions/{dimension_id}/
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "name": "Data Classification",
+  "description": "Updated description for data classification",
+  "type": "list",
+  "status": "active",
+  "parent": null
+}
+```
+
+**Response (200 OK):** Same format as PATCH response.
+
+#### Delete Dimension
+
+```http
+DELETE /api/v1/dimensions/{dimension_id}/
+Authorization: Bearer your-jwt-token
+```
+
+**Response (204 No Content):** Empty body
+
+**Warning**: Deleting a dimension will also delete all its dimension values and may affect rules that use it.
 
 ### 6. Dimension Values
 
@@ -635,12 +1383,14 @@ Manage data fields for platforms. Fields are global resources shared across all 
 
 ```http
 GET /api/v1/fields/
+Authorization: Bearer your-jwt-token
 ```
 
 **Query Parameters:**
 
 - `platform`: Filter by platform ID
 - `field_level`: Filter by hierarchy level (1, 2, 3, etc.)
+- `search`: Search by field name
 
 **Response:**
 
@@ -660,10 +1410,140 @@ GET /api/v1/fields/
       "created_by_name": null,
       "created": "2024-01-01T00:00:00Z",
       "last_updated": "2024-01-01T00:00:00Z"
+    },
+    {
+      "id": 2,
+      "name": "Schema",
+      "field_level": 2,
+      "platform": 1,
+      "platform_name": "Snowflake",
+      "next_field": 3,
+      "next_field_name": "Table",
+      "created_by": 1,
+      "created_by_name": "Admin User",
+      "created": "2024-01-01T00:00:00Z",
+      "last_updated": "2024-01-01T00:00:00Z"
     }
   ]
 }
 ```
+
+#### Get Field Details
+
+```http
+GET /api/v1/fields/{field_id}/
+Authorization: Bearer your-jwt-token
+```
+
+**Response:**
+
+```json
+{
+  "id": 1,
+  "name": "Database",
+  "field_level": 1,
+  "platform": 1,
+  "platform_name": "Snowflake",
+  "next_field": 2,
+  "next_field_name": "Schema",
+  "created_by": null,
+  "created_by_name": null,
+  "created": "2024-01-01T00:00:00Z",
+  "last_updated": "2024-01-01T00:00:00Z"
+}
+```
+
+#### Create Field
+
+```http
+POST /api/v1/fields/
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "name": "Table",
+  "field_level": 3,
+  "platform": 1,
+  "next_field": null
+}
+```
+
+**Response (201 Created):**
+
+```json
+{
+  "id": 3,
+  "name": "Table",
+  "field_level": 3,
+  "platform": 1,
+  "platform_name": "Snowflake",
+  "next_field": null,
+  "next_field_name": null,
+  "created_by": 1,
+  "created_by_name": "Admin User",
+  "created": "2024-01-15T10:00:00Z",
+  "last_updated": "2024-01-15T10:00:00Z"
+}
+```
+
+#### Update Field (Partial Update)
+
+```http
+PATCH /api/v1/fields/{field_id}/
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "name": "Data Table",
+  "next_field": 4
+}
+```
+
+**Response (200 OK):**
+
+```json
+{
+  "id": 3,
+  "name": "Data Table",
+  "field_level": 3,
+  "platform": 1,
+  "platform_name": "Snowflake",
+  "next_field": 4,
+  "next_field_name": "Column",
+  "created_by": 1,
+  "created_by_name": "Admin User",
+  "created": "2024-01-15T10:00:00Z",
+  "last_updated": "2024-01-15T11:00:00Z"
+}
+```
+
+#### Update Field (Full Update)
+
+```http
+PUT /api/v1/fields/{field_id}/
+Authorization: Bearer your-jwt-token
+Content-Type: application/json
+
+{
+  "name": "Data Table",
+  "field_level": 3,
+  "platform": 1,
+  "next_field": null
+}
+```
+
+**Response (200 OK):** Same format as PATCH response.
+
+#### Delete Field
+
+```http
+DELETE /api/v1/fields/{field_id}/
+Authorization: Bearer your-jwt-token
+```
+
+**Response (204 No Content):** Empty body
+
+**Warning**: Deleting a field may affect rules and naming conventions that depend on it.
 
 ### 7. Rules
 
@@ -1175,17 +2055,56 @@ When migrating between API versions, follow these best practices:
 
 ### Environment Variables
 
+#### Production Environment
+
 ```bash
 # Required
 DATABASE_URL=postgresql://user:pass@localhost/tux_db
 SECRET_KEY=your-secret-key
 ALLOWED_HOSTS=client1.yourdomain.com,client2.yourdomain.com
 
+# CORS Configuration (Production)
+CORS_ALLOWED_ORIGINS=https://client1.yourdomain.com,https://client2.yourdomain.com
+CSRF_TRUSTED_ORIGINS=https://client1.yourdomain.com,https://client2.yourdomain.com
+
 # Optional
 DEBUG=False
 CACHE_URL=redis://localhost:6379/1
-CORS_ALLOWED_ORIGINS=https://client1.yourdomain.com
 ```
+
+#### Development Environment
+
+```bash
+# Required for development
+SECRET_KEY=django-insecure-development-key-only
+ALLOWED_HOSTS=localhost,127.0.0.1
+
+# Development flags
+DEBUG=True
+
+# CORS automatically configured for:
+# - http://localhost:3000 (frontend)
+# - http://localhost:8000 (API)
+# - http://127.0.0.1:3000
+# - http://127.0.0.1:8000
+
+# Database (SQLite for development)
+# DATABASE_URL not required (uses sqlite3 by default)
+
+# Optional development settings
+AUTH_COOKIE_SECURE=False  # Allow non-HTTPS cookies
+```
+
+#### Development vs Production Differences
+
+| Setting                  | Development                                  | Production                   |
+| ------------------------ | -------------------------------------------- | ---------------------------- |
+| **CORS**                 | Allow all origins + specific localhost ports | Specific domain origins only |
+| **CSRF**                 | Non-secure cookies, JavaScript access        | Secure cookies, HTTP-only    |
+| **DEBUG**                | `True`                                       | `False`                      |
+| **Database**             | SQLite (file-based)                          | PostgreSQL (DATABASE_URL)    |
+| **Workspace Middleware** | Bypassed for localhost                       | Always active                |
+| **SSL/HTTPS**            | Not required                                 | Required (secure cookies)    |
 
 ### Database Migrations
 
@@ -1201,31 +2120,156 @@ python manage.py create_workspace "Client 1" --admin-email admin@client1.com
 
 ## Testing
 
-### Test Workspaces
+### Development Environment Testing
 
-Development environments include test workspaces:
+#### Localhost Testing (Recommended for Frontend Development)
 
-- `test1.localhost:8000` → Test Workspace 1
-- `test2.localhost:8000` → Test Workspace 2
-
-### Sample API Calls
+Test API endpoints directly via localhost without subdomain requirements:
 
 ```bash
-# Test authentication
-curl -H "Authorization: Token abc123" \
-     https://client1.yourdomain.com/api/v1/workspaces/
+# Test health endpoint (no auth required)
+curl http://localhost:8000/api/v1/health/
 
-# Test workspace isolation
-curl -H "Authorization: Token abc123" \
-     https://client1.yourdomain.com/api/v1/dimensions/
+# Test version endpoint (no auth required)
+curl http://localhost:8000/api/v1/version/
 
-# Test API versioning
-curl -H "Authorization: Token abc123" \
-     https://client1.yourdomain.com/api/v1/version/
+# Test protected endpoint (auth required)
+curl -H "Authorization: Bearer your-jwt-token" \
+     http://localhost:8000/api/v1/workspaces/
 
-# Test health endpoint
-curl https://client1.yourdomain.com/api/v1/health/
+# Test CORS preflight request
+curl -X OPTIONS \
+     -H "Origin: http://localhost:3000" \
+     -H "Access-Control-Request-Method: GET" \
+     -H "Access-Control-Request-Headers: authorization,content-type" \
+     http://localhost:8000/api/v1/workspaces/
 ```
+
+#### Frontend Integration Testing
+
+Test CORS and frontend connectivity from your frontend application:
+
+```javascript
+// Test health endpoint connectivity
+async function testHealth() {
+  try {
+    const response = await fetch("http://localhost:8000/api/v1/health/");
+    const data = await response.json();
+    console.log("Health check:", data.status);
+  } catch (error) {
+    console.error("Network error:", error.message);
+  }
+}
+
+// Test authenticated endpoint
+async function testAuth() {
+  try {
+    const response = await fetch("http://localhost:8000/api/v1/workspaces/", {
+      headers: {
+        Authorization: "Bearer your-jwt-token",
+        "Content-Type": "application/json",
+      },
+    });
+
+    if (response.status === 401) {
+      console.log("Endpoint accessible, authentication required");
+    } else if (response.ok) {
+      console.log("Authenticated request successful");
+    }
+  } catch (error) {
+    console.error("Network/CORS error:", error.message);
+  }
+}
+```
+
+### Workspace Access Testing
+
+#### Testing Multi-Workspace Access
+
+Test workspace access and filtering with user authentication:
+
+```bash
+# Test workspace listing (shows user's accessible workspaces)
+curl -H "Authorization: Bearer your-jwt-token" \
+     http://localhost:8000/api/v1/workspaces/
+
+# Test workspace-filtered data (dimensions, rules, etc.)
+curl -H "Authorization: Bearer your-jwt-token" \
+     http://localhost:8000/api/v1/dimensions/
+
+# Test user workspace assignments
+curl -H "Authorization: Bearer your-jwt-token" \
+     http://localhost:8000/api/v1/workspace-users/
+```
+
+#### Legacy Subdomain Testing (Optional)
+
+For testing legacy subdomain-based workspace detection:
+
+```bash
+# Test subdomain-based workspace detection (if enabled)
+curl -H "Authorization: Bearer abc123" \
+     http://client1.localhost:8000/api/v1/workspaces/
+
+curl -H "Authorization: Bearer abc123" \
+     http://client2.localhost:8000/api/v1/workspaces/
+```
+
+#### Test Workspaces
+
+Development environments support flexible workspace testing:
+
+- **Direct API Access**: `localhost:8000` - Access via user authentication
+- **Legacy Subdomain** (Optional): `client1.localhost:8000` - Subdomain-based access
+- **Admin Panel**: `localhost:8000/admin/` - Full workspace management
+
+### CORS Testing
+
+Verify CORS configuration is working properly:
+
+```bash
+# Test CORS headers in response
+curl -H "Origin: http://localhost:3000" \
+     http://localhost:8000/api/v1/health/ -I
+
+# Expected CORS headers in response:
+# access-control-allow-origin: http://localhost:3000
+# access-control-allow-credentials: true
+# access-control-allow-methods: DELETE, GET, OPTIONS, PATCH, POST, PUT
+```
+
+### Common Testing Scenarios
+
+#### ✅ Expected Behaviors
+
+1. **Health/Version endpoints**: Return 200 OK with JSON data
+2. **Protected endpoints without auth**: Return 401 Unauthorized
+3. **CORS preflight requests**: Return 200 OK with proper headers
+4. **Frontend requests**: No network errors, proper HTTP status codes
+
+#### ❌ Troubleshooting Issues
+
+1. **"Network error - API server may be unreachable"**
+
+   - Check CORS configuration
+   - Verify frontend is on `localhost:3000`
+   - Use primary API endpoint: `localhost:8000/api/v1/`
+
+2. **404 Not Found**
+
+   - Check API URL path (`/api/v1/endpoint/`)
+   - Verify endpoint exists in documentation
+
+3. **403 Forbidden**
+
+   - Check workspace access permissions
+   - Verify user has proper workspace assignments
+   - Ensure user has required role (admin/user/viewer) for the operation
+
+4. **Empty Results**
+   - User may not have access to any workspaces
+   - Check user's workspace assignments via `/api/v1/workspace-users/`
+   - Verify workspaces are active
 
 ## Support & Contact
 
@@ -1235,8 +2279,12 @@ curl https://client1.yourdomain.com/api/v1/health/
 
 ---
 
-_Last Updated: 2024-01-01_
+_Last Updated: 2025-06-08_
 _API Version: 1.0_
+_Workspace Access: Flexible (No Subdomain Requirement)_
+_CORS Configuration: Updated_
+_Development Setup: Enhanced_
+_CRUD Examples: Complete (GET, POST, PUT, PATCH, DELETE)_
 
 #### 3. Create Rule
 

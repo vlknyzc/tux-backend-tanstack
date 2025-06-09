@@ -20,27 +20,106 @@ class RuleNestedSerializer(serializers.ModelSerializer):
         source='platform.slug', read_only=True)
     rule_details = RuleDetailCreateSerializer(many=True, write_only=True)
     description = serializers.CharField(allow_blank=True, required=False)
+    workspace_name = serializers.SerializerMethodField()
+    workspace_id = serializers.SerializerMethodField()
+    workspace = serializers.IntegerField(
+        write_only=True, required=False, allow_null=True)
+
+    def validate_workspace(self, value):
+        """Validate workspace field"""
+        if value is not None:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user'):
+                # Check workspace access permissions
+                try:
+                    workspace = models.Workspace.objects.get(id=value)
+                    # Check if user has access to this workspace
+                    if not request.user.is_superuser and not request.user.has_workspace_access(value):
+                        raise serializers.ValidationError(
+                            f"Access denied to workspace {value}")
+                    return workspace  # Return workspace object for access later
+                except models.Workspace.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"Workspace {value} does not exist")
+            else:
+                # No request context - allow during testing
+                try:
+                    workspace = models.Workspace.objects.get(id=value)
+                    return workspace  # Return workspace object for access later
+                except models.Workspace.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"Workspace {value} does not exist")
+        return value
 
     class Meta:
         model = models.Rule
         fields = ['id', 'name', 'description', 'status', 'platform',
-                  'platform_name', 'platform_slug', 'field_details', 'rule_details']
+                  'platform_name', 'platform_slug', 'field_details', 'rule_details',
+                  'workspace', 'workspace_id', 'workspace_name']
 
     def create(self, validated_data):
         rule_details_data = validated_data.pop('rule_details')
-        platform_data = validated_data.pop('platform')
+        platform_data = validated_data.pop(
+            'platform')  # This is a dict {'id': 1}
+        # Remove workspace from validated_data - this is a Workspace object from validation
+        workspace = validated_data.pop('workspace')
 
-        # Create the Rule instance
+        # Extract platform ID from the dictionary
+        platform_id = platform_data['id'] if isinstance(
+            platform_data, dict) else platform_data
+
+        # Create the Rule instance - explicitly set workspace and platform
         rule = models.Rule.objects.create(
-            platform_id=platform_data['id'],
-            **validated_data
+            platform_id=platform_id,
+            workspace=workspace,  # Pass the workspace object directly
+            **validated_data  # Now workspace is already removed
         )
 
-        # Create RuleDetail instances
+        # Create RuleDetail instances with the same workspace
         for detail_data in rule_details_data:
-            models.RuleDetail.objects.create(rule=rule, **detail_data)
+            models.RuleDetail.objects.create(
+                rule=rule,
+                workspace=workspace,  # Pass the workspace object directly
+                **detail_data
+            )
 
         return rule
+
+    def update(self, instance, validated_data):
+        rule_details_data = validated_data.pop('rule_details', [])
+        platform_data = validated_data.pop('platform', None)
+        workspace = validated_data.pop('workspace', None)
+
+        # Update rule instance fields
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+
+        # Handle platform update
+        if platform_data:
+            platform_id = platform_data['id'] if isinstance(
+                platform_data, dict) else platform_data
+            instance.platform_id = platform_id
+
+        # Handle workspace update
+        if workspace:
+            instance.workspace = workspace
+
+        instance.save()
+
+        # Handle rule_details update
+        if rule_details_data:
+            # Delete existing rule details
+            instance.rule_details.all().delete()
+
+            # Create new rule details
+            for detail_data in rule_details_data:
+                models.RuleDetail.objects.create(
+                    rule=instance,
+                    workspace=workspace or instance.workspace,
+                    **detail_data
+                )
+
+        return instance
 
     def get_field_details(self, obj):
         # Get all rule details for this rule
@@ -104,3 +183,13 @@ class RuleNestedSerializer(serializers.ModelSerializer):
 
         # Convert dictionary to list
         return list(grouped_details.values())
+
+    def get_workspace_name(self, obj):
+        if obj.workspace:
+            return obj.workspace.name
+        return None
+
+    def get_workspace_id(self, obj):
+        if obj.workspace:
+            return obj.workspace.id
+        return None

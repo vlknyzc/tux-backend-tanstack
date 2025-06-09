@@ -126,8 +126,16 @@ AUTH_PASSWORD_VALIDATORS = [
 DEFAULT_AUTO_FIELD = 'django.db.models.AutoField'
 
 
-# Disable CSRF for development
-
+# CSRF settings for development
+CSRF_TRUSTED_ORIGINS = [
+    "http://localhost:3000",
+    "http://127.0.0.1:3000",
+    "http://localhost:8000",
+    "http://127.0.0.1:8000",
+]
+CSRF_COOKIE_SECURE = False  # Allow non-HTTPS in development
+CSRF_COOKIE_HTTPONLY = False  # Allow JavaScript access for CSRF token
+CSRF_COOKIE_SAMESITE = 'Lax'  # More permissive for development
 
 # Custom user model
 # AUTH_USER_MODEL = 'users.NewUser'

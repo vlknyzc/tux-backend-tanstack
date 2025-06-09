@@ -254,10 +254,10 @@ class String(TimeStampModel, WorkspaceMixin):
         current = self
 
         while current:
-            path.insert(0, current.value)
+            path.insert(0, current)
             current = current.parent
 
-        return " > ".join(path)
+        return path
 
     def get_child_strings(self):
         """Get all direct child strings."""

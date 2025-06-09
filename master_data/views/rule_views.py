@@ -17,6 +17,7 @@ class RuleFilter(filters.FilterSet):
     field = filters.NumberFilter(method='filter_field_id')
     status = filters.CharFilter()
     is_default = filters.BooleanFilter()
+    workspace_id = filters.NumberFilter(field_name='workspace__id')
 
     class Meta:
         model = models.Rule
@@ -25,7 +26,8 @@ class RuleFilter(filters.FilterSet):
             'field',
             'platform',
             'status',
-            'is_default'
+            'is_default',
+            'workspace_id'
         ]
 
     def filter_platform_id(self, queryset, name, value):
@@ -44,6 +46,29 @@ class RuleViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get rules filtered by workspace context"""
+        # Check if workspace_id is explicitly provided in query params
+        workspace_id = self.request.query_params.get('workspace_id')
+
+        if workspace_id:
+            # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
+            try:
+                workspace_id = int(workspace_id)
+                # Validate user has access to this workspace (unless superuser)
+                if hasattr(self.request, 'user') and not self.request.user.is_superuser:
+                    if not self.request.user.has_workspace_access(workspace_id):
+                        # Return empty queryset for unauthorized access
+                        return models.Rule.objects.none()
+
+                # Return queryset filtered by the specified workspace
+                return models.Rule.objects.all_workspaces().filter(
+                    workspace_id=workspace_id
+                ).select_related('platform').prefetch_related('rule_details')
+
+            except (ValueError, TypeError):
+                # Invalid workspace_id parameter, return empty queryset
+                return models.Rule.objects.none()
+
+        # Default behavior when no workspace_id is specified
         # If user is superuser, they can see all workspaces
         if hasattr(self.request, 'user') and self.request.user.is_superuser:
             return models.Rule.objects.all_workspaces().select_related(
@@ -202,11 +227,12 @@ class RuleDetailFilter(filters.FilterSet):
     rule = filters.NumberFilter()
     dimension_order = filters.NumberFilter()
     is_required = filters.BooleanFilter()
+    workspace_id = filters.NumberFilter(field_name='workspace__id')
 
     class Meta:
         model = models.RuleDetail
-        fields = ['id', 'rule', 'dimension_order',
-                  'field', 'platform', 'is_required']
+        fields = ['id', 'rule', 'dimension_order', 'field',
+                  'platform', 'is_required', 'workspace_id']
 
 
 class RuleDetailViewSet(viewsets.ModelViewSet):
@@ -217,6 +243,29 @@ class RuleDetailViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get rule details filtered by workspace context"""
+        # Check if workspace_id is explicitly provided in query params
+        workspace_id = self.request.query_params.get('workspace_id')
+
+        if workspace_id:
+            # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
+            try:
+                workspace_id = int(workspace_id)
+                # Validate user has access to this workspace (unless superuser)
+                if hasattr(self.request, 'user') and not self.request.user.is_superuser:
+                    if not self.request.user.has_workspace_access(workspace_id):
+                        # Return empty queryset for unauthorized access
+                        return models.RuleDetail.objects.none()
+
+                # Return queryset filtered by the specified workspace
+                return models.RuleDetail.objects.all_workspaces().filter(
+                    workspace_id=workspace_id
+                ).select_related('rule', 'field', 'dimension', 'rule__platform')
+
+            except (ValueError, TypeError):
+                # Invalid workspace_id parameter, return empty queryset
+                return models.RuleDetail.objects.none()
+
+        # Default behavior when no workspace_id is specified
         # If user is superuser, they can see all workspaces
         if hasattr(self.request, 'user') and self.request.user.is_superuser:
             return models.RuleDetail.objects.all_workspaces().select_related(
@@ -282,7 +331,7 @@ class RuleDetailViewSet(viewsets.ModelViewSet):
 
 
 class RuleNestedViewSet(viewsets.ModelViewSet):
-    serializer_class = serializers.RuleNestedSerializer
+    serializer_class = serializers.RuleNestedLegacySerializer
     permission_classes = [permissions.AllowAny] if settings.DEBUG else [
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
@@ -290,6 +339,29 @@ class RuleNestedViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get rules with nested details filtered by workspace context"""
+        # Check if workspace_id is explicitly provided in query params
+        workspace_id = self.request.query_params.get('workspace_id')
+
+        if workspace_id:
+            # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
+            try:
+                workspace_id = int(workspace_id)
+                # Validate user has access to this workspace (unless superuser)
+                if hasattr(self.request, 'user') and not self.request.user.is_superuser:
+                    if not self.request.user.has_workspace_access(workspace_id):
+                        # Return empty queryset for unauthorized access
+                        return models.Rule.objects.none()
+
+                # Return queryset filtered by the specified workspace
+                return models.Rule.objects.all_workspaces().filter(
+                    workspace_id=workspace_id
+                ).prefetch_related('rule_details__field', 'rule_details__dimension')
+
+            except (ValueError, TypeError):
+                # Invalid workspace_id parameter, return empty queryset
+                return models.Rule.objects.none()
+
+        # Default behavior when no workspace_id is specified
         # If user is superuser, they can see all workspaces
         if hasattr(self.request, 'user') and self.request.user.is_superuser:
             return models.Rule.objects.all_workspaces().prefetch_related(
@@ -300,20 +372,12 @@ class RuleNestedViewSet(viewsets.ModelViewSet):
             'rule_details__field', 'rule_details__dimension')
 
     def perform_create(self, serializer):
-        """Set created_by and workspace when creating a new rule"""
-        workspace_id = getattr(self.request, 'workspace_id', None)
-        if not workspace_id:
-            raise PermissionDenied("No workspace context available")
-
-        # Validate user has access to this workspace
-        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
-            raise PermissionDenied("Access denied to this workspace")
-
+        """Set created_by when creating a new rule"""
         kwargs = {}
         if self.request.user.is_authenticated:
             kwargs['created_by'] = self.request.user
 
-        # Workspace is auto-set by WorkspaceMixin.save()
+        # Let the serializer handle workspace validation and creation
         serializer.save(**kwargs)
 
     @action(detail=True, methods=['post'])

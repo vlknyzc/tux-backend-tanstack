@@ -19,11 +19,12 @@ class StringFilter(filters.FilterSet):
     rule_id = filters.NumberFilter(method='filter_rule_id')
     is_auto_generated = filters.BooleanFilter()
     has_conflicts = filters.BooleanFilter(method='filter_has_conflicts')
+    workspace_id = filters.NumberFilter(field_name='workspace__id')
 
     class Meta:
         model = models.String
         fields = ['id', 'field', 'parent',
-                  'field_level', 'rule_id', 'is_auto_generated']
+                  'field_level', 'rule_id', 'is_auto_generated', 'workspace_id']
 
     def filter_field_id(self, queryset, name, value):
         return queryset.filter(field__id=value)
@@ -52,6 +53,31 @@ class StringViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get strings filtered by workspace context"""
+        # Check if workspace_id is explicitly provided in query params
+        workspace_id = self.request.query_params.get('workspace_id')
+
+        if workspace_id:
+            # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
+            try:
+                workspace_id = int(workspace_id)
+                # Validate user has access to this workspace (unless superuser)
+                if hasattr(self.request, 'user') and not self.request.user.is_superuser:
+                    if not self.request.user.has_workspace_access(workspace_id):
+                        # Return empty queryset for unauthorized access
+                        return models.String.objects.none()
+
+                # Return queryset filtered by the specified workspace
+                return models.String.objects.all_workspaces().filter(
+                    workspace_id=workspace_id
+                ).select_related(
+                    'field', 'submission', 'rule', 'field__platform'
+                ).prefetch_related('string_details__dimension', 'string_details__dimension_value')
+
+            except (ValueError, TypeError):
+                # Invalid workspace_id parameter, return empty queryset
+                return models.String.objects.none()
+
+        # Default behavior when no workspace_id is specified
         # If user is superuser, they can see all workspaces
         if hasattr(self.request, 'user') and self.request.user.is_superuser:
             return models.String.objects.all_workspaces().select_related(
@@ -299,11 +325,12 @@ class StringDetailFilter(filters.FilterSet):
     string = filters.NumberFilter(method='filter_string_id')
     dimension = filters.NumberFilter(method='filter_dimension_id')
     dimension_type = filters.CharFilter(method='filter_dimension_type')
+    workspace_id = filters.NumberFilter(field_name='workspace__id')
 
     class Meta:
         model = models.StringDetail
-        fields = ['id', 'string', 'dimension',
-                  'dimension_value', 'dimension_value_freetext']
+        fields = ['id', 'string', 'dimension', 'dimension_value',
+                  'dimension_value_freetext', 'workspace_id']
 
     def filter_string_id(self, queryset, name, value):
         return queryset.filter(string__id=value)
@@ -324,6 +351,31 @@ class StringDetailViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get string details filtered by workspace context"""
+        # Check if workspace_id is explicitly provided in query params
+        workspace_id = self.request.query_params.get('workspace_id')
+
+        if workspace_id:
+            # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
+            try:
+                workspace_id = int(workspace_id)
+                # Validate user has access to this workspace (unless superuser)
+                if hasattr(self.request, 'user') and not self.request.user.is_superuser:
+                    if not self.request.user.has_workspace_access(workspace_id):
+                        # Return empty queryset for unauthorized access
+                        return models.StringDetail.objects.none()
+
+                # Return queryset filtered by the specified workspace
+                return models.StringDetail.objects.all_workspaces().filter(
+                    workspace_id=workspace_id
+                ).select_related(
+                    'string', 'dimension', 'dimension_value'
+                )
+
+            except (ValueError, TypeError):
+                # Invalid workspace_id parameter, return empty queryset
+                return models.StringDetail.objects.none()
+
+        # Default behavior when no workspace_id is specified
         # If user is superuser, they can see all workspaces
         if hasattr(self.request, 'user') and self.request.user.is_superuser:
             return models.StringDetail.objects.all_workspaces().select_related(
