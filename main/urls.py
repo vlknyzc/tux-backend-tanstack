@@ -41,7 +41,7 @@ urlpatterns = [
             TokenRefreshView.as_view(), name="token_refresh"),
 
     # Legacy non-versioned endpoints (for backward compatibility)
-    path('api/', include('master_data.urls')),
+    # path('api/', include('master_data.urls')),
     path('api/', include('djoser.urls')),
     path('api/', include('users.urls')),
     path("api/token/", TokenObtainPairView.as_view(),

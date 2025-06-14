@@ -6,28 +6,6 @@ class DimensionSerializer(serializers.ModelSerializer):
     parent_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     workspace_name = serializers.SerializerMethodField()
-    workspace_id = serializers.SerializerMethodField()
-    workspace = serializers.IntegerField(
-        write_only=True, required=False, allow_null=True)
-
-    def validate_workspace(self, value):
-        """Validate workspace field"""
-        if value is not None:
-            request = self.context.get('request')
-            if request and hasattr(request, 'user'):
-                try:
-                    workspace = models.Workspace.objects.get(id=value)
-                    # Check if user has access to this workspace
-                    if not request.user.is_superuser and not request.user.has_workspace_access(value):
-                        raise serializers.ValidationError(
-                            f"Access denied to workspace {value}")
-                    return workspace
-                except models.Workspace.DoesNotExist:
-                    raise serializers.ValidationError(
-                        f"Workspace {value} does not exist")
-            else:
-                raise serializers.ValidationError("Authentication required")
-        return value
 
     class Meta:
         model = models.Dimension
@@ -41,13 +19,17 @@ class DimensionSerializer(serializers.ModelSerializer):
             "parent_name",
             "status",
             "workspace",
-            "workspace_id",
             "workspace_name",
             "created_by",
             "created_by_name",
             "created",
             "last_updated",
         ]
+
+        extra_kwargs = {
+            'type': {'required': True, 'allow_null': False},
+            'workspace': {'required': True, 'allow_null': False, "help_text": "ID of the workspace this dimension belongs to"},
+        }
 
     def get_parent_name(self, obj):
         if obj.parent_id:
@@ -66,11 +48,6 @@ class DimensionSerializer(serializers.ModelSerializer):
             return obj.workspace.name
         return None
 
-    def get_workspace_id(self, obj):
-        if obj.workspace:
-            return obj.workspace.id
-        return None
-
 
 class DimensionValueSerializer(serializers.ModelSerializer):
     dimension_name = serializers.SerializerMethodField()
@@ -80,28 +57,6 @@ class DimensionValueSerializer(serializers.ModelSerializer):
     dimension_parent = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     workspace_name = serializers.SerializerMethodField()
-    workspace_id = serializers.SerializerMethodField()
-    workspace = serializers.IntegerField(
-        write_only=True, required=False, allow_null=True)
-
-    def validate_workspace(self, value):
-        """Validate workspace field"""
-        if value is not None:
-            request = self.context.get('request')
-            if request and hasattr(request, 'user'):
-                try:
-                    workspace = models.Workspace.objects.get(id=value)
-                    # Check if user has access to this workspace
-                    if not request.user.is_superuser and not request.user.has_workspace_access(value):
-                        raise serializers.ValidationError(
-                            f"Access denied to workspace {value}")
-                    return workspace
-                except models.Workspace.DoesNotExist:
-                    raise serializers.ValidationError(
-                        f"Workspace {value} does not exist")
-            else:
-                raise serializers.ValidationError("Authentication required")
-        return value
 
     class Meta:
         model = models.DimensionValue
@@ -121,13 +76,21 @@ class DimensionValueSerializer(serializers.ModelSerializer):
             "parent_name",
             "parent_value",
             "workspace",
-            "workspace_id",
             "workspace_name",
             "created_by",
             "created_by_name",
             "created",
             "last_updated",
         ]
+
+    def validate_dimension_id(self, value):
+        if value is not None:
+            try:
+                models.Dimension.objects.get(id=value)
+            except models.Dimension.DoesNotExist:
+                raise serializers.ValidationError(
+                    "Dimension with this ID does not exist")
+        return value
 
     def get_dimension_parent(self, obj):
         if obj.dimension.parent_id:
@@ -168,11 +131,6 @@ class DimensionValueSerializer(serializers.ModelSerializer):
     def get_workspace_name(self, obj):
         if obj.workspace:
             return obj.workspace.name
-        return None
-
-    def get_workspace_id(self, obj):
-        if obj.workspace:
-            return obj.workspace.id
         return None
 
 

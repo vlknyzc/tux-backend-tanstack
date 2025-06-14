@@ -2,9 +2,11 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.exceptions import PermissionDenied, NotFound
-from django_filters.rest_framework import DjangoFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Count, Prefetch
+from rest_framework.schemas.coreapi import AutoSchema
+import coreapi
 
 from .models import WorkspaceUser
 from .serializers import (
@@ -13,6 +15,17 @@ from .serializers import (
 )
 
 User = get_user_model()
+
+
+class WorkspaceUserFilter(FilterSet):
+    class Meta:
+        model = WorkspaceUser
+        fields = {
+            'workspace': ['exact'],
+            'user': ['exact'],
+            'role': ['exact'],
+            'is_active': ['exact']
+        }
 
 
 class UserManagementViewSet(viewsets.ModelViewSet):
@@ -177,10 +190,64 @@ class WorkspaceUserManagementViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing workspace-user relationships.
     Allows assigning/removing users from workspaces and managing roles.
+
+    list:
+        Return a list of workspace-user relationships.
+
+    create:
+        Create a new workspace-user relationship.
+
+    retrieve:
+        Return the given workspace-user relationship.
+
+    update:
+        Update the given workspace-user relationship.
+
+    partial_update:
+        Update part of the given workspace-user relationship.
+
+    destroy:
+        Delete the given workspace-user relationship.
     """
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['workspace', 'user', 'role', 'is_active']
+    schema = AutoSchema()
+
+    def get_schema_fields(self, view):
+        """
+        Add custom schema fields for filtering and actions.
+        """
+        fields = super().get_schema_fields(view)
+        fields.append(coreapi.Field(
+            name='workspace',
+            location='query',
+            required=False,
+            type='integer',
+            description='Filter by workspace ID'
+        ))
+        fields.append(coreapi.Field(
+            name='user',
+            location='query',
+            required=False,
+            type='integer',
+            description='Filter by user ID'
+        ))
+        fields.append(coreapi.Field(
+            name='role',
+            location='query',
+            required=False,
+            type='string',
+            description='Filter by role (admin, user, viewer)'
+        ))
+        fields.append(coreapi.Field(
+            name='is_active',
+            location='query',
+            required=False,
+            type='boolean',
+            description='Filter by active status'
+        ))
+        return fields
 
     def get_queryset(self):
         """Get workspace-user relationships based on permissions"""
@@ -272,7 +339,10 @@ class WorkspaceUserManagementViewSet(viewsets.ModelViewSet):
 
     @action(detail=False, methods=['post'])
     def bulk_assign(self, request):
-        """Bulk assign users to workspaces"""
+        """
+        Bulk assign users to workspaces.
+        Only available to superusers.
+        """
         if not request.user.is_superuser:
             raise PermissionDenied(
                 "Only superusers can perform bulk assignments")
@@ -329,9 +399,78 @@ class WorkspaceUserManagementViewSet(viewsets.ModelViewSet):
             'errors': errors
         })
 
+    def get_schema_operation_parameters(self, action):
+        """
+        Add custom schema parameters for actions.
+        """
+        parameters = super().get_schema_operation_parameters(action)
+
+        if action == 'bulk_assign':
+            parameters.extend([
+                coreapi.Field(
+                    name='user_ids',
+                    location='form',
+                    required=True,
+                    type='array',
+                    description='List of user IDs to assign'
+                ),
+                coreapi.Field(
+                    name='workspace_ids',
+                    location='form',
+                    required=True,
+                    type='array',
+                    description='List of workspace IDs to assign users to'
+                ),
+                coreapi.Field(
+                    name='role',
+                    location='form',
+                    required=False,
+                    type='string',
+                    description='Role to assign (admin, user, viewer). Defaults to user.'
+                )
+            ])
+
+        return parameters
+
     @action(detail=False, methods=['get'])
     def workspace_summary(self, request):
-        """Get summary of all workspace assignments"""
+        """
+        Get summary of all workspace assignments.
+
+        get:
+            Returns a summary of user assignments grouped by workspace,
+            including counts of total users, active users, and users by role.
+
+        responses:
+            200:
+                description: Successfully retrieved workspace summary
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                workspace_summaries:
+                                    type: array
+                                    items:
+                                        type: object
+                                        properties:
+                                            workspace__id:
+                                                type: integer
+                                            workspace__name:
+                                                type: string
+                                            total_users:
+                                                type: integer
+                                            active_users:
+                                                type: integer
+                                            admin_count:
+                                                type: integer
+                                            user_count:
+                                                type: integer
+                                            viewer_count:
+                                                type: integer
+                                total_workspaces:
+                                    type: integer
+        """
         user = request.user
 
         if user.is_superuser:
