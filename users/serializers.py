@@ -9,8 +9,6 @@ class WorkspaceUserSerializer(serializers.ModelSerializer):
     """Serializer for WorkspaceUser relationships"""
     workspace_name = serializers.CharField(
         source='workspace.name', read_only=True)
-    workspace_id = serializers.IntegerField(
-        source='workspace.id', read_only=True)
     user_email = serializers.CharField(source='user.email', read_only=True)
     user_name = serializers.CharField(
         source='user.get_full_name', read_only=True)
@@ -19,7 +17,7 @@ class WorkspaceUserSerializer(serializers.ModelSerializer):
         model = WorkspaceUser
         fields = [
             'id', 'user', 'user_email', 'user_name',
-            'workspace', 'workspace_id', 'workspace_name',
+            'workspace', 'workspace_name',
             'role', 'is_active', 'created', 'updated'
         ]
         read_only_fields = ['id', 'created', 'updated']

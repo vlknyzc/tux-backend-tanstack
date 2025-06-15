@@ -4,6 +4,8 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 
+from typing import Optional, Dict, List, Any
+
 from .. import serializers
 from .. import models
 
@@ -32,7 +34,7 @@ class WorkspaceViewSet(viewsets.ModelViewSet):
             # Regular users can only see workspaces they're assigned to
             return user.get_accessible_workspaces()
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer: serializers.WorkspaceSerializer):
         """Set created_by when creating a new workspace"""
         if not self.request.user.is_superuser:
             raise PermissionDenied("Only superusers can create workspaces")
@@ -54,7 +56,7 @@ class PlatformViewSet(viewsets.ModelViewSet):
         """Get all platforms - they are global and not workspace-specific"""
         return models.Platform.objects.all()
 
-    def perform_create(self, serializer):
+    def perform_create(self, serializer: serializers.PlatformSerializer) -> None:
         """Set created_by when creating a new platform"""
         kwargs = {}
         if self.request.user.is_authenticated:

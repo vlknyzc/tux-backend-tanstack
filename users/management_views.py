@@ -137,7 +137,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
             workspaces = Workspace.objects.all()
             for workspace in workspaces:
                 authorizations.append({
-                    'workspace_id': workspace.id,
+                    'workspace': workspace.id,
                     'workspace_name': workspace.name,
                     'role': 'superuser',
                     'is_active': True,
@@ -158,7 +158,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
                     permissions_list = ['read']
 
                 authorizations.append({
-                    'workspace_id': wu.workspace.id,
+                    'workspace': wu.workspace.id,
                     'workspace_name': wu.workspace.name,
                     'role': wu.role,
                     'is_active': wu.is_active,
@@ -167,7 +167,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
                 })
 
         summary_data = {
-            'user_id': user.id,
+            'user': user.id,
             'email': user.email,
             'full_name': user.get_full_name(),
             'is_superuser': user.is_superuser,
@@ -365,14 +365,14 @@ class WorkspaceUserManagementViewSet(viewsets.ModelViewSet):
             for workspace_id in workspace_ids:
                 try:
                     workspace_user, created = WorkspaceUser.objects.get_or_create(
-                        user_id=user_id,
-                        workspace_id=workspace_id,
+                        user=user_id,
+                        workspace=workspace_id,
                         defaults={'role': role, 'is_active': True}
                     )
                     if created:
                         created_assignments.append({
-                            'user_id': user_id,
-                            'workspace_id': workspace_id,
+                            'user': user_id,
+                            'workspace': workspace_id,
                             'role': role
                         })
                     else:
@@ -381,15 +381,15 @@ class WorkspaceUserManagementViewSet(viewsets.ModelViewSet):
                         workspace_user.is_active = True
                         workspace_user.save()
                         created_assignments.append({
-                            'user_id': user_id,
-                            'workspace_id': workspace_id,
+                            'user': user_id,
+                            'workspace': workspace_id,
                             'role': role,
                             'updated': True
                         })
                 except Exception as e:
                     errors.append({
-                        'user_id': user_id,
-                        'workspace_id': workspace_id,
+                        'user': user_id,
+                        'workspace': workspace_id,
                         'error': str(e)
                     })
 
@@ -484,7 +484,7 @@ class WorkspaceUserManagementViewSet(viewsets.ModelViewSet):
         # Group by workspace
         from django.db.models import Count
         summary = workspace_users.select_related('workspace').values(
-            'workspace__id', 'workspace__name'
+            'workspace', 'workspace__name'
         ).annotate(
             total_users=Count('user', distinct=True),
             active_users=Count('user', filter=Q(

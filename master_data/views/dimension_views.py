@@ -40,13 +40,13 @@ class WorkspaceMixin:
 # ─── DIMENSIONS ─────────────────────────────────────────────────────────────────
 #
 
-# class DimensionFilter(filters.FilterSet):
-#     # exposes `?workspace=` → filters on workspace_id
-#     workspace = filters.NumberFilter(field_name='workspace__id')
+class DimensionFilter(filters.FilterSet):
+    dimension = filters.NumberFilter(field_name='dimension__id')
+    workspace = filters.NumberFilter(field_name='workspace__id')
 
-#     class Meta:
-#         model = models.Dimension
-#         fields = ['id', 'type', 'status', 'workspace']
+    class Meta:
+        model = models.Dimension
+        fields = ['id', 'type', 'status', 'workspace', 'dimension']
 
 
 class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
@@ -58,8 +58,8 @@ class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny] if settings.DEBUG else [
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    # filterset_class = DimensionFilter
-    filterset_fields = ['id', 'type', 'status', 'workspace__id']
+    filterset_class = DimensionFilter
+    # filterset_fields = ['id', 'type', 'status', 'workspace__id']
 
     def get_queryset(self):
         wid = self.get_workspace_id()
@@ -192,13 +192,13 @@ class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
 # ─── DIMENSION VALUES ────────────────────────────────────────────────────────────
 #
 
-# class DimensionValueFilter(filters.FilterSet):
-#     dimension = filters.NumberFilter(field_name='dimension__id')
-#     workspace = filters.NumberFilter(field_name='workspace__id')
+class DimensionValueFilter(filters.FilterSet):
+    dimension = filters.NumberFilter(field_name='dimension__id')
+    workspace = filters.NumberFilter(field_name='workspace__id')
 
-#     class Meta:
-#         model = models.DimensionValue
-#         fields = ['id', 'dimension', 'workspace']
+    class Meta:
+        model = models.DimensionValue
+        fields = ['id', 'dimension', 'workspace', 'value']
 
 
 class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
@@ -210,8 +210,8 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     permission_classes = [permissions.AllowAny] if settings.DEBUG else [
         permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
-    # filterset_class = DimensionValueFilter
-    filterset_fields = ['id', 'dimension__id', 'workspace__id']
+    filterset_class = DimensionValueFilter
+    # filterset_fields = ['id', 'dimension__id', 'workspace__id']
 
     def get_queryset(self):
         wid = self.get_workspace_id()
