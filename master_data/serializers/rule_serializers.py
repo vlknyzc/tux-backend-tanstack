@@ -21,7 +21,7 @@ class DimensionDefinitionSerializer(serializers.Serializer):
 
     # Constraint metadata
     has_parent_constraint = serializers.BooleanField()
-    parent_dimension_id = serializers.IntegerField(allow_null=True)
+    parent_dimension = serializers.IntegerField(allow_null=True)
     parent_dimension_name = serializers.CharField(allow_null=True)
 
     # Order and positioning
@@ -49,16 +49,16 @@ class DimensionValueSerializer(serializers.Serializer):
     has_parent = serializers.BooleanField()
 
     # Flattened parent fields for easier access
-    parent_id = serializers.IntegerField(allow_null=True)
+    parent = serializers.IntegerField(allow_null=True)
     parent_value = serializers.CharField(allow_null=True)
     parent_label = serializers.CharField(allow_null=True)
-    parent_dimension_id = serializers.IntegerField(allow_null=True)
+    parent_dimension = serializers.IntegerField(allow_null=True)
     parent_dimension_name = serializers.CharField(allow_null=True)
 
 
 class DimensionReferenceSerializer(serializers.Serializer):
     """Minimal dimension reference for field templates"""
-    dimension_id = serializers.IntegerField()
+    dimension = serializers.IntegerField()
     dimension_order = serializers.IntegerField()
     is_required = serializers.BooleanField()
     is_inherited = serializers.BooleanField()
@@ -73,10 +73,10 @@ class DimensionReferenceSerializer(serializers.Serializer):
 
 class OptimizedFieldTemplateSerializer(serializers.Serializer):
     """Optimized field template with minimal data and ID references"""
-    field_id = serializers.IntegerField()
+    field = serializers.IntegerField()
     field_name = serializers.CharField()
     field_level = serializers.IntegerField()
-    next_field_id = serializers.IntegerField(allow_null=True)
+    next_field = serializers.IntegerField(allow_null=True)
     can_generate = serializers.BooleanField()
 
     # Dimension references (not full data)
@@ -92,7 +92,7 @@ class OptimizedFieldTemplateSerializer(serializers.Serializer):
 
 class InheritanceLookupSerializer(serializers.Serializer):
     """Simplified inheritance lookup table"""
-    dimension_id = serializers.IntegerField()
+    dimension = serializers.IntegerField()
     field_level_inherited_from = serializers.IntegerField(allow_null=True)
     inherits_formatting = serializers.BooleanField()
     inheritance_chain = serializers.ListField(child=serializers.IntegerField())
@@ -130,7 +130,7 @@ class OptimizedDimensionDefinitionSerializer(serializers.Serializer):
 
     # Constraint metadata
     has_parent_constraint = serializers.BooleanField()
-    parent_dimension_id = serializers.IntegerField(allow_null=True)
+    parent_dimension = serializers.IntegerField(allow_null=True)
     parent_dimension_name = serializers.CharField(
         allow_null=True, allow_blank=True)
 
@@ -141,7 +141,7 @@ class OptimizedDimensionDefinitionSerializer(serializers.Serializer):
 
 class OptimizedDimensionCatalogSerializer(serializers.Serializer):
     """Centralized dimension catalog with all dimension data"""
-    rule_id = serializers.IntegerField()
+    rule = serializers.IntegerField()
     rule_name = serializers.CharField()
     rule_slug = serializers.CharField()
 
@@ -154,7 +154,7 @@ class OptimizedDimensionCatalogSerializer(serializers.Serializer):
     # All dimension values (centralized)
     dimension_values = serializers.DictField(
         child=DimensionValueSerializer(many=True),
-        help_text="All dimension values organized by dimension_id"
+        help_text="All dimension values organized by dimension"
     )
 
     # Constraint relationships
@@ -163,7 +163,7 @@ class OptimizedDimensionCatalogSerializer(serializers.Serializer):
     # Inheritance lookup table
     inheritance_lookup = serializers.DictField(
         child=InheritanceLookupSerializer(),
-        help_text="Inheritance rules by dimension_id"
+        help_text="Inheritance rules by dimension"
     )
 
     generated_at = serializers.CharField()
@@ -193,7 +193,7 @@ class GenerationMetadataSerializer(serializers.Serializer):
 class InheritanceInfoSerializer(serializers.Serializer):
     """Serializer for dimension inheritance information"""
     is_inherited = serializers.BooleanField()
-    parent_rule_detail_id = serializers.IntegerField(allow_null=True)
+    parent_rule_detail = serializers.IntegerField(allow_null=True)
     parent_field_level = serializers.IntegerField(allow_null=True)
     parent_field_name = serializers.CharField(allow_null=True)
     inherits_formatting = serializers.BooleanField()
@@ -201,8 +201,8 @@ class InheritanceInfoSerializer(serializers.Serializer):
 
 class FieldDimensionSerializer(serializers.Serializer):
     """Serializer for dimension information within a field template"""
-    rule_detail_id = serializers.IntegerField()
-    dimension_id = serializers.IntegerField()
+    rule_detail = serializers.IntegerField()
+    dimension = serializers.IntegerField()
     dimension_name = serializers.CharField()
     dimension_type = serializers.CharField()
     dimension_description = serializers.CharField(allow_blank=True)
@@ -216,7 +216,7 @@ class FieldDimensionSerializer(serializers.Serializer):
     effective_delimiter = serializers.CharField(allow_blank=True)
 
     # Parent-child relationships
-    parent_dimension_id = serializers.IntegerField(allow_null=True)
+    parent_dimension = serializers.IntegerField(allow_null=True)
     parent_dimension_name = serializers.CharField(allow_null=True)
 
     # Inheritance information
@@ -235,10 +235,10 @@ class FieldDimensionSerializer(serializers.Serializer):
 
 class FieldTemplateSerializer(serializers.Serializer):
     """Serializer for field templates"""
-    field_id = serializers.IntegerField()
+    field = serializers.IntegerField()
     field_name = serializers.CharField()
     field_level = serializers.IntegerField()
-    next_field_id = serializers.IntegerField(allow_null=True)
+    next_field = serializers.IntegerField(allow_null=True)
     next_field_name = serializers.CharField(allow_null=True, allow_blank=True)
     can_generate = serializers.BooleanField()
 
@@ -257,7 +257,7 @@ class FieldTemplateSerializer(serializers.Serializer):
 
 class CatalogDimensionSerializer(serializers.Serializer):
     """Simplified dimension serializer for catalog field templates"""
-    dimension_id = serializers.IntegerField()
+    dimension = serializers.IntegerField()
     dimension_name = serializers.CharField()
     dimension_type = serializers.CharField()
     dimension_order = serializers.IntegerField()
@@ -270,10 +270,10 @@ class CatalogDimensionSerializer(serializers.Serializer):
 
 class CatalogFieldTemplateSerializer(serializers.Serializer):
     """Simplified field template serializer for dimension catalog"""
-    field_id = serializers.IntegerField()
+    field = serializers.IntegerField()
     field_name = serializers.CharField()
     field_level = serializers.IntegerField()
-    next_field_id = serializers.IntegerField(allow_null=True)
+    next_field = serializers.IntegerField(allow_null=True)
     next_field_name = serializers.CharField(allow_null=True, allow_blank=True)
     dimensions = CatalogDimensionSerializer(many=True)
     dimension_count = serializers.IntegerField()
@@ -283,7 +283,7 @@ class CatalogFieldTemplateSerializer(serializers.Serializer):
 
 class DimensionCatalogSerializer(serializers.Serializer):
     """Complete dimension catalog serializer"""
-    rule_id = serializers.IntegerField()
+    rule = serializers.IntegerField()
     rule_name = serializers.CharField()
     rule_slug = serializers.CharField()
     dimensions = serializers.DictField(child=DimensionDefinitionSerializer())
@@ -324,7 +324,7 @@ class FieldSummarySerializer(serializers.Serializer):
 
 class ValidationSummarySerializer(serializers.Serializer):
     """Serializer for rule validation summary"""
-    rule_id = serializers.IntegerField()
+    rule = serializers.IntegerField()
     rule_name = serializers.CharField()
     is_valid = serializers.BooleanField()
     validation_issues = serializers.ListField(child=serializers.CharField())
@@ -336,7 +336,7 @@ class ValidationSummarySerializer(serializers.Serializer):
 
 class PerformanceMetricsSerializer(serializers.Serializer):
     """Serializer for performance metrics"""
-    rule_id = serializers.IntegerField()
+    rule = serializers.IntegerField()
     cache_status = serializers.DictField()
     services_initialized = serializers.DictField()
 
@@ -373,8 +373,8 @@ class FieldSpecificDataSerializer(serializers.Serializer):
 # Request serializers for input validation
 class GenerationPreviewRequestSerializer(serializers.Serializer):
     """Serializer for generation preview requests"""
-    rule_id = serializers.IntegerField()
-    field_id = serializers.IntegerField()
+    rule = serializers.IntegerField()
+    field = serializers.IntegerField()
     sample_values = serializers.DictField(
         child=serializers.CharField(),
         help_text="Sample dimension values for preview generation"
@@ -391,7 +391,7 @@ class CacheInvalidationRequestSerializer(serializers.Serializer):
 
 class InheritanceLookupSerializer(serializers.Serializer):
     """Serializer for inheritance lookup tables"""
-    by_dimension_id = serializers.DictField()
+    by_dimension = serializers.DictField()
     by_target_field_level = serializers.DictField()
     by_source_field_level = serializers.DictField()
     inherits_from_dimension = serializers.DictField()
@@ -439,8 +439,8 @@ class MetadataIndexesSerializer(serializers.Serializer):
     prefix_groups = serializers.DictField()
     suffix_groups = serializers.DictField()
     validation_flags = serializers.DictField()
-    dimension_id_to_type = serializers.DictField()
-    dimension_id_to_name = serializers.DictField()
+    dimension_to_type = serializers.DictField()
+    dimension_to_name = serializers.DictField()
     dimension_name_to_id = serializers.DictField()
     field_level_to_dimensions = serializers.DictField()
     dimension_order_index = serializers.DictField()
@@ -450,7 +450,7 @@ class MetadataIndexesSerializer(serializers.Serializer):
 
 class EnhancedDimensionCatalogSerializer(serializers.Serializer):
     """Enhanced dimension catalog serializer with lookup tables"""
-    rule_id = serializers.IntegerField()
+    rule = serializers.IntegerField()
     rule_name = serializers.CharField()
     rule_slug = serializers.CharField()
     dimensions = serializers.DictField()
@@ -462,22 +462,9 @@ class EnhancedDimensionCatalogSerializer(serializers.Serializer):
     generated_at = serializers.DateTimeField()
 
 
-class PerformanceMetricsSerializer(serializers.Serializer):
-    """Serializer for performance metrics of fast lookups"""
-    total_dimensions = serializers.IntegerField()
-    total_field_levels = serializers.IntegerField()
-    lookup_tables_count = serializers.IntegerField()
-    index_structures_count = serializers.IntegerField()
-    inheritance_coverage_percent = serializers.FloatField()
-    constraint_coverage_percent = serializers.FloatField()
-    avg_dimensions_per_field = serializers.FloatField()
-    optimization_score = serializers.FloatField()
-    cache_efficiency = serializers.DictField()
-
-
 class CompleteRuleSerializer(serializers.Serializer):
     """Complete rule serializer with optimized lookup structures"""
-    rule_id = serializers.IntegerField()
+    rule = serializers.IntegerField()
     rule_name = serializers.CharField()
     rule_slug = serializers.CharField()
 

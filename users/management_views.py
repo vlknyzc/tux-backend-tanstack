@@ -5,8 +5,9 @@ from rest_framework.exceptions import PermissionDenied, NotFound
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from django.contrib.auth import get_user_model
 from django.db.models import Q, Count, Prefetch
-from rest_framework.schemas.coreapi import AutoSchema
-import coreapi
+
+from drf_spectacular.openapi import AutoSchema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .models import WorkspaceUser
 from .serializers import (

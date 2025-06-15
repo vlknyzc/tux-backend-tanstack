@@ -21,7 +21,6 @@ class RuleNestedSerializer(serializers.ModelSerializer):
     rule_details = RuleDetailCreateSerializer(many=True, write_only=True)
     description = serializers.CharField(allow_blank=True, required=False)
     workspace_name = serializers.SerializerMethodField()
-    workspace_id = serializers.SerializerMethodField()
     workspace = serializers.IntegerField(
         write_only=True, required=False, allow_null=True)
 
@@ -55,7 +54,7 @@ class RuleNestedSerializer(serializers.ModelSerializer):
         model = models.Rule
         fields = ['id', 'name', 'description', 'status', 'platform',
                   'platform_name', 'platform_slug', 'field_details', 'rule_details',
-                  'workspace', 'workspace_id', 'workspace_name']
+                  'workspace', 'workspace_name']
 
     def create(self, validated_data):
         rule_details_data = validated_data.pop('rule_details')
@@ -65,12 +64,12 @@ class RuleNestedSerializer(serializers.ModelSerializer):
         workspace = validated_data.pop('workspace')
 
         # Extract platform ID from the dictionary
-        platform_id = platform_data['id'] if isinstance(
+        platform = platform_data['id'] if isinstance(
             platform_data, dict) else platform_data
 
         # Create the Rule instance - explicitly set workspace and platform
         rule = models.Rule.objects.create(
-            platform_id=platform_id,
+            platform=platform,
             workspace=workspace,  # Pass the workspace object directly
             **validated_data  # Now workspace is already removed
         )
@@ -96,9 +95,9 @@ class RuleNestedSerializer(serializers.ModelSerializer):
 
         # Handle platform update
         if platform_data:
-            platform_id = platform_data['id'] if isinstance(
+            platform = platform_data['id'] if isinstance(
                 platform_data, dict) else platform_data
-            instance.platform_id = platform_id
+            instance.platform = platform
 
         # Handle workspace update
         if workspace:
@@ -138,7 +137,7 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                     'field': field,
                     'field_name': detail.field.name,
                     'field_level': detail.field.field_level,
-                    'next_field': detail.field.next_field.name if detail.field.next_field_id else None,
+                    'next_field': detail.field.next_field.name if detail.field.next_field else None,
                     'dimensions': []
                 }
 
@@ -153,8 +152,8 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                 'suffix': detail.suffix or '',  # Convert None to empty string
                 'delimiter': detail.delimiter or '',  # Convert None to empty string
                 'parent_dimension_name': (detail.dimension.parent.name
-                                          if detail.dimension.parent_id else None),
-                'parent_dimension_id': detail.dimension.parent_id,
+                                          if detail.dimension.parent else None),
+                'parent_dimension': detail.dimension.parent,
                 'dimension_values': [
                     {
                         'id': value.id,
@@ -187,9 +186,4 @@ class RuleNestedSerializer(serializers.ModelSerializer):
     def get_workspace_name(self, obj):
         if obj.workspace:
             return obj.workspace.name
-        return None
-
-    def get_workspace_id(self, obj):
-        if obj.workspace:
-            return obj.workspace.id
         return None

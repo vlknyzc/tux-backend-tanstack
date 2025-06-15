@@ -1,6 +1,6 @@
 from rest_framework import viewsets, permissions, filters
 from django_filters import rest_framework as filters
-from django_filters.rest_framework import DjangoFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 
@@ -8,13 +8,17 @@ from .. import models
 from ..serializers.submission import SubmissionSerializer
 
 
+from drf_spectacular.openapi import AutoSchema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+
+
 class SubmissionFilter(filters.FilterSet):
-    workspace_id = filters.NumberFilter(field_name='workspace__id')
+    workspace = filters.NumberFilter(field_name='workspace')
 
     class Meta:
         model = models.Submission
         fields = ['id', 'status', 'rule',
-                  'starting_field', 'workspace', 'workspace_id']
+                  'starting_field', 'workspace']
 
 
 class SubmissionViewSet(viewsets.ModelViewSet):
@@ -26,31 +30,31 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 
     def get_queryset(self):
         """Get submissions filtered by workspace context"""
-        # Check if workspace_id is explicitly provided in query params
-        workspace_id = self.request.query_params.get('workspace_id')
+        # Check if workspace is explicitly provided in query params
+        workspace = self.request.query_params.get('workspace')
 
-        if workspace_id:
-            # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
+        if workspace:
+            # If workspace is explicitly provided, filter by it (for both superusers and regular users)
             try:
-                workspace_id = int(workspace_id)
+                workspace = int(workspace)
                 # Validate user has access to this workspace (unless superuser)
                 if hasattr(self.request, 'user') and not self.request.user.is_superuser:
-                    if not self.request.user.has_workspace_access(workspace_id):
+                    if not self.request.user.has_workspace_access(workspace):
                         # Return empty queryset for unauthorized access
                         return models.Submission.objects.none()
 
                 # Return queryset filtered by the specified workspace
                 return models.Submission.objects.all_workspaces().filter(
-                    workspace_id=workspace_id
+                    workspace=workspace
                 ).select_related(
                     'workspace', 'rule', 'created_by', 'starting_field', 'selected_parent_string'
                 )
 
             except (ValueError, TypeError):
-                # Invalid workspace_id parameter, return empty queryset
+                # Invalid workspace parameter, return empty queryset
                 return models.Submission.objects.none()
 
-        # Default behavior when no workspace_id is specified
+        # Default behavior when no workspace is specified
         # If user is superuser, they can see all workspaces
         if hasattr(self.request, 'user') and self.request.user.is_superuser:
             return models.Submission.objects.all_workspaces().select_related(
@@ -64,12 +68,12 @@ class SubmissionViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Set created_by and workspace when creating a new submission"""
-        workspace_id = getattr(self.request, 'workspace_id', None)
-        if not workspace_id:
+        workspace = getattr(self.request, 'workspace', None)
+        if not workspace:
             raise PermissionDenied("No workspace context available")
 
         # Validate user has access to this workspace
-        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace):
             raise PermissionDenied("Access denied to this workspace")
 
         kwargs = {}

@@ -25,6 +25,8 @@ from rest_framework_simplejwt.views import (
 from django.conf import settings
 from django.conf.urls.static import static
 
+from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
+
 
 urlpatterns = [
     path('', TemplateView.as_view(template_name='index.html'), name='index'),
@@ -62,6 +64,12 @@ urlpatterns = [
         description="API for all things …",
         version="1.0.0"
     ), name="openapi-schema"),
+
+    path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
+    path('api/schema/swagger-ui/',
+         SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),
+    path('api/schema/redoc/',
+         SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
 
 # Serve static files only during development

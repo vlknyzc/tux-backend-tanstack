@@ -10,6 +10,9 @@ from django.core.exceptions import PermissionDenied
 from django.conf import settings
 import logging
 
+from drf_spectacular.openapi import AutoSchema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+
 from ..models import Rule
 from ..services import (
     DimensionCatalogService,
@@ -49,16 +52,16 @@ class LightweightRuleView(APIView):
             # Check rule exists and user has access
             try:
                 rule = Rule.objects.get(id=rule_id)
-                workspace_id = getattr(request, 'workspace_id', None)
+                workspace = getattr(request, 'workspace', None)
 
                 # Validate workspace access
                 if not request.user.is_superuser:
-                    if workspace_id and not request.user.has_workspace_access(workspace_id):
+                    if workspace and not request.user.has_workspace_access(workspace):
                         raise PermissionDenied(
                             "Access denied to this workspace")
 
                     # Ensure rule belongs to the same workspace
-                    if workspace_id and rule.workspace_id != workspace_id:
+                    if workspace and rule.workspace_id != workspace:
                         raise PermissionDenied(
                             "Rule not found in current workspace")
 
@@ -72,7 +75,7 @@ class LightweightRuleView(APIView):
             lightweight_data['performance_metrics'] = {
                 'generation_time_ms': (time.time() - start_time) * 1000,
                 'cached': True,
-                'workspace_id': workspace_id
+                'workspace': workspace
             }
 
             serializer = LightweightRuleSerializer(data=lightweight_data)
@@ -105,16 +108,16 @@ class FieldSpecificRuleView(APIView):
             # Check rule exists and user has access
             try:
                 rule = Rule.objects.get(id=rule_id)
-                workspace_id = getattr(request, 'workspace_id', None)
+                workspace = getattr(request, 'workspace', None)
 
                 # Validate workspace access
                 if not request.user.is_superuser:
-                    if workspace_id and not request.user.has_workspace_access(workspace_id):
+                    if workspace and not request.user.has_workspace_access(workspace):
                         raise PermissionDenied(
                             "Access denied to this workspace")
 
                     # Ensure rule belongs to the same workspace
-                    if workspace_id and rule.workspace_id != workspace_id:
+                    if workspace and rule.workspace_id != workspace:
                         raise PermissionDenied(
                             "Rule not found in current workspace")
 
@@ -127,7 +130,7 @@ class FieldSpecificRuleView(APIView):
             # Add performance metrics
             field_data['performance_metrics'] = {
                 'generation_time_ms': (time.time() - start_time) * 1000,
-                'workspace_id': workspace_id
+                'workspace': workspace
             }
 
             serializer = FieldSpecificDataSerializer(data=field_data)
@@ -160,16 +163,16 @@ class RuleValidationView(APIView):
             # Check rule exists and user has access
             try:
                 rule = Rule.objects.get(id=rule_id)
-                workspace_id = getattr(request, 'workspace_id', None)
+                workspace = getattr(request, 'workspace', None)
 
                 # Validate workspace access
                 if not request.user.is_superuser:
-                    if workspace_id and not request.user.has_workspace_access(workspace_id):
+                    if workspace and not request.user.has_workspace_access(workspace):
                         raise PermissionDenied(
                             "Access denied to this workspace")
 
                     # Ensure rule belongs to the same workspace
-                    if workspace_id and rule.workspace_id != workspace_id:
+                    if workspace and rule.workspace_id != workspace:
                         raise PermissionDenied(
                             "Rule not found in current workspace")
 
@@ -182,7 +185,7 @@ class RuleValidationView(APIView):
             # Add performance metrics
             validation_data['performance_metrics'] = {
                 'generation_time_ms': (time.time() - start_time) * 1000,
-                'workspace_id': workspace_id
+                'workspace': workspace
             }
 
             serializer = ValidationSummarySerializer(data=validation_data)
@@ -211,8 +214,8 @@ class GenerationPreviewView(APIView):
         """Generate a preview of string generation"""
         start_time = time.time()
 
-        workspace_id = getattr(request, 'workspace_id', None)
-        if not workspace_id:
+        workspace = getattr(request, 'workspace', None)
+        if not workspace:
             return Response({'error': 'No workspace context available'}, status=status.HTTP_403_FORBIDDEN)
 
         # Validate request
@@ -221,23 +224,23 @@ class GenerationPreviewView(APIView):
         if not request_serializer.is_valid():
             return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        rule_id = request_serializer.validated_data['rule_id']
-        field_id = request_serializer.validated_data['field_id']
+        rule = request_serializer.validated_data['rule']
+        field = request_serializer.validated_data['field']
         sample_values = request_serializer.validated_data['sample_values']
 
         try:
             # Check rule exists and user has access
             try:
-                rule = Rule.objects.get(id=rule_id)
+                rule = Rule.objects.get(id=rule)
 
                 # Validate workspace access
                 if not request.user.is_superuser:
-                    if not request.user.has_workspace_access(workspace_id):
+                    if not request.user.has_workspace_access(workspace):
                         raise PermissionDenied(
                             "Access denied to this workspace")
 
                     # Ensure rule belongs to the same workspace
-                    if rule.workspace_id != workspace_id:
+                    if rule.workspace_id != workspace:
                         raise PermissionDenied(
                             "Rule not found in current workspace")
 
@@ -245,12 +248,12 @@ class GenerationPreviewView(APIView):
                 return Response({'error': 'Rule not found'}, status=status.HTTP_404_NOT_FOUND)
 
             preview_data = self.rule_service.get_generation_preview(
-                rule_id, field_id, sample_values)
+                rule, field, sample_values)
 
             # Add performance metrics
             preview_data['performance_metrics'] = {
                 'generation_time_ms': (time.time() - start_time) * 1000,
-                'workspace_id': workspace_id
+                'workspace': workspace
             }
 
             serializer = GenerationPreviewSerializer(data=preview_data)
@@ -277,8 +280,8 @@ class CacheManagementView(APIView):
 
     def post(self, request):
         """Invalidate cache for specified rules"""
-        workspace_id = getattr(request, 'workspace_id', None)
-        if not workspace_id:
+        workspace = getattr(request, 'workspace', None)
+        if not workspace:
             return Response({'error': 'No workspace context available'}, status=status.HTTP_403_FORBIDDEN)
 
         # Validate request
@@ -294,7 +297,7 @@ class CacheManagementView(APIView):
             if not request.user.is_superuser:
                 rules = Rule.objects.filter(id__in=rule_ids)
                 for rule in rules:
-                    if rule.workspace_id != workspace_id:
+                    if rule.workspace_id != workspace:
                         return Response({'error': f'Rule {rule.id} not found in current workspace'},
                                         status=status.HTTP_403_FORBIDDEN)
 
@@ -305,7 +308,7 @@ class CacheManagementView(APIView):
                 'success': True,
                 'message': f'Cache invalidated for {len(rule_ids)} rules',
                 'rule_ids': rule_ids,
-                'workspace_id': workspace_id,
+                'workspace': workspace,
                 'timestamp': timezone.now().isoformat()
             })
 
@@ -314,8 +317,8 @@ class CacheManagementView(APIView):
 
     def get(self, request, rule_id, version=None):
         """Get performance metrics for a specific rule"""
-        workspace_id = getattr(request, 'workspace_id', None)
-        if not workspace_id:
+        workspace = getattr(request, 'workspace', None)
+        if not workspace:
             return Response({'error': 'No workspace context available'}, status=status.HTTP_403_FORBIDDEN)
 
         try:
@@ -325,12 +328,12 @@ class CacheManagementView(APIView):
 
                 # Validate workspace access
                 if not request.user.is_superuser:
-                    if not request.user.has_workspace_access(workspace_id):
+                    if not request.user.has_workspace_access(workspace):
                         raise PermissionDenied(
                             "Access denied to this workspace")
 
                     # Ensure rule belongs to the same workspace
-                    if rule.workspace_id != workspace_id:
+                    if rule.workspace_id != workspace:
                         raise PermissionDenied(
                             "Rule not found in current workspace")
 
@@ -364,7 +367,7 @@ class RuleConfigurationView(APIView):
         """Get complete rule configuration data"""
         start_time = time.time()
 
-        workspace_id = getattr(request, 'workspace_id', None)
+        workspace = getattr(request, 'workspace', None)
 
         try:
             # Check rule exists and user has access
@@ -373,12 +376,12 @@ class RuleConfigurationView(APIView):
 
                 # Validate workspace access
                 if not request.user.is_superuser:
-                    if workspace_id and not request.user.has_workspace_access(workspace_id):
+                    if workspace and not request.user.has_workspace_access(workspace):
                         raise PermissionDenied(
                             "Access denied to this workspace")
 
                     # Ensure rule belongs to the same workspace
-                    if workspace_id and rule.workspace_id != workspace_id:
+                    if workspace and rule.workspace_id != workspace:
                         raise PermissionDenied(
                             "Rule not found in current workspace")
 
@@ -395,7 +398,7 @@ class RuleConfigurationView(APIView):
             # Store the view metrics separately to avoid overwriting service metrics
             complete_data['view_performance_metrics'] = {
                 'generation_time_ms': (time.time() - start_time) * 1000,
-                'workspace_id': workspace_id,
+                'workspace': workspace,
                 'timestamp': timezone.now().isoformat()
             }
 

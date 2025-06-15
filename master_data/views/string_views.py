@@ -2,10 +2,13 @@ from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters import rest_framework as filters
-from django_filters.rest_framework import DjangoFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from django.conf import settings
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
+
+from drf_spectacular.openapi import AutoSchema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .. import serializers
 from .. import models
@@ -13,29 +16,29 @@ from ..services import StringGenerationService, NamingConventionError
 
 
 class StringFilter(filters.FilterSet):
-    field = filters.NumberFilter(method='filter_field_id')
+    field = filters.NumberFilter(method='filter_field')
     field_level = filters.NumberFilter(method='filter_field_level')
-    platform_id = filters.NumberFilter(method='filter_platform_id')
-    rule_id = filters.NumberFilter(method='filter_rule_id')
+    platform = filters.NumberFilter(method='filter_platform')
+    rule = filters.NumberFilter(method='filter_rule')
     is_auto_generated = filters.BooleanFilter()
     has_conflicts = filters.BooleanFilter(method='filter_has_conflicts')
-    workspace_id = filters.NumberFilter(field_name='workspace__id')
+    workspace = filters.NumberFilter(field_name='workspace')
 
     class Meta:
         model = models.String
         fields = ['id', 'field', 'parent',
-                  'field_level', 'rule_id', 'is_auto_generated', 'workspace_id']
+                  'field_level', 'rule', 'is_auto_generated', 'workspace']
 
-    def filter_field_id(self, queryset, name, value):
+    def filter_field(self, queryset, name, value):
         return queryset.filter(field__id=value)
 
     def filter_field_level(self, queryset, name, value):
         return queryset.filter(field__field_level=value)
 
-    def filter_platform_id(self, queryset, name, value):
+    def filter_platform(self, queryset, name, value):
         return queryset.filter(field__platform__id=value)
 
-    def filter_rule_id(self, queryset, name, value):
+    def filter_rule(self, queryset, name, value):
         return queryset.filter(rule__id=value)
 
     def filter_has_conflicts(self, queryset, name, value):
@@ -54,21 +57,21 @@ class StringViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Get strings filtered by workspace context"""
         # Check if workspace_id is explicitly provided in query params
-        workspace_id = self.request.query_params.get('workspace_id')
+        workspace = self.request.query_params.get('workspace')
 
-        if workspace_id:
+        if workspace:
             # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
             try:
-                workspace_id = int(workspace_id)
+                workspace = int(workspace)
                 # Validate user has access to this workspace (unless superuser)
                 if hasattr(self.request, 'user') and not self.request.user.is_superuser:
-                    if not self.request.user.has_workspace_access(workspace_id):
+                    if not self.request.user.has_workspace_access(workspace):
                         # Return empty queryset for unauthorized access
                         return models.String.objects.none()
 
                 # Return queryset filtered by the specified workspace
                 return models.String.objects.all_workspaces().filter(
-                    workspace_id=workspace_id
+                    workspace=workspace
                 ).select_related(
                     'field', 'submission', 'rule', 'field__platform'
                 ).prefetch_related('string_details__dimension', 'string_details__dimension_value')
@@ -91,12 +94,12 @@ class StringViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Set created_by and workspace when creating a new string"""
-        workspace_id = getattr(self.request, 'workspace_id', None)
-        if not workspace_id:
+        workspace = getattr(self.request, 'workspace', None)
+        if not workspace:
             raise PermissionDenied("No workspace context available")
 
         # Validate user has access to this workspace
-        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace):
             raise PermissionDenied("Access denied to this workspace")
 
         kwargs = {}
@@ -109,8 +112,8 @@ class StringViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def generate(self, request):
         """Generate a new string using business logic."""
-        workspace_id = getattr(request, 'workspace_id', None)
-        if not workspace_id:
+        workspace = getattr(request, 'workspace', None)
+        if not workspace:
             raise PermissionDenied("No workspace context available")
 
         serializer = serializers.StringGenerationRequestSerializer(
@@ -119,10 +122,10 @@ class StringViewSet(viewsets.ModelViewSet):
             try:
                 with transaction.atomic():
                     submission = models.Submission.objects.get(
-                        id=serializer.validated_data['submission_id']
+                        id=serializer.validated_data['submission']
                     )
                     field = models.Field.objects.get(
-                        id=serializer.validated_data['field_id']
+                        id=serializer.validated_data['field']
                     )
                     dimension_values = serializer.validated_data['dimension_values']
 
@@ -193,9 +196,9 @@ class StringViewSet(viewsets.ModelViewSet):
         if serializer.is_valid():
             try:
                 rule = models.Rule.objects.get(
-                    id=serializer.validated_data['rule_id'])
+                    id=serializer.validated_data['rule'])
                 field = models.Field.objects.get(
-                    id=serializer.validated_data['field_id'])
+                    id=serializer.validated_data['field'])
                 proposed_value = serializer.validated_data['proposed_value']
                 exclude_string_id = serializer.validated_data.get(
                     'exclude_string_id')
@@ -226,8 +229,8 @@ class StringViewSet(viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def bulk_generate(self, request):
         """Generate multiple strings in a single request."""
-        workspace_id = getattr(request, 'workspace_id', None)
-        if not workspace_id:
+        workspace = getattr(request, 'workspace', None)
+        if not workspace:
             raise PermissionDenied("No workspace context available")
 
         serializer = serializers.StringBulkGenerationRequestSerializer(
@@ -246,7 +249,7 @@ class StringViewSet(viewsets.ModelViewSet):
                     for req in serializer.validated_data['generation_requests']:
                         try:
                             field = models.Field.objects.get(
-                                id=req['field_id'])
+                                id=req['field'])
                             dimension_values = req['dimension_values']
 
                             string = models.String.generate_from_submission(
@@ -256,14 +259,14 @@ class StringViewSet(viewsets.ModelViewSet):
                             string_data = serializers.StringSerializer(
                                 string).data
                             results.append({
-                                'field_id': field.id,
+                                'field': field.id,
                                 'string_id': string.id,
                                 'string': string_data
                             })
 
                         except Exception as e:
                             errors.append({
-                                'field_id': req['field_id'],
+                                'field': req['field'],
                                 'error': str(e)
                             })
 
@@ -325,12 +328,12 @@ class StringDetailFilter(filters.FilterSet):
     string = filters.NumberFilter(method='filter_string_id')
     dimension = filters.NumberFilter(method='filter_dimension_id')
     dimension_type = filters.CharFilter(method='filter_dimension_type')
-    workspace_id = filters.NumberFilter(field_name='workspace__id')
+    workspace = filters.NumberFilter(field_name='workspace')
 
     class Meta:
         model = models.StringDetail
         fields = ['id', 'string', 'dimension', 'dimension_value',
-                  'dimension_value_freetext', 'workspace_id']
+                  'dimension_value_freetext', 'workspace']
 
     def filter_string_id(self, queryset, name, value):
         return queryset.filter(string__id=value)
@@ -352,21 +355,21 @@ class StringDetailViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Get string details filtered by workspace context"""
         # Check if workspace_id is explicitly provided in query params
-        workspace_id = self.request.query_params.get('workspace_id')
+        workspace = self.request.query_params.get('workspace')
 
-        if workspace_id:
+        if workspace:
             # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
             try:
-                workspace_id = int(workspace_id)
+                workspace_id = int(workspace)
                 # Validate user has access to this workspace (unless superuser)
                 if hasattr(self.request, 'user') and not self.request.user.is_superuser:
-                    if not self.request.user.has_workspace_access(workspace_id):
+                    if not self.request.user.has_workspace_access(workspace):
                         # Return empty queryset for unauthorized access
                         return models.StringDetail.objects.none()
 
                 # Return queryset filtered by the specified workspace
                 return models.StringDetail.objects.all_workspaces().filter(
-                    workspace_id=workspace_id
+                    workspace=workspace
                 ).select_related(
                     'string', 'dimension', 'dimension_value'
                 )
@@ -389,12 +392,12 @@ class StringDetailViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Set created_by and workspace when creating a new string detail"""
-        workspace_id = getattr(self.request, 'workspace_id', None)
-        if not workspace_id:
+        workspace = getattr(self.request, 'workspace', None)
+        if not workspace:
             raise PermissionDenied("No workspace context available")
 
         # Validate user has access to this workspace
-        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace):
             raise PermissionDenied("Access denied to this workspace")
 
         kwargs = {}

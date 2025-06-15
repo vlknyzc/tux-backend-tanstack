@@ -11,9 +11,9 @@ class DimensionCatalogService:
     def __init__(self):
         self.cache_timeout = 30 * 60  # 30 minutes
 
-    def get_catalog_for_rule(self, rule_id: int) -> Dict:
+    def get_catalog_for_rule(self, rule: int) -> Dict:
         """Main method to get complete catalog for a rule"""
-        cache_key = f"dimension_catalog:{rule_id}"
+        cache_key = f"dimension_catalog:{rule}"
 
         # Check cache first
         cached = cache.get(cache_key)
@@ -22,13 +22,13 @@ class DimensionCatalogService:
 
         # Check model cache if it exists
         try:
-            rule = Rule.objects.get(id=rule_id)
+            rule = Rule.objects.get(id=rule)
             if hasattr(rule, 'needs_inheritance_refresh') and not rule.needs_inheritance_refresh and hasattr(rule, 'dimension_catalog_cache') and rule.dimension_catalog_cache:
                 cache.set(cache_key, rule.dimension_catalog_cache,
                           self.cache_timeout)
                 return rule.dimension_catalog_cache
         except Rule.DoesNotExist:
-            raise ValueError(f"Rule with id {rule_id} does not exist")
+            raise ValueError(f"Rule with id {rule} does not exist")
 
         # Generate fresh catalog
         catalog = self._build_catalog(rule)
@@ -64,7 +64,7 @@ class DimensionCatalogService:
         field_templates = self._build_field_templates(rule_details)
 
         return {
-            'rule_id': rule.id,
+            'rule': rule.id,
             'rule_name': rule.name,
             'rule_slug': rule.slug,
             'dimensions': dimensions_map,
@@ -79,11 +79,11 @@ class DimensionCatalogService:
         dimensions = {}
 
         for detail in rule_details:
-            dimension_id = detail.dimension.id
+            dimension = detail.dimension.id
 
-            if dimension_id not in dimensions:
-                dimensions[dimension_id] = {
-                    'id': dimension_id,
+            if dimension not in dimensions:
+                dimensions[dimension] = {
+                    'id': dimension,
                     'name': detail.dimension.name,
                     'type': detail.dimension.type,
                     'description': detail.dimension.description or '',
@@ -100,9 +100,9 @@ class DimensionCatalogService:
                     'is_dropdown': detail.dimension.type in ['list', 'combobox'],
 
                     # Constraint metadata
-                    'has_parent_constraint': bool(detail.dimension.parent_id),
-                    'parent_dimension_id': detail.dimension.parent_id,
-                    'parent_dimension_name': detail.dimension.parent.name if detail.dimension.parent_id else None,
+                    'has_parent_constraint': bool(detail.dimension.parent),
+                    'parent_dimension': detail.dimension.parent,
+                    'parent_dimension_name': detail.dimension.parent.name if detail.dimension.parent else None,
 
                     # Order and positioning
                     'dimension_order': detail.dimension_order,
@@ -117,29 +117,29 @@ class DimensionCatalogService:
                 # Count active values from prefetched data
                 active_values = [v for v in detail.dimension.dimension_values.all(
                 ) if getattr(v, 'is_active', True)]
-                dimensions[dimension_id]['value_count'] = len(active_values)
-                dimensions[dimension_id]['has_active_values'] = len(
+                dimensions[dimension]['value_count'] = len(active_values)
+                dimensions[dimension]['has_active_values'] = len(
                     active_values) > 0
 
         return dimensions
 
-    def _build_dimension_values(self, dimension_ids: Set[int]) -> Dict:
+    def _build_dimension_values(self, dimensions: Set[int]) -> Dict:
         """Build optimized dimension values lookup"""
-        if not dimension_ids:
+        if not dimensions:
             return {}
 
         # Get all dimension values for the dimensions we need
         dimension_values = DimensionValue.objects.filter(
-            dimension_id__in=dimension_ids
+            dimension_id__in=dimensions
         ).select_related('dimension')
 
         values_map = {}
         for value in dimension_values:
-            dim_id = value.dimension_id
-            if dim_id not in values_map:
-                values_map[dim_id] = []
+            dim = value.dimension.id
+            if dim not in values_map:
+                values_map[dim] = []
 
-            values_map[dim_id].append({
+            values_map[dim].append({
                 'id': value.id,
                 'value': value.value,
                 'label': value.label or value.value,
@@ -150,8 +150,8 @@ class DimensionCatalogService:
             })
 
         # Sort values within each dimension
-        for dim_id in values_map:
-            values_map[dim_id].sort(key=lambda x: (x['order'], x['label']))
+        for dim in values_map:
+            values_map[dim].sort(key=lambda x: (x['order'], x['label']))
 
         return values_map
 
@@ -165,26 +165,26 @@ class DimensionCatalogService:
 
         # Build parent-child relationships
         for detail in rule_details:
-            if detail.dimension.parent_id:
-                parent_id = detail.dimension.parent_id
-                child_id = detail.dimension.id
+            if detail.dimension.parent:
+                parent = detail.dimension.parent
+                child = detail.dimension.id
 
-                if parent_id not in relationships['parent_child']:
-                    relationships['parent_child'][parent_id] = []
+                if parent not in relationships['parent_child']:
+                    relationships['parent_child'][parent] = []
 
-                if child_id not in relationships['parent_child'][parent_id]:
-                    relationships['parent_child'][parent_id].append(child_id)
+                if child not in relationships['parent_child'][parent]:
+                    relationships['parent_child'][parent].append(child)
 
         # Build field dependencies (which dimensions are used in which fields)
         for detail in rule_details:
             field_level = detail.field.field_level
-            dim_id = detail.dimension.id
+            dim = detail.dimension.id
 
             if field_level not in relationships['field_dependencies']:
                 relationships['field_dependencies'][field_level] = []
 
-            if dim_id not in relationships['field_dependencies'][field_level]:
-                relationships['field_dependencies'][field_level].append(dim_id)
+            if dim not in relationships['field_dependencies'][field_level]:
+                relationships['field_dependencies'][field_level].append(dim)
 
         return relationships
 
@@ -193,14 +193,14 @@ class DimensionCatalogService:
         fields_map = {}
 
         for detail in rule_details:
-            field_id = detail.field.id
+            field = detail.field.id
 
-            if field_id not in fields_map:
-                fields_map[field_id] = {
-                    'field_id': field_id,
+            if field not in fields_map:
+                fields_map[field] = {
+                    'field': field,
                     'field_name': detail.field.name,
                     'field_level': detail.field.field_level,
-                    'next_field_id': getattr(detail.field, 'next_field_id', None),
+                    'next_field': getattr(detail.field, 'next_field', None),
                     'next_field_name': getattr(detail.field, 'next_field', None).name if getattr(detail.field, 'next_field', None) else None,
                     'dimensions': [],
                     'dimension_count': 0,
@@ -209,7 +209,7 @@ class DimensionCatalogService:
 
             # Add dimension info
             dim_info = {
-                'dimension_id': detail.dimension.id,
+                'dimension': detail.dimension.id,
                 'dimension_name': detail.dimension.name,
                 'dimension_type': detail.dimension.type,
                 'dimension_order': detail.dimension_order,
@@ -220,7 +220,7 @@ class DimensionCatalogService:
                 'effective_delimiter': detail.get_effective_delimiter() if hasattr(detail, 'get_effective_delimiter') else (detail.delimiter or ''),
             }
 
-            fields_map[field_id]['dimensions'].append(dim_info)
+            fields_map[field]['dimensions'].append(dim_info)
 
         # Process each field to add computed information
         for field_data in fields_map.values():
@@ -250,14 +250,14 @@ class DimensionCatalogService:
 
         return result
 
-    def invalidate_cache(self, rule_id: int):
+    def invalidate_cache(self, rule: int):
         """Invalidate cache for a specific rule"""
-        cache_key = f"dimension_catalog:{rule_id}"
+        cache_key = f"dimension_catalog:{rule}"
         cache.delete(cache_key)
 
         # Also mark model cache as needing refresh if the field exists
         try:
-            rule = Rule.objects.get(id=rule_id)
+            rule = Rule.objects.get(id=rule)
             if hasattr(rule, 'needs_inheritance_refresh'):
                 rule.needs_inheritance_refresh = True
                 rule.save(update_fields=['needs_inheritance_refresh'])
@@ -266,24 +266,24 @@ class DimensionCatalogService:
 
     def bulk_invalidate_cache(self, rule_ids: List[int]):
         """Invalidate cache for multiple rules"""
-        for rule_id in rule_ids:
-            self.invalidate_cache(rule_id)
+        for rule in rule_ids:
+            self.invalidate_cache(rule)
 
-    def get_optimized_catalog_for_rule(self, rule_id: int) -> Dict:
+    def get_optimized_catalog_for_rule(self, rule: int) -> Dict:
         """
         Get optimized dimension catalog with centralized data and improved structure.
         Implements key improvements: centralized values, simplified inheritance, better constraints.
         """
-        cache_key = f"optimized_dimension_catalog:{rule_id}"
+        cache_key = f"optimized_dimension_catalog:{rule}"
         cached_result = cache.get(cache_key)
 
         if cached_result is not None:
             return cached_result
 
         try:
-            rule = Rule.objects.select_related('platform').get(id=rule_id)
+            rule = Rule.objects.select_related('platform').get(id=rule)
         except Rule.DoesNotExist:
-            raise ValueError(f"Rule with id {rule_id} does not exist")
+            raise ValueError(f"Rule with id {rule} does not exist")
 
         catalog = self._build_optimized_catalog(rule)
 
@@ -300,13 +300,13 @@ class DimensionCatalogService:
         ).order_by('field__field_level', 'dimension_order')
 
         # Get all unique dimensions
-        dimension_ids = set(detail.dimension.id for detail in rule_details)
+        dimensions = set(detail.dimension.id for detail in rule_details)
 
         # Build centralized components
         dimensions = self._build_centralized_dimensions(
-            rule_details, dimension_ids)
+            rule_details, dimensions)
         dimension_values = self._build_centralized_dimension_values(
-            dimension_ids)
+            dimensions)
         constraints = self._build_optimized_constraints(rule_details)
         inheritance_lookup = self._build_inheritance_lookup(rule_details, rule)
 
@@ -319,7 +319,7 @@ class DimensionCatalogService:
             rule_details, dimensions)
 
         return {
-            'rule_id': rule.id,
+            'rule': rule.id,
             'rule_name': rule.name,
             'rule_slug': rule.slug,
             'dimensions': dimensions,
@@ -331,16 +331,16 @@ class DimensionCatalogService:
             'generated_at': timezone.now().isoformat(),
         }
 
-    def _build_centralized_dimensions(self, rule_details: QuerySet, dimension_ids: Set[int]) -> Dict:
+    def _build_centralized_dimensions(self, rule_details: QuerySet, dimensions: Set[int]) -> Dict:
         """Build centralized dimension definitions"""
         dimensions = {}
 
         for detail in rule_details:
-            dimension_id = detail.dimension.id
+            dimension = detail.dimension.id
 
-            if dimension_id not in dimensions:
-                dimensions[dimension_id] = {
-                    'id': dimension_id,
+            if dimension not in dimensions:
+                dimensions[dimension] = {
+                    'id': dimension,
                     'name': detail.dimension.name,
                     'type': detail.dimension.type,
                     'description': detail.dimension.description or '',
@@ -355,9 +355,9 @@ class DimensionCatalogService:
                     'is_dropdown': detail.dimension.type in ['list', 'combobox'],
 
                     # Constraint metadata
-                    'has_parent_constraint': bool(detail.dimension.parent_id),
-                    'parent_dimension_id': detail.dimension.parent_id,
-                    'parent_dimension_name': detail.dimension.parent.name if detail.dimension.parent_id else None,
+                    'has_parent_constraint': bool(detail.dimension.parent),
+                    'parent_dimension': detail.dimension.parent,
+                    'parent_dimension_name': detail.dimension.parent.name if detail.dimension.parent else None,
 
                     # Value metadata
                     'value_count': detail.dimension.dimension_values.count(),
@@ -368,33 +368,33 @@ class DimensionCatalogService:
 
         return dimensions
 
-    def _build_centralized_dimension_values(self, dimension_ids: Set[int]) -> Dict:
+    def _build_centralized_dimension_values(self, dimensions: Set[int]) -> Dict:
         """Build centralized dimension values lookup with parent-child relationships"""
-        if not dimension_ids:
+        if not dimensions:
             return {}
 
         dimension_values = DimensionValue.objects.filter(
-            dimension_id__in=dimension_ids
+            dimension_id__in=dimensions
         ).select_related('dimension', 'parent', 'parent__dimension')
 
         values_map = {}
         for value in dimension_values:
-            dim_id = value.dimension_id
-            if dim_id not in values_map:
-                values_map[dim_id] = []
+            dim = value.dimension_id
+            if dim not in values_map:
+                values_map[dim] = []
 
             # Build parent relationship data
             parent_data = None
-            if value.parent_id:
+            if value.parent:
                 parent_data = {
-                    'parent_id': value.parent_id,
+                    'parent': value.parent,
                     'parent_value': value.parent.value,
                     'parent_label': value.parent.label,
-                    'parent_dimension_id': value.parent.dimension_id,
+                    'parent_dimension': value.parent.dimension,
                     'parent_dimension_name': value.parent.dimension.name,
                 }
 
-            values_map[dim_id].append({
+            values_map[dim].append({
                 'id': value.id,
                 'value': value.value,
                 'label': value.label or value.value,
@@ -405,19 +405,19 @@ class DimensionCatalogService:
 
                 # Parent-child relationship data
                 'parent': parent_data,
-                'has_parent': value.parent_id is not None,
+                'has_parent': value.parent is not None,
 
                 # For backward compatibility and easier access
-                'parent_id': value.parent_id,
-                'parent_value': value.parent.value if value.parent_id else None,
-                'parent_label': value.parent.label if value.parent_id else None,
-                'parent_dimension_id': value.parent.dimension_id if value.parent_id else None,
-                'parent_dimension_name': value.parent.dimension.name if value.parent_id else None,
+                'parent': value.parent,
+                'parent_value': value.parent.value if value.parent else None,
+                'parent_label': value.parent.label if value.parent else None,
+                'parent_dimension': value.parent.dimension if value.parent else None,
+                'parent_dimension_name': value.parent.dimension.name if value.parent else None,
             })
 
         # Sort values within each dimension
-        for dim_id in values_map:
-            values_map[dim_id].sort(key=lambda x: (x['order'], x['label']))
+        for dim in values_map:
+            values_map[dim].sort(key=lambda x: (x['order'], x['label']))
 
         return values_map
 
@@ -441,15 +441,15 @@ class DimensionCatalogService:
         # Build parent-child constraint arrays
         parent_child_map = {}
         for detail in rule_details:
-            if detail.dimension.parent_id:
-                parent_id = detail.dimension.parent_id
+            if detail.dimension.parent:
+                parent_id = detail.dimension.parent
                 child_id = detail.dimension.id
 
                 constraint_key = f"{parent_id}_{child_id}"
                 if constraint_key not in parent_child_map:
                     constraints['parent_child_constraints'].append({
-                        'parent_dimension_id': parent_id,
-                        'child_dimension_id': child_id,
+                        'parent_dimension': parent_id,
+                        'child_dimension': child_id,
                         'parent_dimension_name': detail.dimension.parent.name,
                         'child_dimension_name': detail.dimension.name,
                         'constraint_type': 'parent_child'
@@ -459,18 +459,18 @@ class DimensionCatalogService:
         # Build field-level constraints
         for detail in rule_details:
             field_level = detail.field.field_level
-            dim_id = detail.dimension.id
+            dim = detail.dimension.id
 
             if field_level not in constraints['field_level_constraints']:
                 constraints['field_level_constraints'][field_level] = {
-                    'field_id': detail.field.id,
+                    'field': detail.field.id,
                     'field_name': detail.field.name,
                     'required_dimensions': [],
                     'optional_dimensions': []
                 }
 
             dim_info = {
-                'dimension_id': detail.dimension.id,
+                'dimension': detail.dimension.id,
                 'dimension_name': detail.dimension.name,
                 'dimension_order': detail.dimension_order
             }
@@ -498,10 +498,10 @@ class DimensionCatalogService:
         # Get all dimensions that have parent relationships
         parent_child_dimensions = {}
         for detail in rule_details:
-            if detail.dimension.parent_id:
-                parent_id = detail.dimension.parent_id
-                child_id = detail.dimension.id
-                parent_child_dimensions[child_id] = parent_id
+            if detail.dimension.parent:
+                parent = detail.dimension.parent
+                child = detail.dimension.id
+                parent_child_dimensions[child] = parent
 
         if not parent_child_dimensions:
             return
@@ -510,30 +510,30 @@ class DimensionCatalogService:
         all_involved_dims = set(parent_child_dimensions.keys()) | set(
             parent_child_dimensions.values())
         dimension_values = DimensionValue.objects.filter(
-            dimension_id__in=all_involved_dims
+            dimension__in=all_involved_dims
         ).select_related('dimension', 'parent')
 
         # Build parent-to-children value mappings
-        for child_dim_id, parent_dim_id in parent_child_dimensions.items():
-            if parent_dim_id not in constraints['value_constraints']:
-                constraints['value_constraints'][parent_dim_id] = {}
+        for child_dim, parent_dim in parent_child_dimensions.items():
+            if parent_dim not in constraints['value_constraints']:
+                constraints['value_constraints'][parent_dim] = {}
 
             # Get actual value mappings
             child_values = [
-                v for v in dimension_values if v.dimension_id == child_dim_id]
+                v for v in dimension_values if v.dimension == child_dim]
             parent_values = [
-                v for v in dimension_values if v.dimension_id == parent_dim_id]
+                v for v in dimension_values if v.dimension == parent_dim]
 
             # Build value cascade mapping
             value_mappings = {}
             parent_to_children = {}
 
             for child_value in child_values:
-                if child_value.parent_id:
-                    parent_value_id = child_value.parent_id
-                    if parent_value_id not in parent_to_children:
-                        parent_to_children[parent_value_id] = []
-                    parent_to_children[parent_value_id].append({
+                if child_value.parent:
+                    parent_value = child_value.parent
+                    if parent_value not in parent_to_children:
+                        parent_to_children[parent_value] = []
+                    parent_to_children[parent_value].append({
                         'child_value_id': child_value.id,
                         'child_value': child_value.value,
                         'child_label': child_value.label
@@ -542,27 +542,27 @@ class DimensionCatalogService:
             # Build reverse mapping (child to parent)
             child_to_parent = {}
             for child_value in child_values:
-                if child_value.parent_id:
+                if child_value.parent:
                     parent_value = next(
-                        (v for v in parent_values if v.id == child_value.parent_id), None)
+                        (v for v in parent_values if v == child_value.parent), None)
                     if parent_value:
-                        child_to_parent[child_value.id] = {
-                            'parent_value_id': parent_value.id,
-                            'parent_value': parent_value.value,
-                            'parent_label': parent_value.label,
-                            'parent_dimension_id': parent_value.dimension_id
+                        child_to_parent[child_value] = {
+                            'parent_value': parent_value,
+                            'parent_value_value': parent_value.value,
+                            'parent_value_label': parent_value.label,
+                            'parent_value_dimension': parent_value.dimension
                         }
 
-            constraints['value_constraints'][parent_dim_id][child_dim_id] = {
+            constraints['value_constraints'][parent_dim][child_dim] = {
                 'constraint_type': 'value_cascade',
-                'parent_dimension_id': parent_dim_id,
-                'child_dimension_id': child_dim_id,
+                'parent_dimension': parent_dim,
+                'child_dimension': child_dim,
                 'parent_to_children_values': parent_to_children,
                 'child_to_parent_values': child_to_parent,
                 'total_parent_values': len(parent_values),
                 'total_child_values': len(child_values),
-                'constrained_child_values': len([v for v in child_values if v.parent_id]),
-                'cascade_coverage': (len([v for v in child_values if v.parent_id]) / len(child_values) * 100) if child_values else 0.0
+                'constrained_child_values': len([v for v in child_values if v.parent]),
+                'cascade_coverage': (len([v for v in child_values if v.parent]) / len(child_values) * 100) if child_values else 0.0
             }
 
     def _build_constraint_lookup_tables(self, constraints: Dict, rule_details: QuerySet):
@@ -570,32 +570,32 @@ class DimensionCatalogService:
 
         # 1. Parent-to-children mapping
         for constraint in constraints['parent_child_constraints']:
-            parent_id = constraint['parent_dimension_id']
-            child_id = constraint['child_dimension_id']
+            parent = constraint['parent_dimension']
+            child = constraint['child_dimension']
 
-            if parent_id not in constraints['parent_to_children_map']:
-                constraints['parent_to_children_map'][parent_id] = {
-                    'parent_dimension_id': parent_id,
+            if parent not in constraints['parent_to_children_map']:
+                constraints['parent_to_children_map'][parent] = {
+                    'parent_dimension': parent,
                     'parent_dimension_name': constraint['parent_dimension_name'],
                     'child_dimensions': [],
                     'child_count': 0
                 }
 
-            constraints['parent_to_children_map'][parent_id]['child_dimensions'].append({
-                'child_dimension_id': child_id,
+            constraints['parent_to_children_map'][parent]['child_dimensions'].append({
+                'child_dimension': child,
                 'child_dimension_name': constraint['child_dimension_name'],
                 'constraint_type': constraint['constraint_type']
             })
 
         # 2. Child-to-parent mapping
         for constraint in constraints['parent_child_constraints']:
-            parent_id = constraint['parent_dimension_id']
-            child_id = constraint['child_dimension_id']
+            parent = constraint['parent_dimension']
+            child = constraint['child_dimension']
 
-            constraints['child_to_parent_map'][child_id] = {
-                'child_dimension_id': child_id,
+            constraints['child_to_parent_map'][child] = {
+                'child_dimension': child,
                 'child_dimension_name': constraint['child_dimension_name'],
-                'parent_dimension_id': parent_id,
+                'parent_dimension': parent,
                 'parent_dimension_name': constraint['parent_dimension_name'],
                 'constraint_type': constraint['constraint_type']
             }
@@ -610,15 +610,15 @@ class DimensionCatalogService:
 
         for detail in rule_details:
             all_dimensions.add(detail.dimension.id)
-            if detail.dimension.parent_id:
+            if detail.dimension.parent:
                 constrained_dimensions.add(detail.dimension.id)
 
-        for dimension_id in all_dimensions:
-            has_parent_constraint = dimension_id in constrained_dimensions
-            provides_child_constraint = dimension_id in constraints['parent_to_children_map']
+        for dimension in all_dimensions:
+            has_parent_constraint = dimension in constrained_dimensions
+            provides_child_constraint = dimension in constraints['parent_to_children_map']
 
-            constraints['constraint_coverage_map'][dimension_id] = {
-                'dimension_id': dimension_id,
+            constraints['constraint_coverage_map'][dimension] = {
+                'dimension': dimension,
                 'has_parent_constraint': has_parent_constraint,
                 'provides_child_constraint': provides_child_constraint,
                 'constraint_level': 'both' if has_parent_constraint and provides_child_constraint else
@@ -629,19 +629,19 @@ class DimensionCatalogService:
         # 4. Validation lookup for quick constraint checks
         for detail in rule_details:
             field_level = detail.field.field_level
-            dimension_id = detail.dimension.id
+            dimension = detail.dimension.id
 
-            validation_key = f"{field_level}_{dimension_id}"
+            validation_key = f"{field_level}_{dimension}"
             constraints['validation_lookup'][validation_key] = {
                 'field_level': field_level,
-                'dimension_id': dimension_id,
-                'has_constraints': dimension_id in constrained_dimensions,
-                'parent_dimension_id': detail.dimension.parent_id,
-                'validation_required': bool(detail.dimension.parent_id),
+                'dimension': dimension,
+                'has_constraints': dimension in constrained_dimensions,
+                'parent_dimension': detail.dimension.parent,
+                'validation_required': bool(detail.dimension.parent),
                 'quick_check': {
-                    'is_constrained': dimension_id in constrained_dimensions,
-                    'parent_id': detail.dimension.parent_id,
-                    'constraint_type': 'parent_child' if detail.dimension.parent_id else 'none'
+                    'is_constrained': dimension in constrained_dimensions,
+                    'parent': detail.dimension.parent,
+                    'constraint_type': 'parent_child' if detail.dimension.parent else 'none'
                 }
             }
 
@@ -668,7 +668,7 @@ class DimensionCatalogService:
         """Build comprehensive inheritance lookup tables for O(1) access"""
         lookup = {
             # Fast lookups by dimension ID
-            'by_dimension_id': {},
+            'by_dimension': {},
 
             # Fast lookups by field levels
             'by_target_field_level': {},
@@ -682,19 +682,12 @@ class DimensionCatalogService:
             'inherited_dimensions': set(),
             'source_dimensions': set(),
 
-            # Statistics
-            'inheritance_stats': {
-                'total_dimensions': 0,
-                'inherited_count': 0,
-                'source_count': 0,
-                'inheritance_coverage': 0.0
-            }
         }
 
         # Build primary inheritance data
         dimension_inheritance_map = {}
         for detail in rule_details:
-            dimension_id = detail.dimension.id
+            dimension = detail.dimension.id
             current_field_level = detail.field.field_level
 
             # Check for inheritance from previous field levels
@@ -715,8 +708,8 @@ class DimensionCatalogService:
                 inheritance_chain = self._build_inheritance_chain(
                     rule, detail.dimension, current_field_level)
 
-            dimension_inheritance_map[dimension_id] = {
-                'dimension_id': dimension_id,
+            dimension_inheritance_map[dimension] = {
+                'dimension': dimension,
                 'current_field_level': current_field_level,
                 'field_level_inherited_from': field_level_inherited_from,
                 'inherits_formatting': inherits_formatting,
@@ -734,9 +727,9 @@ class DimensionCatalogService:
         """Build O(1) inheritance lookup tables"""
 
         # 1. By Dimension ID lookup
-        for dim_id, data in inheritance_map.items():
-            lookup['by_dimension_id'][dim_id] = {
-                'dimension_id': dim_id,
+        for dim, data in inheritance_map.items():
+            lookup['by_dimension'][dim] = {
+                'dimension': dim,
                 'current_field_level': data['current_field_level'],
                 'inherits_from_field_level': data['field_level_inherited_from'],
                 'inherits_formatting': data['inherits_formatting'],
@@ -745,10 +738,10 @@ class DimensionCatalogService:
             }
 
             if data['is_inherited']:
-                lookup['inherited_dimensions'].add(dim_id)
+                lookup['inherited_dimensions'].add(dim)
 
         # 2. By Target Field Level (what each field level inherits)
-        for dim_id, data in inheritance_map.items():
+        for dim, data in inheritance_map.items():
             target_level = data['current_field_level']
             if target_level not in lookup['by_target_field_level']:
                 lookup['by_target_field_level'][target_level] = {
@@ -760,7 +753,7 @@ class DimensionCatalogService:
 
             if data['is_inherited']:
                 lookup['by_target_field_level'][target_level]['inherited_dimensions'].append({
-                    'dimension_id': dim_id,
+                    'dimension': dim,
                     'inherits_from_field_level': data['field_level_inherited_from'],
                     'inherits_formatting': data['inherits_formatting']
                 })
@@ -771,13 +764,13 @@ class DimensionCatalogService:
                     lookup['by_target_field_level'][target_level]['inheritance_sources'][source_level] = [
                     ]
                 lookup['by_target_field_level'][target_level]['inheritance_sources'][source_level].append(
-                    dim_id)
+                    dim)
             else:
                 lookup['by_target_field_level'][target_level]['non_inherited_dimensions'].append(
-                    dim_id)
+                    dim)
 
         # 3. By Source Field Level (what each field level provides)
-        for dim_id, data in inheritance_map.items():
+        for dim, data in inheritance_map.items():
             if data['field_level_inherited_from'] is not None:
                 source_level = data['field_level_inherited_from']
                 if source_level not in lookup['by_source_field_level']:
@@ -788,7 +781,7 @@ class DimensionCatalogService:
                     }
 
                 lookup['by_source_field_level'][source_level]['provides_inheritance_to'].append({
-                    'dimension_id': dim_id,
+                    'dimension': dim,
                     'target_field_level': data['current_field_level'],
                     'inherits_formatting': data['inherits_formatting']
                 })
@@ -796,31 +789,31 @@ class DimensionCatalogService:
                     data['current_field_level'])
 
                 # Update source dimensions
-                lookup['source_dimensions'].add(dim_id)
-                inheritance_map[dim_id]['is_source'] = True
+                lookup['source_dimensions'].add(dim)
+                inheritance_map[dim]['is_source'] = True
 
         # 4. Reverse Lookups - Inherits From Dimension
-        for dim_id, data in inheritance_map.items():
+        for dim, data in inheritance_map.items():
             if data['is_inherited']:
                 source_level = data['field_level_inherited_from']
 
                 # Find the source dimension at the source field level
-                for source_dim_id, source_data in inheritance_map.items():
+                for source_dim, source_data in inheritance_map.items():
                     if (source_data['current_field_level'] == source_level and
-                            source_dim_id == dim_id):  # Same dimension at different levels
+                            source_dim == dim):  # Same dimension at different levels
 
-                        if source_dim_id not in lookup['inherits_from_dimension']:
-                            lookup['inherits_from_dimension'][source_dim_id] = []
+                        if source_dim not in lookup['inherits_from_dimension']:
+                            lookup['inherits_from_dimension'][source_dim] = []
 
-                        lookup['inherits_from_dimension'][source_dim_id].append({
-                            'target_dimension_id': dim_id,
+                        lookup['inherits_from_dimension'][source_dim].append({
+                            'target_dimension': dim,
                             'target_field_level': data['current_field_level'],
                             'inherits_formatting': data['inherits_formatting']
                         })
 
         # 5. Reverse Lookups - Provides Inheritance To
-        for source_dim_id, targets in lookup['inherits_from_dimension'].items():
-            lookup['provides_inheritance_to'][source_dim_id] = targets
+        for source_dim, targets in lookup['inherits_from_dimension'].items():
+            lookup['provides_inheritance_to'][source_dim] = targets
 
         # 6. Convert sets to lists for JSON serialization
         lookup['inherited_dimensions'] = list(lookup['inherited_dimensions'])
@@ -898,16 +891,16 @@ class DimensionCatalogService:
 
         for detail in rule_details:
             field_level = detail.field.field_level
-            field_id = detail.field.id
+            field = detail.field.id
             field_name = detail.field.name
-            dimension_id = detail.dimension.id
+            dimension = detail.dimension.id
             dimension_name = detail.dimension.name
             is_required = getattr(detail, 'is_required', True)
 
             # Build field-to-dimensions mapping
             if field_level not in field_dimension_map:
                 field_dimension_map[field_level] = {
-                    'field_id': field_id,
+                    'field': field,
                     'field_name': field_name,
                     'field_level': field_level,
                     'all_dimensions': [],
@@ -919,7 +912,7 @@ class DimensionCatalogService:
                 }
 
             dimension_info = {
-                'dimension_id': dimension_id,
+                'dimension': dimension,
                 'dimension_name': dimension_name,
                 'dimension_order': detail.dimension_order,
                 'is_required': is_required
@@ -935,9 +928,9 @@ class DimensionCatalogService:
                     dimension_info)
 
             # Build dimension-to-fields mapping
-            if dimension_id not in dimension_field_map:
-                dimension_field_map[dimension_id] = {
-                    'dimension_id': dimension_id,
+            if dimension not in dimension_field_map:
+                dimension_field_map[dimension] = {
+                    'dimension': dimension,
                     'dimension_name': dimension_name,
                     'used_in_fields': [],
                     'required_in_fields': [],
@@ -948,20 +941,20 @@ class DimensionCatalogService:
                 }
 
             field_info = {
-                'field_id': field_id,
+                'field': field,
                 'field_name': field_name,
                 'field_level': field_level,
                 'dimension_order': detail.dimension_order,
                 'is_required': is_required
             }
 
-            dimension_field_map[dimension_id]['used_in_fields'].append(
+            dimension_field_map[dimension]['used_in_fields'].append(
                 field_info)
             if is_required:
-                dimension_field_map[dimension_id]['required_in_fields'].append(
+                dimension_field_map[dimension]['required_in_fields'].append(
                     field_info)
             else:
-                dimension_field_map[dimension_id]['optional_in_fields'].append(
+                dimension_field_map[dimension]['optional_in_fields'].append(
                     field_info)
 
         # Populate fast lookup maps
@@ -998,7 +991,7 @@ class DimensionCatalogService:
             }
 
         # 2. Dimension-to-Fields mappings
-        for dimension_id, dimension_data in dimension_field_map.items():
+        for dimension, dimension_data in dimension_field_map.items():
             # Update counts
             dimension_data['field_count'] = len(
                 dimension_data['used_in_fields'])
@@ -1008,15 +1001,15 @@ class DimensionCatalogService:
                 dimension_data['optional_in_fields'])
 
             # Store in maps
-            maps['dimension_to_fields'][dimension_id] = dimension_data
-            maps['dimension_to_required_fields'][dimension_id] = {
-                'dimension_id': dimension_id,
+            maps['dimension_to_fields'][dimension] = dimension_data
+            maps['dimension_to_required_fields'][dimension] = {
+                'dimension': dimension,
                 'dimension_name': dimension_data['dimension_name'],
                 'required_in_fields': dimension_data['required_in_fields'],
                 'count': dimension_data['required_field_count']
             }
-            maps['dimension_to_optional_fields'][dimension_id] = {
-                'dimension_id': dimension_id,
+            maps['dimension_to_optional_fields'][dimension] = {
+                'dimension': dimension,
                 'dimension_name': dimension_data['dimension_name'],
                 'optional_in_fields': dimension_data['optional_in_fields'],
                 'count': dimension_data['optional_field_count']
@@ -1027,11 +1020,11 @@ class DimensionCatalogService:
         maps['all_dimensions'] = list(dimension_field_map.keys())
 
         # Required/Optional dimension lists
-        for dimension_id, dimension_data in dimension_field_map.items():
+        for dimension, dimension_data in dimension_field_map.items():
             if dimension_data['required_field_count'] > 0:
-                maps['required_dimensions'].append(dimension_id)
+                maps['required_dimensions'].append(dimension)
             if dimension_data['optional_field_count'] > 0:
-                maps['optional_dimensions'].append(dimension_id)
+                maps['optional_dimensions'].append(dimension)
 
         # 4. Calculate statistics
         total_field_levels = len(field_dimension_map)
@@ -1077,15 +1070,15 @@ class DimensionCatalogService:
             },
 
             # Quick access indexes
-            'dimension_id_to_type': {},
-            'dimension_id_to_name': {},
+            'dimension_to_type': {},
+            'dimension_to_name': {},
             'dimension_name_to_id': {},
             'field_level_to_dimensions': {},
             'dimension_order_index': {},
 
             # Performance indexes
             'fast_lookups': {
-                'by_dimension_id': {},
+                'by_dimension': {},
                 'by_field_level': {},
                 'by_dimension_type': {},
                 'by_requirement_status': {},
@@ -1101,35 +1094,35 @@ class DimensionCatalogService:
         field_metadata = {}
 
         for detail in rule_details:
-            dimension_id = detail.dimension.id
+            dimension = detail.dimension.id
             dimension_name = detail.dimension.name
             dimension_type = detail.dimension.type
             field_level = detail.field.field_level
             is_required = getattr(detail, 'is_required', True)
 
             # Build dimension metadata
-            if dimension_id not in dimension_metadata:
-                dimension_metadata[dimension_id] = {
-                    'dimension_id': dimension_id,
+            if dimension not in dimension_metadata:
+                dimension_metadata[dimension] = {
+                    'dimension': dimension,
                     'dimension_name': dimension_name,
                     'dimension_type': dimension_type,
                     'allows_freetext': dimension_type == 'text',
                     'is_dropdown': dimension_type in ['list', 'combobox'],
-                    'has_parent_constraint': bool(detail.dimension.parent_id),
+                    'has_parent_constraint': bool(detail.dimension.parent),
                     'used_in_field_levels': [],
                     'formatting_patterns': [],
                     'is_required_anywhere': False,
                     'is_optional_anywhere': False
                 }
 
-            dimension_metadata[dimension_id]['used_in_field_levels'].append(
+            dimension_metadata[dimension]['used_in_field_levels'].append(
                 field_level)
 
             # Track requirement status
             if is_required:
-                dimension_metadata[dimension_id]['is_required_anywhere'] = True
+                dimension_metadata[dimension]['is_required_anywhere'] = True
             else:
-                dimension_metadata[dimension_id]['is_optional_anywhere'] = True
+                dimension_metadata[dimension]['is_optional_anywhere'] = True
 
             # Build formatting pattern
             formatting_pattern = {
@@ -1139,7 +1132,7 @@ class DimensionCatalogService:
                 'delimiter': detail.delimiter or '',
                 'effective_delimiter': detail.get_effective_delimiter() if hasattr(detail, 'get_effective_delimiter') else (detail.delimiter or '')
             }
-            dimension_metadata[dimension_id]['formatting_patterns'].append(
+            dimension_metadata[dimension]['formatting_patterns'].append(
                 formatting_pattern)
 
             # Build field metadata
@@ -1154,7 +1147,7 @@ class DimensionCatalogService:
                     'has_constrained_dimensions': False
                 }
 
-            field_metadata[field_level]['dimensions'].append(dimension_id)
+            field_metadata[field_level]['dimensions'].append(dimension)
             field_metadata[field_level]['dimension_types'].add(dimension_type)
 
             if is_required:
@@ -1162,7 +1155,7 @@ class DimensionCatalogService:
             else:
                 field_metadata[field_level]['has_optional_dimensions'] = True
 
-            if detail.dimension.parent_id:
+            if detail.dimension.parent:
                 field_metadata[field_level]['has_constrained_dimensions'] = True
 
         # Populate indexes
@@ -1175,38 +1168,38 @@ class DimensionCatalogService:
         """Populate the metadata indexes with computed data"""
 
         # 1. Dimension type groups
-        for dim_id, dim_data in dimension_metadata.items():
+        for dim, dim_data in dimension_metadata.items():
             dim_type = dim_data['dimension_type']
-            indexes['dimension_type_groups']['all_types'].append(dim_id)
+            indexes['dimension_type_groups']['all_types'].append(dim)
 
             if dim_type in indexes['dimension_type_groups']:
-                indexes['dimension_type_groups'][dim_type].append(dim_id)
+                indexes['dimension_type_groups'][dim_type].append(dim)
 
             # Type mapping
-            indexes['dimension_id_to_type'][dim_id] = dim_type
-            indexes['dimension_id_to_name'][dim_id] = dim_data['dimension_name']
-            indexes['dimension_name_to_id'][dim_data['dimension_name']] = dim_id
+            indexes['dimension_to_type'][dim] = dim_type
+            indexes['dimension_to_name'][dim] = dim_data['dimension_name']
+            indexes['dimension_name_to_id'][dim_data['dimension_name']] = dim
 
         # 2. Formatting pattern indexes
-        for dim_id, dim_data in dimension_metadata.items():
+        for dim, dim_data in dimension_metadata.items():
             for pattern in dim_data['formatting_patterns']:
                 # Group by delimiter
                 delimiter = pattern['delimiter']
                 if delimiter not in indexes['delimiter_groups']:
                     indexes['delimiter_groups'][delimiter] = []
-                indexes['delimiter_groups'][delimiter].append(dim_id)
+                indexes['delimiter_groups'][delimiter].append(dim)
 
                 # Group by prefix
                 prefix = pattern['prefix']
                 if prefix not in indexes['prefix_groups']:
                     indexes['prefix_groups'][prefix] = []
-                indexes['prefix_groups'][prefix].append(dim_id)
+                indexes['prefix_groups'][prefix].append(dim)
 
                 # Group by suffix
                 suffix = pattern['suffix']
                 if suffix not in indexes['suffix_groups']:
                     indexes['suffix_groups'][suffix] = []
-                indexes['suffix_groups'][suffix].append(dim_id)
+                indexes['suffix_groups'][suffix].append(dim)
 
                 # Create formatting pattern key
                 pattern_key = f"{prefix}|{suffix}|{delimiter}"
@@ -1219,25 +1212,25 @@ class DimensionCatalogService:
                         'dimensions': []
                     }
                 indexes['formatting_patterns'][pattern_key]['dimensions'].append(
-                    dim_id)
+                    dim)
 
         # 3. Validation flag indexes
-        for dim_id, dim_data in dimension_metadata.items():
+        for dim, dim_data in dimension_metadata.items():
             if dim_data['is_required_anywhere']:
                 indexes['validation_flags']['required_dimensions'].append(
-                    dim_id)
+                    dim)
             if dim_data['is_optional_anywhere']:
                 indexes['validation_flags']['optional_dimensions'].append(
-                    dim_id)
+                    dim)
             if dim_data['has_parent_constraint']:
                 indexes['validation_flags']['constrained_dimensions'].append(
-                    dim_id)
+                    dim)
             if dim_data['allows_freetext']:
                 indexes['validation_flags']['freetext_dimensions'].append(
-                    dim_id)
+                    dim)
             if dim_data['is_dropdown']:
                 indexes['validation_flags']['dropdown_dimensions'].append(
-                    dim_id)
+                    dim)
 
         # 4. Field level to dimensions mapping
         for field_level, field_data in field_metadata.items():
@@ -1246,9 +1239,9 @@ class DimensionCatalogService:
             indexes['field_level_to_dimensions'][field_level] = field_data
 
         # 5. Fast lookup indexes
-        for dim_id, dim_data in dimension_metadata.items():
-            indexes['fast_lookups']['by_dimension_id'][dim_id] = {
-                'dimension_id': dim_id,
+        for dim, dim_data in dimension_metadata.items():
+            indexes['fast_lookups']['by_dimension_id'][dim] = {
+                'dimension': dim,
                 'name': dim_data['dimension_name'],
                 'type': dim_data['dimension_type'],
                 'allows_freetext': dim_data['allows_freetext'],
@@ -1264,32 +1257,32 @@ class DimensionCatalogService:
             if dim_type not in indexes['fast_lookups']['by_dimension_type']:
                 indexes['fast_lookups']['by_dimension_type'][dim_type] = []
             indexes['fast_lookups']['by_dimension_type'][dim_type].append(
-                dim_id)
+                dim)
 
             # By requirement status
             if dim_data['is_required_anywhere']:
                 if 'required' not in indexes['fast_lookups']['by_requirement_status']:
                     indexes['fast_lookups']['by_requirement_status']['required'] = []
                 indexes['fast_lookups']['by_requirement_status']['required'].append(
-                    dim_id)
+                    dim)
 
             if dim_data['is_optional_anywhere']:
                 if 'optional' not in indexes['fast_lookups']['by_requirement_status']:
                     indexes['fast_lookups']['by_requirement_status']['optional'] = []
                 indexes['fast_lookups']['by_requirement_status']['optional'].append(
-                    dim_id)
+                    dim)
 
             # By constraint status
             if dim_data['has_parent_constraint']:
                 if 'constrained' not in indexes['fast_lookups']['by_constraint_status']:
                     indexes['fast_lookups']['by_constraint_status']['constrained'] = []
                 indexes['fast_lookups']['by_constraint_status']['constrained'].append(
-                    dim_id)
+                    dim)
             else:
                 if 'unconstrained' not in indexes['fast_lookups']['by_constraint_status']:
                     indexes['fast_lookups']['by_constraint_status']['unconstrained'] = []
                 indexes['fast_lookups']['by_constraint_status']['unconstrained'].append(
-                    dim_id)
+                    dim)
 
         # By field level
         for field_level, field_data in field_metadata.items():

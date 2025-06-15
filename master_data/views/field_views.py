@@ -4,6 +4,9 @@ from django_filters.rest_framework import DjangoFilterBackend
 from django.conf import settings
 from django.core.exceptions import PermissionDenied
 
+from drf_spectacular.openapi import AutoSchema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
+
 from .. import serializers
 from .. import models
 

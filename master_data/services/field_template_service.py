@@ -11,18 +11,18 @@ class FieldTemplateService:
     def __init__(self):
         self.cache_timeout = 30 * 60  # 30 minutes
 
-    def get_templates_for_rule(self, rule_id: int) -> List[Dict]:
+    def get_templates_for_rule(self, rule: Rule) -> List[Dict]:
         """Get field templates for a rule with comprehensive field data"""
-        cache_key = f"field_templates:{rule_id}"
+        cache_key = f"field_templates:{rule.id}"
 
         cached = cache.get(cache_key)
         if cached:
             return cached
 
         try:
-            rule = Rule.objects.get(id=rule_id)
+            rule = Rule.objects.get(id=rule.id)
         except Rule.DoesNotExist:
-            raise ValueError(f"Rule with id {rule_id} does not exist")
+            raise ValueError(f"Rule with id {rule.id} does not exist")
 
         templates = self._build_templates(rule)
 
@@ -41,13 +41,13 @@ class FieldTemplateService:
         # Group by field
         fields_map = {}
         for detail in rule_details:
-            field_id = detail.field.id
-            if field_id not in fields_map:
-                fields_map[field_id] = {
-                    'field_id': field_id,
+            field = detail.field
+            if field not in fields_map:
+                fields_map[field] = {
+                    'field': field,
                     'field_name': detail.field.name,
                     'field_level': detail.field.field_level,
-                    'next_field_id': getattr(detail.field, 'next_field_id', None),
+                    'next_field': getattr(detail.field, 'next_field', None),
                     'next_field_name': getattr(detail.field, 'next_field', None).name if getattr(detail.field, 'next_field', None) else None,
                     'can_generate': self._check_can_generate(rule, detail.field),
                     'dimensions': [],
@@ -57,7 +57,7 @@ class FieldTemplateService:
 
             # Add dimension information
             dimension_info = self._build_dimension_info(detail, rule)
-            fields_map[field_id]['dimensions'].append(dimension_info)
+            fields_map[field]['dimensions'].append(dimension_info)
 
         # Process each field to add computed information
         for field_data in fields_map.values():
@@ -75,8 +75,8 @@ class FieldTemplateService:
         inheritance_info = self._check_dimension_inheritance(detail, rule)
 
         return {
-            'rule_detail_id': detail.id,
-            'dimension_id': detail.dimension.id,
+            'rule_detail': detail,
+            'dimension': detail.dimension,
             'dimension_name': detail.dimension.name,
             'dimension_type': detail.dimension.type,
             'dimension_description': detail.dimension.description or '',
@@ -90,8 +90,8 @@ class FieldTemplateService:
             'effective_delimiter': detail.get_effective_delimiter() if hasattr(detail, 'get_effective_delimiter') else (detail.delimiter or ''),
 
             # Parent-child relationships
-            'parent_dimension_id': detail.dimension.parent_id,
-            'parent_dimension_name': detail.dimension.parent.name if detail.dimension.parent_id else None,
+            'parent_dimension': detail.dimension.parent,
+            'parent_dimension_name': detail.dimension.parent.name if detail.dimension.parent else None,
 
             # Inheritance information
             'inheritance': inheritance_info,
@@ -126,7 +126,7 @@ class FieldTemplateService:
         if current_field_level <= 1:
             return {
                 'is_inherited': False,
-                'parent_rule_detail_id': None,
+                'parent_rule_detail': None,
                 'parent_field_level': None,
                 'parent_field_name': None,
                 'inherits_formatting': False,
@@ -142,7 +142,7 @@ class FieldTemplateService:
         if parent_detail:
             return {
                 'is_inherited': True,
-                'parent_rule_detail_id': parent_detail.id,
+                'parent_rule_detail': parent_detail,
                 'parent_field_level': parent_detail.field.field_level,
                 'parent_field_name': parent_detail.field.name,
                 'inherits_formatting': self._check_formatting_inheritance(detail, parent_detail),
@@ -150,7 +150,7 @@ class FieldTemplateService:
 
         return {
             'is_inherited': False,
-            'parent_rule_detail_id': None,
+            'parent_rule_detail': None,
             'parent_field_level': None,
             'parent_field_name': None,
             'inherits_formatting': False,
@@ -305,19 +305,19 @@ class FieldTemplateService:
 
         return (total_score / max_score * 100) if max_score > 0 else 0
 
-    def get_template_for_field(self, rule_id: int, field_id: int) -> Dict:
+    def get_template_for_field(self, rule: Rule, field: Field) -> Dict:
         """Get template for a specific field within a rule"""
-        templates = self.get_templates_for_rule(rule_id)
+        templates = self.get_templates_for_rule(rule)
 
         for template in templates:
-            if template['field_id'] == field_id:
+            if template['field'] == field:
                 return template
 
-        raise ValueError(f"Field {field_id} not found in rule {rule_id}")
+        raise ValueError(f"Field {field} not found in rule {rule.id}")
 
-    def get_generation_preview(self, rule_id: int, field_id: int, sample_values: Dict[str, str]) -> Dict:
+    def get_generation_preview(self, rule: Rule, field: Field, sample_values: Dict[str, str]) -> Dict:
         """Generate a preview of what a string would look like with sample values"""
-        template = self.get_template_for_field(rule_id, field_id)
+        template = self.get_template_for_field(rule, field)
 
         if not template['can_generate']:
             return {
@@ -362,31 +362,31 @@ class FieldTemplateService:
             'template_used': template['field_rule_preview']
         }
 
-    def invalidate_cache(self, rule_id: int):
+    def invalidate_cache(self, rule: Rule):
         """Invalidate field templates cache for a rule"""
-        cache_key = f"field_templates:{rule_id}"
+        cache_key = f"field_templates:{rule.id}"
         cache.delete(cache_key)
 
-    def bulk_invalidate_cache(self, rule_ids: List[int]):
+    def bulk_invalidate_cache(self, rules: List[Rule]):
         """Invalidate cache for multiple rules"""
-        for rule_id in rule_ids:
-            self.invalidate_cache(rule_id)
+        for rule in rules:
+            self.invalidate_cache(rule)
 
-    def get_optimized_templates_for_rule(self, rule_id: int) -> List[Dict]:
+    def get_optimized_templates_for_rule(self, rule: Rule) -> List[Dict]:
         """
         Get optimized field templates with minimal data duplication.
         Returns dimension references by ID instead of full dimension data.
         """
-        cache_key = f"optimized_field_templates:{rule_id}"
+        cache_key = f"optimized_field_templates:{rule.id}"
         cached_result = cache.get(cache_key)
 
         if cached_result is not None:
             return cached_result
 
         try:
-            rule = Rule.objects.get(id=rule_id)
+            rule = Rule.objects.get(id=rule.id)
         except Rule.DoesNotExist:
-            raise ValueError(f"Rule with id {rule_id} does not exist")
+            raise ValueError(f"Rule with id {rule.id} does not exist")
 
         templates = self._build_optimized_templates(rule)
 
@@ -408,20 +408,20 @@ class FieldTemplateService:
         # Group by field
         fields_map = {}
         for detail in rule_details:
-            field_id = detail.field.id
-            if field_id not in fields_map:
-                fields_map[field_id] = {
-                    'field_id': field_id,
+            field = detail.field
+            if field not in fields_map:
+                fields_map[field] = {
+                    'field': field,
                     'field_name': detail.field.name,
                     'field_level': detail.field.field_level,
-                    'next_field_id': getattr(detail.field, 'next_field_id', None),
+                    'next_field': getattr(detail.field, 'next_field', None),
                     'can_generate': self._check_can_generate(rule, detail.field),
                     'dimensions': [],
                 }
 
             # Add minimal dimension reference
             dimension_ref = self._build_dimension_reference(detail, rule)
-            fields_map[field_id]['dimensions'].append(dimension_ref)
+            fields_map[field]['dimensions'].append(dimension_ref)
 
         # Process each field to add computed information
         for field_data in fields_map.values():
@@ -456,7 +456,7 @@ class FieldTemplateService:
             delimiter_override = detail.delimiter or ''
 
         return {
-            'dimension_id': detail.dimension.id,
+            'dimension': detail.dimension,
             'dimension_order': detail.dimension_order,
             'is_required': getattr(detail, 'is_required', True),
             'is_inherited': inheritance_info['is_inherited'],
@@ -493,12 +493,10 @@ class FieldTemplateService:
         preview_parts = []
 
         # Get dimension names from database (could be optimized with a lookup table)
-        dimension_ids = [d['dimension_id'] for d in dimension_refs]
-        dimensions = {d.id: d for d in Dimension.objects.filter(
-            id__in=dimension_ids)}
+        dimensions = {d['dimension']: d for d in dimension_refs}
 
         for dim_ref in dimension_refs:
-            dimension = dimensions.get(dim_ref['dimension_id'])
+            dimension = dimensions.get(dim_ref['dimension'])
             if not dimension:
                 continue
 
@@ -514,21 +512,3 @@ class FieldTemplateService:
             preview_parts.append(part)
 
         return ''.join(preview_parts)
-
-    def _calculate_optimized_completeness_score(self, field_data: Dict) -> float:
-        """Calculate completeness score for optimized field template"""
-        if field_data['dimension_count'] == 0:
-            return 0.0
-
-        # Basic score from having dimensions
-        base_score = 30.0
-
-        # Score from required dimensions being present
-        if field_data['required_dimension_count'] > 0:
-            base_score += 40.0
-
-        # Score from generation capability
-        if field_data.get('can_generate', False):
-            base_score += 30.0
-
-        return min(100.0, base_score)

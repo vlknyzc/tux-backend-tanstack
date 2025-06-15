@@ -47,7 +47,8 @@ INSTALLED_APPS = [
     "master_data",
     "django_filters",
     "users",
-    "coreapi"
+    "coreapi",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
@@ -157,7 +158,9 @@ SIMPLE_JWT = {
     "JWK_URL": None,
     "LEEWAY": 0,
 
-    "AUTH_HEADER_TYPES": ("Bearer", 'JWT'),
+    # "AUTH_HEADER_TYPES": ("Bearer", 'JWT'),
+    "AUTH_HEADER_TYPES": ('JWT',),
+
     "AUTH_HEADER_NAME": "HTTP_AUTHORIZATION",
     "USER_ID_FIELD": "id",
     "USER_ID_CLAIM": "user_id",
@@ -238,7 +241,8 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.AllowAny',
     ],
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+    # 'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 
     # API Versioning
@@ -246,6 +250,24 @@ REST_FRAMEWORK = {
     'DEFAULT_VERSION': 'v1',
     'ALLOWED_VERSIONS': ['v1', 'v2'],
     'VERSION_PARAM': 'version',
+}
+
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Tux API',
+    'DESCRIPTION': 'Tux API',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SECURITY_DEFINITIONS': {
+        'BearerAuth': {
+            'type': 'http',
+            'scheme': 'bearer',
+            'bearerFormat': 'JWT',   # or 'Bearer', but only one
+        },
+    },
+    'SECURITY': [
+        {'BearerAuth': []},
+    ],
+    # OTHER SETTINGS
 }
 
 # DJOSER settings

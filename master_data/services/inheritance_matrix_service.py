@@ -1,4 +1,4 @@
-from ..models import Rule, RuleDetail, Field
+from ..models import Rule, RuleDetail, Field, Dimension
 from django.db.models import QuerySet
 from django.utils import timezone
 from django.core.cache import cache
@@ -11,16 +11,16 @@ class InheritanceMatrixService:
     def __init__(self):
         self.cache_timeout = 30 * 60  # 30 minutes
 
-    def get_matrix_for_rule(self, rule_id: int) -> Dict:
+    def get_matrix_for_rule(self, rule: Rule) -> Dict:
         """Get inheritance matrix for a rule"""
-        cache_key = f"inheritance_matrix:{rule_id}"
+        cache_key = f"inheritance_matrix:{rule.id}"
 
         cached = cache.get(cache_key)
         if cached:
             return cached
 
         try:
-            rule = Rule.objects.get(id=rule_id)
+            rule = Rule.objects.get(id=rule.id)
             if (hasattr(rule, 'needs_inheritance_refresh') and
                 not rule.needs_inheritance_refresh and
                 hasattr(rule, 'inheritance_matrix_cache') and
@@ -29,7 +29,7 @@ class InheritanceMatrixService:
                           self.cache_timeout)
                 return rule.inheritance_matrix_cache
         except Rule.DoesNotExist:
-            raise ValueError(f"Rule with id {rule_id} does not exist")
+            raise ValueError(f"Rule with id {rule.id} does not exist")
 
         matrix = self._build_matrix(rule)
 
@@ -61,14 +61,14 @@ class InheritanceMatrixService:
                 'id': detail.id,
                 'rule': detail.rule.id,
                 'field_level': detail.field.field_level,
-                'field_id': detail.field.id,
+                'field': detail.field,
                 'field_name': detail.field.name,
                 'dimension': detail.dimension.id,
                 'dimension_name': detail.dimension.name,
                 'dimension_type': detail.dimension.type,
                 'dimension_order': detail.dimension_order,
-                'parent_dimension_id': detail.dimension.parent_id,
-                'parent_dimension_name': detail.dimension.parent.name if detail.dimension.parent_id else None,
+                'parent_dimension': detail.dimension.parent,
+                'parent_dimension_name': detail.dimension.parent.name if detail.dimension.parent else None,
                 'is_required': getattr(detail, 'is_required', True),
                 'prefix': detail.prefix or '',
                 'suffix': detail.suffix or '',
@@ -82,7 +82,7 @@ class InheritanceMatrixService:
             rule_details_data)
 
         return {
-            'rule_id': rule.id,
+            'rule': rule,
             'rule_name': rule.name,
             'inheritance_matrix': inheritance_analysis,
             'generated_at': timezone.now().isoformat(),
@@ -92,12 +92,12 @@ class InheritanceMatrixService:
         """Analyze inheritance patterns between field levels"""
         # Group by field level and dimension
         field_levels = {}
-        # Maps (dimension_id, field_level) -> rule_detail
+        # Maps (dimension, field_level) -> rule_detail
         dimension_field_map = {}
 
         for detail in rule_details_data:
             field_level = detail['field_level']
-            dimension_id = detail['dimension']
+            dimension = detail['dimension']
 
             # Group by field level
             if field_level not in field_levels:
@@ -105,7 +105,7 @@ class InheritanceMatrixService:
             field_levels[field_level].append(detail)
 
             # Create lookup map
-            key = (dimension_id, field_level)
+            key = (dimension, field_level)
             dimension_field_map[key] = detail
 
         # Find inheritance relationships
@@ -122,21 +122,21 @@ class InheritanceMatrixService:
             current_details = field_levels[current_level]
 
             for detail in current_details:
-                dimension_id = detail['dimension']
+                dimension = detail['dimension']
 
                 # Look for this dimension in previous field levels
                 inherited_from = []
                 for prev_level in sorted_levels[:i]:  # All previous levels
-                    prev_key = (dimension_id, prev_level)
+                    prev_key = (dimension, prev_level)
                     if prev_key in dimension_field_map:
                         parent_detail = dimension_field_map[prev_key]
                         inherited_from.append({
                             'parent_field_level': prev_level,
                             'parent_field_name': parent_detail['field_name'],
-                            'parent_rule_detail_id': parent_detail['id'],
+                            'parent_rule_detail': parent_detail['id'],
                             'inherits_formatting': self._check_formatting_inheritance(detail, parent_detail),
                         })
-                        inherited_dimensions.add(dimension_id)
+                        inherited_dimensions.add(dimension)
 
                 if inherited_from:
                     # Take the most immediate parent (highest field level)
@@ -144,10 +144,10 @@ class InheritanceMatrixService:
                         inherited_from, key=lambda x: x['parent_field_level'])
 
                     inheritance_relationships.append({
-                        'child_rule_detail_id': detail['id'],
+                        'child_rule_detail': detail['id'],
                         'child_field_level': detail['field_level'],
                         'child_field_name': detail['field_name'],
-                        'dimension_id': dimension_id,
+                        'dimension': dimension,
                         'dimension_name': detail['dimension_name'],
                         'immediate_parent': immediate_parent,
                         'all_parents': inherited_from,
@@ -223,18 +223,18 @@ class InheritanceMatrixService:
         # Group by dimension
         by_dimension = {}
         for rel in inheritance_relationships:
-            dim_id = rel['dimension_id']
-            if dim_id not in by_dimension:
-                by_dimension[dim_id] = []
-            by_dimension[dim_id].append(rel)
+            dimension = rel['dimension']
+            if dimension not in by_dimension:
+                by_dimension[dimension] = []
+            by_dimension[dimension].append(rel)
 
         # Build tree for each dimension
-        for dim_id, rels in by_dimension.items():
+        for dimension, rels in by_dimension.items():
             # Sort by field level
             rels.sort(key=lambda x: x['child_field_level'])
 
-            tree[dim_id] = {
-                'dimension_id': dim_id,
+            tree[dimension] = {
+                'dimension': dimension,
                 'dimension_name': rels[0]['dimension_name'],
                 'inheritance_chain': rels,
                 'total_levels': len(rels) + 1,  # +1 for the root level
@@ -243,34 +243,34 @@ class InheritanceMatrixService:
 
         return tree
 
-    def get_inheritance_for_dimension(self, rule_id: int, dimension_id: int) -> Dict:
+    def get_inheritance_for_dimension(self, rule: Rule, dimension: Dimension) -> Dict:
         """Get detailed inheritance information for a specific dimension"""
-        matrix = self.get_matrix_for_rule(rule_id)
+        matrix = self.get_matrix_for_rule(rule)
         inheritance_matrix = matrix['inheritance_matrix']
 
         # Find all relationships for this dimension
         dimension_relationships = [
             rel for rel in inheritance_matrix['inheritance_relationships']
-            if rel['dimension_id'] == dimension_id
+            if rel['dimension'] == dimension.id
         ]
 
         if not dimension_relationships:
             return {
-                'dimension_id': dimension_id,
+                'dimension': dimension.id,
                 'has_inheritance': False,
                 'inheritance_chain': [],
             }
 
         return {
-            'dimension_id': dimension_id,
+            'dimension': dimension.id,
             'has_inheritance': True,
             'inheritance_chain': dimension_relationships,
-            'inheritance_tree': inheritance_matrix['inheritance_tree'].get(dimension_id, {}),
+            'inheritance_tree': inheritance_matrix['inheritance_tree'].get(dimension.id, {}),
         }
 
-    def get_field_inheritance_summary(self, rule_id: int) -> Dict:
+    def get_field_inheritance_summary(self, rule: Rule) -> Dict:
         """Get a summary of inheritance patterns by field level"""
-        matrix = self.get_matrix_for_rule(rule_id)
+        matrix = self.get_matrix_for_rule(rule)
         inheritance_matrix = matrix['inheritance_matrix']
 
         summary = {}
@@ -296,16 +296,3 @@ class InheritanceMatrixService:
                 )
 
         return summary
-
-    def invalidate_cache(self, rule_id: int):
-        """Invalidate inheritance matrix cache for a rule"""
-        cache_key = f"inheritance_matrix:{rule_id}"
-        cache.delete(cache_key)
-
-        try:
-            rule = Rule.objects.get(id=rule_id)
-            if hasattr(rule, 'needs_inheritance_refresh'):
-                rule.needs_inheritance_refresh = True
-                rule.save(update_fields=['needs_inheritance_refresh'])
-        except Rule.DoesNotExist:
-            pass

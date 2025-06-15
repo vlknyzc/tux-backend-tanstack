@@ -144,7 +144,7 @@ class StringGenerationService:
             return False
 
     @staticmethod
-    def check_naming_conflicts(rule: Rule, field, proposed_value: str, exclude_string_id: Optional[int] = None) -> List[str]:
+    def check_naming_conflicts(rule: Rule, field, proposed_value: str, exclude_string: Optional[int] = None) -> List[str]:
         """
         Check for naming conflicts with existing strings.
 
@@ -160,8 +160,8 @@ class StringGenerationService:
             value=proposed_value
         )
 
-        if exclude_string_id:
-            existing_query = existing_query.exclude(id=exclude_string_id)
+        if exclude_string:
+            existing_query = existing_query.exclude(id=exclude_string.id)
 
         if existing_query.exists():
             conflicts.append(
@@ -174,8 +174,8 @@ class StringGenerationService:
             value__icontains=proposed_value[:10]  # Check first 10 chars
         )
 
-        if exclude_string_id:
-            similar_strings = similar_strings.exclude(id=exclude_string_id)
+        if exclude_string:
+            similar_strings = similar_strings.exclude(id=exclude_string.id)
 
         if similar_strings.exists():
             # Limit to 3 examples

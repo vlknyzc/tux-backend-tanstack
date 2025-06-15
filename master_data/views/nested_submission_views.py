@@ -1,11 +1,14 @@
 from rest_framework import viewsets, permissions, response, status
 from django_filters import rest_framework as filters
-from django_filters.rest_framework import DjangoFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from django.conf import settings
 from django.db import transaction, IntegrityError
 from django.db.models import Prefetch, Q
 from django.core.exceptions import ValidationError, PermissionDenied
 import logging
+
+from drf_spectacular.openapi import AutoSchema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .. import models
 from ..serializers.nested_submission import SubmissionNestedSerializer
@@ -16,11 +19,11 @@ logger = logging.getLogger(__name__)
 class SubmissionNestedFilter(filters.FilterSet):
     rule = filters.NumberFilter(field_name='rule')
     status = filters.CharFilter(field_name='status')
-    workspace_id = filters.NumberFilter(field_name='workspace__id')
+    workspace = filters.NumberFilter(field_name='workspace__id')
 
     class Meta:
         model = models.Submission
-        fields = ['id', 'rule', 'status', 'workspace', 'workspace_id']
+        fields = ['id', 'rule', 'status', 'workspace']
 
 
 class SubmissionNestedViewSet(viewsets.ModelViewSet):
@@ -39,22 +42,22 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
         """
         Get submissions with optimized prefetch and workspace filtering
         """
-        # Check if workspace_id is explicitly provided in query params
-        workspace_id = self.request.query_params.get('workspace_id')
+        # Check if workspace is explicitly provided in query params
+        workspace = self.request.query_params.get('workspace')
 
-        if workspace_id:
-            # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
+        if workspace:
+            # If workspace is explicitly provided, filter by it (for both superusers and regular users)
             try:
-                workspace_id = int(workspace_id)
+                workspace = int(workspace)
                 # Validate user has access to this workspace (unless superuser)
                 if hasattr(self.request, 'user') and not self.request.user.is_superuser:
-                    if not self.request.user.has_workspace_access(workspace_id):
+                    if not self.request.user.has_workspace_access(workspace):
                         # Return empty queryset for unauthorized access
                         return models.Submission.objects.none()
 
                 # Return queryset filtered by the specified workspace
                 return models.Submission.objects.all_workspaces().filter(
-                    workspace_id=workspace_id
+                    workspace=workspace
                 ).select_related('rule').prefetch_related(
                     'submission_strings',
                     'submission_strings__field',
@@ -64,10 +67,10 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
                 )
 
             except (ValueError, TypeError):
-                # Invalid workspace_id parameter, return empty queryset
+                # Invalid workspace parameter, return empty queryset
                 return models.Submission.objects.none()
 
-        # Default behavior when no workspace_id is specified
+        # Default behavior when no workspace is specified
         # If user is superuser, they can see all workspaces
         if hasattr(self.request, 'user') and self.request.user.is_superuser:
             return models.Submission.objects.all_workspaces().select_related(
@@ -205,22 +208,22 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
 
     def perform_create(self, serializer):
         """Set created_by and workspace when creating a new submission"""
-        workspace_id = getattr(self.request, 'workspace_id', None)
+        workspace = getattr(self.request, 'workspace', None)
 
         # Handle workspace context automatically based on user's access
-        if not workspace_id:
+        if not workspace:
             # Check if workspace is explicitly specified in the request data
             workspace_data = serializer.validated_data.get('workspace')
             if workspace_data:
-                workspace_id = workspace_data.id
+                workspace = workspace_data.id
                 # Verify user has access to this workspace (skip for anonymous users in DEBUG)
                 if (self.request.user.is_authenticated and
                     not self.request.user.is_superuser and
-                        not self.request.user.has_workspace_access(workspace_id)):
+                        not self.request.user.has_workspace_access(workspace)):
                     raise PermissionDenied(
-                        f"Access denied to workspace {workspace_id}")
+                        f"Access denied to workspace {workspace}")
                 # Set the workspace context for this request
-                self.request.workspace_id = workspace_id
+                self.request.workspace = workspace
             else:
                 # Skip workspace auto-determination for anonymous users
                 if not self.request.user.is_authenticated:
@@ -235,8 +238,8 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
                         "Superusers must specify 'workspace' in the request data.")
                 elif len(user_workspaces) == 1:
                     # User has access to only one workspace - use it automatically
-                    workspace_id = user_workspaces[0].id
-                    self.request.workspace_id = workspace_id
+                    workspace = user_workspaces[0].id
+                    self.request.workspace = workspace
                 elif len(user_workspaces) > 1:
                     raise PermissionDenied(
                         "Multiple workspaces available. Please specify 'workspace' in the request data.")
@@ -244,13 +247,13 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
                     raise PermissionDenied(
                         "No workspace access available for this user.")
 
-        if not workspace_id:
+        if not workspace:
             raise PermissionDenied("No workspace context available")
 
         # Validate user has access to this workspace (skip for anonymous users in DEBUG)
         if (self.request.user.is_authenticated and
             not self.request.user.is_superuser and
-                not self.request.user.has_workspace_access(workspace_id)):
+                not self.request.user.has_workspace_access(workspace)):
             raise PermissionDenied("Access denied to this workspace")
 
         kwargs = {}

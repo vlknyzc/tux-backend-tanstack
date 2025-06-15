@@ -6,6 +6,8 @@ from .. import models
 from .string import StringSerializer, StringDetailSerializer
 from .submission import SubmissionSerializer
 
+from typing import Optional, Dict, List, Any
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,13 +47,13 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
             "delimiter",
         ]
 
-    def get_dimension_name(self, obj):
+    def get_dimension_name(self, obj) -> Optional[str]:
         return obj.dimension.name if obj.dimension.name else None
 
-    def get_dimension_type(self, obj):
+    def get_dimension_type(self, obj) -> Optional[str]:
         return obj.dimension.type if obj.dimension else None
 
-    def get_dimension_order(self, obj):
+    def get_dimension_order(self, obj) -> Optional[int]:
         request = self.context.get('request')
 
         try:
@@ -72,14 +74,14 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
 
         return None
 
-    def get_prefix(self, obj):
+    def get_prefix(self, obj) -> Optional[str]:
         request = self.context.get('request')
 
         # Case 1: Check for rule_details_dict from list view
-        if hasattr(request, 'rule_details_dict') and obj.dimension_id:
+        if hasattr(request, 'rule_details_dict') and obj.dimension:
             try:
-                rule_id = obj.string.submission.rule_id
-                key = (rule_id, obj.dimension_id)
+                rule = obj.string.submission.rule
+                key = (rule, obj.dimension)
                 if key in request.rule_details_dict:
                     rule_detail = request.rule_details_dict[key]
                     if hasattr(rule_detail, 'prefix'):
@@ -89,10 +91,10 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
                 pass
 
         # Case 2: Check for rule_details from retrieve view
-        if hasattr(request, 'rule_details') and obj.dimension_id:
+        if hasattr(request, 'rule_details') and obj.dimension:
             rule_details = request.rule_details
-            if obj.dimension_id in rule_details:
-                rule_detail = rule_details[obj.dimension_id]
+            if obj.dimension in rule_details:
+                rule_detail = rule_details[obj.dimension]
                 if hasattr(rule_detail, 'prefix'):
                     return rule_detail.prefix
                 return None
@@ -110,14 +112,14 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
             pass
         return None
 
-    def get_suffix(self, obj):
+    def get_suffix(self, obj) -> Optional[str]:
         request = self.context.get('request')
 
         # Case 1: Check for rule_details_dict from list view
-        if hasattr(request, 'rule_details_dict') and obj.dimension_id:
+        if hasattr(request, 'rule_details_dict') and obj.dimension:
             try:
-                rule_id = obj.string.submission.rule_id
-                key = (rule_id, obj.dimension_id)
+                rule = obj.string.submission.rule
+                key = (rule, obj.dimension)
                 if key in request.rule_details_dict:
                     rule_detail = request.rule_details_dict[key]
                     if hasattr(rule_detail, 'suffix'):
@@ -127,10 +129,10 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
                 pass
 
         # Case 2: Check for rule_details from retrieve view
-        if hasattr(request, 'rule_details') and obj.dimension_id:
+        if hasattr(request, 'rule_details') and obj.dimension:
             rule_details = request.rule_details
-            if obj.dimension_id in rule_details:
-                rule_detail = rule_details[obj.dimension_id]
+            if obj.dimension in rule_details:
+                rule_detail = rule_details[obj.dimension]
                 if hasattr(rule_detail, 'suffix'):
                     return rule_detail.suffix
                 return None
@@ -173,10 +175,10 @@ class StringNestedSerializer(serializers.ModelSerializer):
             "next_field_code",
         ]
 
-    def get_field_name(self, obj):
+    def get_field_name(self, obj) -> Optional[str]:
         return obj.field.name if obj.field else None
 
-    def get_field_level(self, obj):
+    def get_field_level(self, obj) -> Optional[int]:
         return obj.field.field_level if obj.field else None
 
     def create(self, validated_data):
@@ -293,7 +295,7 @@ class StringNestedSerializer(serializers.ModelSerializer):
                     detail_data.pop('suffix', None)
                     detail_data.pop('dimension_order', None)
                     detail_data.pop('parent_dimension_name', None)
-                    detail_data.pop('parent_dimension_id', None)
+                    detail_data.pop('parent_dimension', None)
 
                     models.StringDetail.objects.create(
                         string=string,
@@ -362,7 +364,7 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
             "workspace",
         ]
 
-    def get_created_by_name(self, obj):
+    def get_created_by_name(self, obj) -> Optional[str]:
         if obj.created_by:
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
         return None
@@ -388,13 +390,13 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
 
     def validate_rule(self, value):
         if isinstance(value, dict):
-            rule_id = value.get('id')
-            if rule_id:
+            rule = value.get('id')
+            if rule:
                 try:
-                    return models.Rule.objects.get(id=rule_id)
+                    return models.Rule.objects.get(id=rule)
                 except models.Rule.DoesNotExist:
                     raise serializers.ValidationError(
-                        f"Rule with id {rule_id} does not exist.")
+                        f"Rule with id {rule} does not exist.")
         return value
 
     def create(self, validated_data):
@@ -478,11 +480,11 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                             detail_data.pop('prefix', None)
                             detail_data.pop('suffix', None)
 
-                            # Handle dimension_value_id
-                            dimension_value_id = detail_data.pop(
-                                'dimension_value_id', None)
-                            if dimension_value_id:
-                                detail_data['dimension_value'] = dimension_value_id
+                            # Handle dimension_value
+                            dimension_value = detail_data.pop(
+                                'dimension_value', None)
+                            if dimension_value:
+                                detail_data['dimension_value'] = dimension_value
 
                             # Validate required fields for string detail
                             if not detail_data.get('dimension'):
@@ -596,7 +598,7 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                     detail_data.pop('suffix', None)
                     detail_data.pop('dimension_order', None)
                     detail_data.pop('parent_dimension_name', None)
-                    detail_data.pop('parent_dimension_id', None)
+                    detail_data.pop('parent_dimension', None)
 
                     models.StringDetail.objects.create(
                         string=string,

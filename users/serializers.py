@@ -46,9 +46,9 @@ class UserDetailSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'email', 'first_name', 'last_name', 'full_name',
             'is_active', 'is_staff', 'is_superuser', 'last_login',
-            'date_joined', 'workspace_assignments', 'accessible_workspaces_count'
+            'workspace_assignments', 'accessible_workspaces_count'
         ]
-        read_only_fields = ['id', 'last_login', 'date_joined']
+        read_only_fields = ['id', 'last_login']
 
     def get_accessible_workspaces_count(self, obj):
         """Get count of accessible workspaces"""
