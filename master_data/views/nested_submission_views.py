@@ -1,4 +1,6 @@
 from rest_framework import viewsets, permissions, response, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from django_filters import rest_framework as filters
 from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from django.conf import settings
@@ -12,6 +14,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .. import models
 from ..serializers.nested_submission import SubmissionNestedSerializer
+from ..permissions import IsAuthenticatedOrDebugReadOnly
 
 logger = logging.getLogger(__name__)
 
@@ -33,8 +36,7 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
     and string details in a single request.
     """
     serializer_class = SubmissionNestedSerializer
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = SubmissionNestedFilter
 

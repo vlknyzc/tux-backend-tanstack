@@ -31,6 +31,9 @@ from drf_spectacular.views import SpectacularAPIView, SpectacularRedocView, Spec
 urlpatterns = [
     path('', TemplateView.as_view(template_name='index.html'), name='index'),
 
+    # Browsable API auth
+    path('api-auth/', include('rest_framework.urls')),
+
     # Versioned API endpoints with proper version capture
     re_path(r'^api/(?P<version>(v1|v2))/', include('master_data.urls')),
     re_path(r'^api/(?P<version>(v1|v2))/', include('djoser.urls')),
@@ -42,29 +45,10 @@ urlpatterns = [
     re_path(r'^api/(?P<version>(v1|v2))/token/refresh/$',
             TokenRefreshView.as_view(), name="token_refresh"),
 
-    # Legacy non-versioned endpoints (for backward compatibility)
-    # path('api/', include('master_data.urls')),
-    path('api/', include('djoser.urls')),
-    path('api/', include('users.urls')),
-    path("api/token/", TokenObtainPairView.as_view(),
-         name="token_obtain_pair_legacy"),
-    path("api/token/refresh/", TokenRefreshView.as_view(),
-         name="token_refresh_legacy"),
-
     # Admin and other endpoints
     path('admin/', admin.site.urls),
 
-    # API authentication
-    path("api-auth/", include("rest_framework.urls"), name="rest_framework"),
-
     # API documentation
-    path("docs/", include_docs_urls(title="Master Data API")),
-    path("schema/", get_schema_view(    # pylint: disable=bad-continuation
-        title="Master Data API",
-        description="API for all things …",
-        version="1.0.0"
-    ), name="openapi-schema"),
-
     path('api/schema/', SpectacularAPIView.as_view(), name='schema'),
     path('api/schema/swagger-ui/',
          SpectacularSwaggerView.as_view(url_name='schema'), name='swagger-ui'),

@@ -13,6 +13,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .. import serializers
 from .. import models
 from ..services import NamingPatternValidator
+from ..permissions import IsAuthenticatedOrDebugReadOnly
 
 
 class RuleFilter(filters.FilterSet):
@@ -42,8 +43,7 @@ class RuleFilter(filters.FilterSet):
 
 class RuleViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.RuleSerializer
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter
 
@@ -239,8 +239,7 @@ class RuleDetailFilter(filters.FilterSet):
 
 
 class RuleDetailViewSet(viewsets.ModelViewSet):
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleDetailFilter
 
@@ -335,8 +334,7 @@ class RuleDetailViewSet(viewsets.ModelViewSet):
 
 class RuleNestedViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.RuleNestedLegacySerializer
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter
 

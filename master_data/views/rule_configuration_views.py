@@ -30,6 +30,7 @@ from ..serializers import (
     CacheInvalidationRequestSerializer,
     CompleteRuleSerializer
 )
+from ..permissions import IsAuthenticatedOrDebugReadOnly
 
 logger = logging.getLogger(__name__)
 
@@ -356,8 +357,7 @@ class CacheManagementView(APIView):
 
 class RuleConfigurationView(APIView):
     """Complete rule configuration endpoint with all data"""
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
 
     def __init__(self):
         super().__init__()

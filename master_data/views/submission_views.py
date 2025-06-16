@@ -6,6 +6,7 @@ from django.core.exceptions import PermissionDenied
 
 from .. import models
 from ..serializers.submission import SubmissionSerializer
+from ..permissions import IsAuthenticatedOrDebugReadOnly
 
 
 from drf_spectacular.openapi import AutoSchema
@@ -23,8 +24,7 @@ class SubmissionFilter(filters.FilterSet):
 
 class SubmissionViewSet(viewsets.ModelViewSet):
     serializer_class = SubmissionSerializer
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = SubmissionFilter
 

@@ -13,6 +13,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .. import serializers
 from .. import models
 from ..services import StringGenerationService, NamingConventionError
+from ..permissions import IsAuthenticatedOrDebugReadOnly
 
 
 class StringFilter(filters.FilterSet):
@@ -49,8 +50,7 @@ class StringFilter(filters.FilterSet):
 
 class StringViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.StringSerializer
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = StringFilter
 
@@ -347,8 +347,7 @@ class StringDetailFilter(filters.FilterSet):
 
 class StringDetailViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.StringDetailSerializer
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = StringDetailFilter
 

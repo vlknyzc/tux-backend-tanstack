@@ -1,7 +1,10 @@
-from rest_framework import viewsets, permissions
+from rest_framework import viewsets, permissions, status
+from rest_framework.decorators import action
+from rest_framework.response import Response
 from django_filters import rest_framework as filters
-from django_filters.rest_framework import DjangoFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from django.conf import settings
+from django.db import transaction
 from django.core.exceptions import PermissionDenied
 
 from drf_spectacular.openapi import AutoSchema
@@ -9,6 +12,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .. import serializers
 from .. import models
+from ..permissions import IsAuthenticatedOrDebugReadOnly
 
 
 class FieldFilter(filters.FilterSet):
@@ -24,8 +28,7 @@ class FieldFilter(filters.FilterSet):
 
 class FieldViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.FieldSerializer
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = FieldFilter
 

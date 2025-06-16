@@ -14,6 +14,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .. import serializers
 from .. import models
+from ..permissions import IsAuthenticatedOrDebugReadOnly
 
 
 class WorkspaceMixin:
@@ -55,8 +56,7 @@ class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     """
     queryset = models.Dimension.objects.all()
     serializer_class = serializers.DimensionSerializer
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = DimensionFilter
     # filterset_fields = ['id', 'type', 'status', 'workspace__id']
@@ -207,8 +207,7 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     """
     queryset = models.DimensionValue.objects.all()
     serializer_class = serializers.DimensionValueSerializer
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = DimensionValueFilter
     # filterset_fields = ['id', 'dimension__id', 'workspace__id']
