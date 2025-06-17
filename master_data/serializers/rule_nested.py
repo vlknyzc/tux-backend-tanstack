@@ -13,7 +13,8 @@ class RuleDetailCreateSerializer(serializers.ModelSerializer):
 class RuleNestedSerializer(serializers.ModelSerializer):
     field_details = serializers.SerializerMethodField()
     name = serializers.CharField()
-    platform = serializers.IntegerField(source='platform.id')
+    platform = serializers.PrimaryKeyRelatedField(
+        queryset=models.Platform.objects.all())
     platform_name = serializers.CharField(
         source='platform.name', read_only=True)
     platform_slug = serializers.CharField(
@@ -50,6 +51,20 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                         f"Workspace {value} does not exist")
         return value
 
+    def validate_platform(self, value):
+        """Validate platform field"""
+        try:
+            # Handle both formats: direct ID or dict with ID
+            platform_id = value.id if hasattr(value, 'id') else value
+            platform = models.Platform.objects.get(id=platform_id)
+            return platform  # Return platform object for access later
+        except models.Platform.DoesNotExist:
+            raise serializers.ValidationError(
+                f"Platform {value} does not exist")
+        except AttributeError:
+            raise serializers.ValidationError(
+                "Invalid platform format. Expected an ID or a Platform instance.")
+
     class Meta:
         model = models.Rule
         fields = ['id', 'name', 'description', 'status', 'platform',
@@ -58,27 +73,22 @@ class RuleNestedSerializer(serializers.ModelSerializer):
 
     def create(self, validated_data):
         rule_details_data = validated_data.pop('rule_details')
-        platform_data = validated_data.pop(
-            'platform')  # This is a dict {'id': 1}
-        # Remove workspace from validated_data - this is a Workspace object from validation
+        # This is now a Platform instance
+        platform = validated_data.get('platform')
+        # This is a Workspace instance from validation
         workspace = validated_data.pop('workspace')
-
-        # Extract platform ID from the dictionary
-        platform = platform_data['id'] if isinstance(
-            platform_data, dict) else platform_data
 
         # Create the Rule instance - explicitly set workspace and platform
         rule = models.Rule.objects.create(
-            platform=platform,
-            workspace=workspace,  # Pass the workspace object directly
-            **validated_data  # Now workspace is already removed
+            workspace=workspace,  # Workspace instance is used directly
+            **validated_data  # platform is included here since it's already a Platform instance
         )
 
         # Create RuleDetail instances with the same workspace
         for detail_data in rule_details_data:
             models.RuleDetail.objects.create(
                 rule=rule,
-                workspace=workspace,  # Pass the workspace object directly
+                workspace=workspace,
                 **detail_data
             )
 

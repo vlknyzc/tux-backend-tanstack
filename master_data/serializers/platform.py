@@ -48,11 +48,9 @@ class FieldSerializer(serializers.ModelSerializer):
         ]
 
     def get_next_field_name(self, obj) -> Optional[str]:
-        if obj.next_field:
-            next_field = models.Field.objects.get(id=obj.next_field)
-            return next_field.name
-        else:
-            return None
+        if obj.next_field_id:
+            return obj.next_field.name
+        return None
 
     def get_platform_name(self, obj) -> str:
         return obj.platform.name

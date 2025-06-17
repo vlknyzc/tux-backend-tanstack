@@ -333,7 +333,7 @@ class RuleDetailViewSet(viewsets.ModelViewSet):
 
 
 class RuleNestedViewSet(viewsets.ModelViewSet):
-    serializer_class = serializers.RuleNestedLegacySerializer
+    serializer_class = serializers.RuleNestedSerializer
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter

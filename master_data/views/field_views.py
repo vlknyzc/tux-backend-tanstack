@@ -16,14 +16,11 @@ from ..permissions import IsAuthenticatedOrDebugReadOnly
 
 
 class FieldFilter(filters.FilterSet):
-    platform = filters.NumberFilter(method='filter_platform_id')
+    platform = filters.NumberFilter(field_name='platform__id')
 
     class Meta:
         model = models.Field
         fields = ['platform', 'id', 'field_level']
-
-    def filter_platform_id(self, queryset, name, value):
-        return queryset.filter(platform__id=value)
 
 
 class FieldViewSet(viewsets.ModelViewSet):

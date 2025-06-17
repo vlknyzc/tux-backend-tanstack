@@ -78,12 +78,9 @@ class RuleDetailSerializer(serializers.ModelSerializer):
             return None
 
     def get_next_field(self, obj) -> Optional[str]:
-        if obj.field.next_field:
-            next_field = models.Field.objects.get(
-                id=obj.field.next_field.id)
-            return next_field.name
-        else:
-            return None
+        if obj.field.next_field_id:
+            return obj.field.next_field.name
+        return None
 
     def get_rule_name(self, obj) -> str:
         return obj.rule.name
@@ -178,20 +175,22 @@ class RuleSerializer(serializers.ModelSerializer):
         """Get configuration validation errors."""
         return obj.validate_configuration()
 
+    def get_fields_with_rules(self, obj) -> List[Dict[str, Any]]:
+        """Get all fields that have rule details configured."""
+        field_ids = list(obj.get_fields_with_rules()
+                         )  # Convert to list to avoid multiple evaluations
+        fields = models.Field.objects.filter(id__in=field_ids)
+        return [{"id": f.id, "name": f.name, "field_level": f.field_level} for f in fields]
+
     def get_required_dimensions(self, obj) -> Dict[str, List[str]]:
         """Get required dimensions by field."""
         result = {}
-        for field in obj.get_fields_with_rules():
-            field_obj = models.Field.objects.get(id=field)
-            result[field_obj.name] = list(
-                obj.get_required_dimensions(field_obj))
-        return result
-
-    def get_fields_with_rules(self, obj) -> List[Dict[str, Any]]:
-        """Get all fields that have rule details configured."""
-        field_ids = obj.get_fields_with_rules()
+        # Convert to list to avoid multiple evaluations
+        field_ids = list(obj.get_fields_with_rules())
         fields = models.Field.objects.filter(id__in=field_ids)
-        return [{"id": f.id, "name": f.name, "field_level": f.field_level} for f in fields]
+        for field in fields:
+            result[field.name] = list(obj.get_required_dimensions(field))
+        return result
 
 
 class RuleNestedSerializer(serializers.ModelSerializer):
