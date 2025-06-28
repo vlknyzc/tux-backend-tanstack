@@ -32,9 +32,59 @@ def add_workspace_fields_if_missing(apps, schema_editor):
     with connection.cursor() as cursor:
         existing_tables = introspection.table_names(cursor)
 
-        # First, ensure we have a default workspace
+        # First, ensure the workspace table has all required columns
         default_workspace_id = None
         if 'master_data_workspace' in existing_tables:
+            # Check current columns in workspace table
+            workspace_columns = [col.name for col in introspection.get_table_description(
+                cursor, 'master_data_workspace')]
+            print(f"Current workspace table columns: {workspace_columns}")
+
+            # Define required columns for current Workspace model
+            required_workspace_columns = {
+                'name': 'VARCHAR(30) NOT NULL',
+                'slug': 'VARCHAR(50)',
+                'logo': 'VARCHAR(100)',
+                'status': 'VARCHAR(30) DEFAULT \'active\'',
+                'created': 'TIMESTAMP',
+                'last_updated': 'TIMESTAMP',
+                'created_by_id': 'BIGINT'
+            }
+
+            # Add missing columns to workspace table
+            for column_name, column_definition in required_workspace_columns.items():
+                if column_name not in workspace_columns:
+                    print(
+                        f"Adding missing column {column_name} to master_data_workspace")
+                    try:
+                        if connection.vendor == 'postgresql':
+                            # PostgreSQL syntax
+                            if column_name == 'created' or column_name == 'last_updated':
+                                cursor.execute(
+                                    f"ALTER TABLE master_data_workspace ADD COLUMN {column_name} TIMESTAMP")
+                            elif column_name == 'created_by_id':
+                                cursor.execute(
+                                    f"ALTER TABLE master_data_workspace ADD COLUMN {column_name} BIGINT")
+                            elif column_name == 'status':
+                                cursor.execute(
+                                    f"ALTER TABLE master_data_workspace ADD COLUMN {column_name} VARCHAR(30) DEFAULT 'active'")
+                            elif column_name == 'slug':
+                                cursor.execute(
+                                    f"ALTER TABLE master_data_workspace ADD COLUMN {column_name} VARCHAR(50)")
+                            elif column_name == 'logo':
+                                cursor.execute(
+                                    f"ALTER TABLE master_data_workspace ADD COLUMN {column_name} VARCHAR(100)")
+                        elif connection.vendor == 'sqlite':
+                            # SQLite syntax
+                            cursor.execute(
+                                f"ALTER TABLE master_data_workspace ADD COLUMN {column_name} {column_definition}")
+                    except Exception as e:
+                        print(f"Could not add column {column_name}: {e}")
+
+            # Refresh column list after adding missing columns
+            workspace_columns = [col.name for col in introspection.get_table_description(
+                cursor, 'master_data_workspace')]
+
             # Check if any workspaces exist
             cursor.execute("SELECT id FROM master_data_workspace LIMIT 1")
             result = cursor.fetchone()
@@ -44,20 +94,54 @@ def add_workspace_fields_if_missing(apps, schema_editor):
                 print(
                     f"Using existing workspace with ID: {default_workspace_id}")
             else:
-                # Create a default workspace using timezone-aware datetime
+                # Create a default workspace using only existing columns
                 now = timezone.now()
-                cursor.execute("""
-                    INSERT INTO master_data_workspace (name, slug, description, status, created, last_updated)
-                    VALUES (%s, %s, %s, %s, %s, %s)
+
+                # Build dynamic INSERT query based on available columns
+                available_columns = []
+                values = []
+                placeholders = []
+
+                # Only include columns that exist
+                if 'name' in workspace_columns:
+                    available_columns.append('name')
+                    values.append('Default Workspace')
+                    placeholders.append('%s')
+
+                if 'slug' in workspace_columns:
+                    available_columns.append('slug')
+                    values.append('default')
+                    placeholders.append('%s')
+
+                if 'status' in workspace_columns:
+                    available_columns.append('status')
+                    values.append('active')
+                    placeholders.append('%s')
+
+                if 'created' in workspace_columns:
+                    available_columns.append('created')
+                    values.append(now)
+                    placeholders.append('%s')
+
+                if 'last_updated' in workspace_columns:
+                    available_columns.append('last_updated')
+                    values.append(now)
+                    placeholders.append('%s')
+
+                # Create the INSERT query
+                columns_str = ', '.join(available_columns)
+                placeholders_str = ', '.join(placeholders)
+
+                insert_query = f"""
+                    INSERT INTO master_data_workspace ({columns_str})
+                    VALUES ({placeholders_str})
                     RETURNING id
-                """, [
-                    'Default Workspace',
-                    'default',
-                    'Default workspace created during migration',
-                    'active',
-                    now,
-                    now
-                ])
+                """
+
+                print(f"Creating workspace with query: {insert_query}")
+                print(f"Values: {values}")
+
+                cursor.execute(insert_query, values)
                 default_workspace_id = cursor.fetchone()[0]
                 print(
                     f"Created default workspace with ID: {default_workspace_id}")
