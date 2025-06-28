@@ -34,8 +34,7 @@ class DimensionSerializer(serializers.ModelSerializer):
 
     def get_parent_name(self, obj) -> Optional[str]:
         if obj.parent:
-            parent = models.Dimension.objects.get(id=obj.parent)
-            return parent.name
+            return obj.parent.name  # obj.parent is already a Dimension instance
         else:
             return None
 
@@ -95,8 +94,8 @@ class DimensionValueSerializer(serializers.ModelSerializer):
 
     def get_dimension_parent(self, obj) -> Optional[int]:
         if obj.dimension.parent:
-            parent = models.Dimension.objects.get(id=obj.dimension.parent)
-            return parent.id
+            # obj.dimension.parent is already a Dimension instance
+            return obj.dimension.parent.id
         else:
             return None
 
@@ -105,22 +104,19 @@ class DimensionValueSerializer(serializers.ModelSerializer):
 
     def get_parent_name(self, obj) -> Optional[str]:
         if obj.parent:
-            parent = models.DimensionValue.objects.get(id=obj.parent)
-            return parent.label
+            return obj.parent.label  # obj.parent is already a DimensionValue instance
         else:
             return None
 
     def get_parent_value(self, obj) -> Optional[str]:
         if obj.parent:
-            parent = models.DimensionValue.objects.get(id=obj.parent)
-            return parent.value
+            return obj.parent.value  # obj.parent is already a DimensionValue instance
         else:
             return None
 
     def get_dimension_parent_name(self, obj) -> Optional[str]:
         if obj.parent:
-            parent = models.DimensionValue.objects.get(id=obj.parent)
-            return parent.dimension.name
+            return obj.parent.dimension.name  # obj.parent is already a DimensionValue instance
         else:
             return None
 
