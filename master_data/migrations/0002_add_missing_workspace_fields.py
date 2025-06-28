@@ -2,6 +2,7 @@
 
 from django.db import migrations, models
 import django.db.models.deletion
+from django.utils import timezone
 
 
 def add_workspace_fields_if_missing(apps, schema_editor):
@@ -31,6 +32,43 @@ def add_workspace_fields_if_missing(apps, schema_editor):
     with connection.cursor() as cursor:
         existing_tables = introspection.table_names(cursor)
 
+        # First, ensure we have a default workspace
+        default_workspace_id = None
+        if 'master_data_workspace' in existing_tables:
+            # Check if any workspaces exist
+            cursor.execute("SELECT id FROM master_data_workspace LIMIT 1")
+            result = cursor.fetchone()
+
+            if result:
+                default_workspace_id = result[0]
+                print(
+                    f"Using existing workspace with ID: {default_workspace_id}")
+            else:
+                # Create a default workspace using timezone-aware datetime
+                now = timezone.now()
+                cursor.execute("""
+                    INSERT INTO master_data_workspace (name, slug, description, status, created, last_updated)
+                    VALUES (%s, %s, %s, %s, %s, %s)
+                    RETURNING id
+                """, [
+                    'Default Workspace',
+                    'default',
+                    'Default workspace created during migration',
+                    'active',
+                    now,
+                    now
+                ])
+                default_workspace_id = cursor.fetchone()[0]
+                print(
+                    f"Created default workspace with ID: {default_workspace_id}")
+        else:
+            print("Warning: master_data_workspace table does not exist")
+            return
+
+        if not default_workspace_id:
+            print("Error: Could not determine default workspace ID")
+            return
+
         for model_name, table_name in models_to_update:
             if table_name in existing_tables:
                 # Check if workspace_id column exists
@@ -46,14 +84,14 @@ def add_workspace_fields_if_missing(apps, schema_editor):
                         ADD COLUMN workspace_id BIGINT
                     """)
 
-                    # Set default value (assuming workspace with id=1 exists)
+                    # Set default value using the actual workspace ID
                     cursor.execute(f"""
                         UPDATE {table_name} 
-                        SET workspace_id = 1 
+                        SET workspace_id = %s 
                         WHERE workspace_id IS NULL
-                    """)
+                    """, [default_workspace_id])
 
-                    # Make the column non-nullable
+                    # Make the column non-nullable and add foreign key constraint
                     if connection.vendor == 'postgresql':
                         cursor.execute(f"""
                             ALTER TABLE {table_name} 
@@ -61,9 +99,10 @@ def add_workspace_fields_if_missing(apps, schema_editor):
                         """)
 
                         # Add foreign key constraint
+                        constraint_name = f"{table_name}_workspace_id_fkey"
                         cursor.execute(f"""
                             ALTER TABLE {table_name} 
-                            ADD CONSTRAINT {table_name}_workspace_id_fkey 
+                            ADD CONSTRAINT {constraint_name} 
                             FOREIGN KEY (workspace_id) REFERENCES master_data_workspace(id) ON DELETE CASCADE
                         """)
                     elif connection.vendor == 'sqlite':
