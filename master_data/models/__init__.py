@@ -1,4 +1,4 @@
-from .base import TimeStampModel, default_workspace_logo
+from .base import TimeStampModel, default_workspace_logo, WorkspaceMixin
 from .workspace import Workspace
 from .platform import Platform
 # from .convention import Convention, ConventionPlatform
@@ -22,6 +22,7 @@ __all__ = [
     # Models
     'TimeStampModel',
     'default_workspace_logo',
+    'WorkspaceMixin',
     'Workspace',
     'Platform',
     'Field',

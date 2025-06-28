@@ -45,7 +45,8 @@ class Field(TimeStampModel):
     class Meta:
         verbose_name = "Field"
         verbose_name_plural = "Fields"
-        unique_together = ('platform', 'name', 'field_level')
+        # Unique globally per platform
+        unique_together = [('platform', 'name', 'field_level')]
         ordering = ['platform', 'field_level']
 
     def __str__(self):

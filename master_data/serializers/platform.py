@@ -1,5 +1,6 @@
 from rest_framework import serializers
 from .. import models
+from typing import Optional, Dict, List, Any
 
 
 class PlatformSerializer(serializers.ModelSerializer):
@@ -19,7 +20,7 @@ class PlatformSerializer(serializers.ModelSerializer):
             "last_updated",
         ]
 
-    def get_created_by_name(self, obj):
+    def get_created_by_name(self, obj) -> Optional[str]:
         if obj.created_by:
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
         return None
@@ -46,17 +47,15 @@ class FieldSerializer(serializers.ModelSerializer):
             "last_updated",
         ]
 
-    def get_next_field_name(self, obj):
+    def get_next_field_name(self, obj) -> Optional[str]:
         if obj.next_field_id:
-            next_field = models.Field.objects.get(id=obj.next_field_id)
-            return next_field.name
-        else:
-            return None
+            return obj.next_field.name
+        return None
 
-    def get_platform_name(self, obj):
+    def get_platform_name(self, obj) -> str:
         return obj.platform.name
 
-    def get_created_by_name(self, obj):
+    def get_created_by_name(self, obj) -> Optional[str]:
         if obj.created_by:
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
         return None

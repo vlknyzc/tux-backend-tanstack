@@ -1,10 +1,12 @@
 from rest_framework import serializers
+from typing import Optional
 from .. import models
 
 
 class DimensionSerializer(serializers.ModelSerializer):
     parent_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
+    workspace_name = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Dimension
@@ -17,22 +19,34 @@ class DimensionSerializer(serializers.ModelSerializer):
             "parent",
             "parent_name",
             "status",
+            "workspace",
+            "workspace_name",
             "created_by",
             "created_by_name",
             "created",
             "last_updated",
         ]
 
-    def get_parent_name(self, obj):
-        if obj.parent_id:
-            parent = models.Dimension.objects.get(id=obj.parent_id)
+        extra_kwargs = {
+            'type': {'required': True, 'allow_null': False},
+            'workspace': {'required': True, 'allow_null': False, "help_text": "ID of the workspace this dimension belongs to"},
+        }
+
+    def get_parent_name(self, obj) -> Optional[str]:
+        if obj.parent:
+            parent = models.Dimension.objects.get(id=obj.parent)
             return parent.name
         else:
             return None
 
-    def get_created_by_name(self, obj):
+    def get_created_by_name(self, obj) -> Optional[str]:
         if obj.created_by:
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return None
+
+    def get_workspace_name(self, obj) -> Optional[str]:
+        if obj.workspace:
+            return obj.workspace.name
         return None
 
 
@@ -43,6 +57,7 @@ class DimensionValueSerializer(serializers.ModelSerializer):
     parent_value = serializers.SerializerMethodField()
     dimension_parent = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
+    workspace_name = serializers.SerializerMethodField()
 
     class Meta:
         model = models.DimensionValue
@@ -61,46 +76,62 @@ class DimensionValueSerializer(serializers.ModelSerializer):
             "parent",
             "parent_name",
             "parent_value",
+            "workspace",
+            "workspace_name",
             "created_by",
             "created_by_name",
             "created",
             "last_updated",
         ]
 
-    def get_dimension_parent(self, obj):
-        if obj.dimension.parent_id:
-            parent = models.Dimension.objects.get(id=obj.dimension.parent_id)
+    def validate_dimension(self, value):
+        if value is not None:
+            try:
+                models.Dimension.objects.get(id=value.id)
+            except models.Dimension.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Dimension with id {value.id} does not exist")
+        return value
+
+    def get_dimension_parent(self, obj) -> Optional[int]:
+        if obj.dimension.parent:
+            parent = models.Dimension.objects.get(id=obj.dimension.parent)
             return parent.id
         else:
             return None
 
-    def get_dimension_name(self, obj):
+    def get_dimension_name(self, obj) -> str:
         return obj.dimension.name
 
-    def get_parent_name(self, obj):
-        if obj.parent_id:
-            parent = models.DimensionValue.objects.get(id=obj.parent_id)
+    def get_parent_name(self, obj) -> Optional[str]:
+        if obj.parent:
+            parent = models.DimensionValue.objects.get(id=obj.parent)
             return parent.label
         else:
             return None
 
-    def get_parent_value(self, obj):
-        if obj.parent_id:
-            parent = models.DimensionValue.objects.get(id=obj.parent_id)
+    def get_parent_value(self, obj) -> Optional[str]:
+        if obj.parent:
+            parent = models.DimensionValue.objects.get(id=obj.parent)
             return parent.value
         else:
             return None
 
-    def get_dimension_parent_name(self, obj):
-        if obj.parent_id:
-            parent = models.DimensionValue.objects.get(id=obj.parent_id)
+    def get_dimension_parent_name(self, obj) -> Optional[str]:
+        if obj.parent:
+            parent = models.DimensionValue.objects.get(id=obj.parent)
             return parent.dimension.name
         else:
             return None
 
-    def get_created_by_name(self, obj):
+    def get_created_by_name(self, obj) -> Optional[str]:
         if obj.created_by:
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return None
+
+    def get_workspace_name(self, obj) -> Optional[str]:
+        if obj.workspace:
+            return obj.workspace.name
         return None
 
 

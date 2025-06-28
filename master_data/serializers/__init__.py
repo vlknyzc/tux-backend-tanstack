@@ -13,11 +13,7 @@ from .rule import (
     RuleDetailCreateSerializer,
     DefaultRuleRequestSerializer,
 )
-from .rule_nested import (
-    # RuleDetailSerializer,
-    # FieldSerializer,
-    RuleNestedSerializer as RuleNestedLegacySerializer,
-)
+from .rule_nested import RuleNestedSerializer
 from .rule_serializers import (
     FieldTemplateSerializer,
     FieldSpecificDataSerializer,
@@ -56,7 +52,6 @@ __all__ = [
     'RuleSerializer',
     'RuleDetailSerializer',
     'RuleNestedSerializer',
-    'RuleNestedLegacySerializer',
     'RulePreviewRequestSerializer',
     'RuleValidationSerializer',
     'RuleDetailCreateSerializer',

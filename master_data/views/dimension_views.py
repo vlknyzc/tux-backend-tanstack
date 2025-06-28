@@ -1,203 +1,296 @@
+# myapp/api/views.py
+
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from django_filters import rest_framework as filters
-from django_filters.rest_framework import DjangoFilterBackend
+from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from django.conf import settings
 from django.db import transaction
+from django.core.exceptions import PermissionDenied
+
+from drf_spectacular.openapi import AutoSchema
+from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .. import serializers
 from .. import models
+from ..permissions import IsAuthenticatedOrDebugReadOnly
 
+
+class WorkspaceMixin:
+    """
+    Mixin to parse `?workspace=` from the querystring (or request attribute)
+    and to check access in one place.
+    """
+
+    def get_workspace_id(self):
+        raw = getattr(self.request, 'workspace',
+                      None) or self.request.query_params.get('workspace')
+        try:
+            return int(raw)
+        except (TypeError, ValueError):
+            return None
+
+    def check_workspace_access(self, workspace_id):
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
+            raise PermissionDenied(
+                f"Access denied to workspace {workspace_id}")
+
+
+#
+# ─── DIMENSIONS ─────────────────────────────────────────────────────────────────
+#
 
 class DimensionFilter(filters.FilterSet):
-    workspace = filters.NumberFilter(method='filter_workspace_id')
+    dimension = filters.NumberFilter(field_name='dimension__id')
+    workspace = filters.NumberFilter(field_name='workspace__id')
 
     class Meta:
         model = models.Dimension
-        fields = ['id', 'workspace', 'type']
-
-    def filter_workspace_id(self, queryset, name, value):
-        return queryset.filter(workspace__id=value)
+        fields = ['id', 'type', 'status', 'workspace', 'dimension']
 
 
-class DimensionViewSet(viewsets.ModelViewSet):
+class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
+    """
+    CRUD + bulk_create for Dimension, scoped per-workspace.
+    """
     queryset = models.Dimension.objects.all()
     serializer_class = serializers.DimensionSerializer
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = DimensionFilter
+    # filterset_fields = ['id', 'type', 'status', 'workspace__id']
+
+    def get_queryset(self):
+        wid = self.get_workspace_id()
+        if wid:
+            # list/retrieve only dims in that workspace
+            self.check_workspace_access(wid)
+            return models.Dimension.objects.all_workspaces().filter(workspace_id=wid)
+
+        # no `?workspace=`: superusers see all, regular users auto-filter via manager
+        if self.request.user.is_superuser:
+            return models.Dimension.objects.all_workspaces()
+        return models.Dimension.objects.all()
+
+    def get_object(self):
+        # enforce workspace scoping on retrieve()
+        obj = super().get_object()
+        wid = self.get_workspace_id()
+        if wid is not None and obj.workspace_id != wid:
+            self.check_workspace_access(wid)
+        return obj
 
     def perform_create(self, serializer):
-        """Set created_by to the current user when creating a new dimension"""
+        # require payload to include { "workspace": <id> } via a write-only field
+        workspace_obj = serializer.validated_data.get('workspace')
+        if not workspace_obj:
+            raise PermissionDenied("No workspace context available")
+        wid = workspace_obj.id
+        self.check_workspace_access(wid)
+
+        kwargs = {}
         if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user)
-        else:
-            serializer.save()
+            kwargs['created_by'] = self.request.user
+
+        serializer.save(**kwargs)
+
+    @action(detail=False, methods=['post'])
+    def bulk_create(self, request):
+        """
+        POST /api/dimensions/bulk_create/?workspace=<id>
+        with body { "dimensions": [ {name, type, …}, … ] }
+        """
+        wid = self.get_workspace_id()
+        if not wid:
+            return Response({'error': 'No workspace context available'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            self.check_workspace_access(wid)
+        except PermissionDenied as e:
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+        # fetch the Workspace instance once
+        workspace_obj = models.Workspace.objects.get(pk=wid)
+
+        serializer = serializers.DimensionBulkCreateSerializer(
+            data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        dimensions_data = serializer.validated_data['dimensions']
+        # inject workspace into each item
+        for d in dimensions_data:
+            d['workspace'] = workspace_obj
+
+        try:
+            with transaction.atomic():
+                results, errors = self._create_dimensions_with_dependencies(
+                    dimensions_data,
+                    request.user
+                )
+                return Response({
+                    'success_count': len(results),
+                    'error_count': len(errors),
+                    'results': results,
+                    'errors': errors
+                })
+        except Exception as e:
+            return Response(
+                {'error': f'Bulk creation failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
 
     def _create_dimensions_with_dependencies(self, dimensions_data, user):
-        """Create dimensions handling parent dependencies within the same batch."""
+        """
+        (unchanged) two-pass create for handling parent → child in the same batch.
+        """
         results = []
         errors = []
-        # name -> dimension instance mapping for batch-created dimensions
-        created_dimensions = {}
+        created = {}
 
-        # Separate dimensions without dependencies and those with dependencies
-        no_deps = [d for d in dimensions_data if '_parent_name' not in d]
-        with_deps = [d for d in dimensions_data if '_parent_name' in d]
+        no_parents = [d for d in dimensions_data if '_parent_name' not in d]
+        with_parents = [d for d in dimensions_data if '_parent_name' in d]
 
-        # First, create dimensions without dependencies
-        for i, dimension_data in enumerate(no_deps):
+        # 1) create root dims
+        for dim in no_parents:
             try:
                 if user.is_authenticated:
-                    dimension_data['created_by'] = user
-
-                dimension = models.Dimension.objects.create(**dimension_data)
-                created_dimensions[dimension.name] = dimension
-                dimension_serializer = self.get_serializer(dimension)
-                results.append(dimension_serializer.data)
-
+                    dim['created_by'] = user
+                obj = models.Dimension.objects.create(**dim)
+                created[obj.name] = obj
+                results.append(self.get_serializer(obj).data)
             except Exception as e:
                 errors.append({
-                    'index': dimensions_data.index(dimension_data),
-                    'dimension_name': dimension_data.get('name', 'Unknown'),
+                    'dimension_name': dim.get('name', 'Unknown'),
                     'error': str(e)
                 })
 
-        # Then create dimensions with dependencies, resolving parent names
-        for dimension_data in with_deps:
+        # 2) create children
+        for dim in with_parents:
             try:
-                parent_name = dimension_data.pop('_parent_name')
-
-                # Look for parent in created dimensions
-                if parent_name in created_dimensions:
-                    dimension_data['parent'] = created_dimensions[parent_name]
-                else:
-                    # This shouldn't happen due to validation, but handle gracefully
-                    raise ValueError(
-                        f"Parent dimension '{parent_name}' not found in batch")
+                parent_name = dim.pop('_parent_name')
+                if parent_name not in created:
+                    raise ValueError(f"Parent '{parent_name}' not in batch")
+                dim['parent'] = created[parent_name]
 
                 if user.is_authenticated:
-                    dimension_data['created_by'] = user
-
-                dimension = models.Dimension.objects.create(**dimension_data)
-                created_dimensions[dimension.name] = dimension
-                dimension_serializer = self.get_serializer(dimension)
-                results.append(dimension_serializer.data)
-
+                    dim['created_by'] = user
+                obj = models.Dimension.objects.create(**dim)
+                created[obj.name] = obj
+                results.append(self.get_serializer(obj).data)
             except Exception as e:
                 errors.append({
-                    'index': dimensions_data.index(dimension_data),
-                    'dimension_name': dimension_data.get('name', 'Unknown'),
+                    'dimension_name': dim.get('name', 'Unknown'),
                     'error': str(e)
                 })
 
         return results, errors
 
-    @action(detail=False, methods=['post'])
-    def bulk_create(self, request):
-        """Create multiple dimensions in a single request."""
-        serializer = serializers.DimensionBulkCreateSerializer(
-            data=request.data)
 
-        if serializer.is_valid():
-            try:
-                with transaction.atomic():
-                    results, errors = self._create_dimensions_with_dependencies(
-                        serializer.validated_data['dimensions'],
-                        request.user
-                    )
-
-                    return Response({
-                        'success_count': len(results),
-                        'error_count': len(errors),
-                        'results': results,
-                        'errors': errors
-                    })
-
-            except Exception as e:
-                return Response(
-                    {'error': f'Bulk creation failed: {str(e)}'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
-
+#
+# ─── DIMENSION VALUES ────────────────────────────────────────────────────────────
+#
 
 class DimensionValueFilter(filters.FilterSet):
-    workspace = filters.NumberFilter(method='filter_workspace_id')
-    dimension = filters.NumberFilter(method='filter_dimension_id')
+    dimension = filters.NumberFilter(field_name='dimension__id')
+    workspace = filters.NumberFilter(field_name='workspace__id')
 
     class Meta:
         model = models.DimensionValue
-        fields = ['workspace']
-
-    def filter_workspace_id(self, queryset, name, value):
-        return queryset.filter(dimension__workspace__id=value)
-
-    def filter_dimension_id(self, queryset, name, value):
-        return queryset.filter(dimension__id=value)
+        fields = ['id', 'dimension', 'workspace', 'value']
 
 
-class DimensionValueViewSet(viewsets.ModelViewSet):
+class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
+    """
+    CRUD + bulk_create for DimensionValue, scoped per-workspace.
+    """
     queryset = models.DimensionValue.objects.all()
     serializer_class = serializers.DimensionValueSerializer
-    permission_classes = [permissions.AllowAny] if settings.DEBUG else [
-        permissions.IsAuthenticated]
+    permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = DimensionValueFilter
+    # filterset_fields = ['id', 'dimension__id', 'workspace__id']
+
+    def get_queryset(self):
+        wid = self.get_workspace_id()
+        if wid:
+            self.check_workspace_access(wid)
+            return models.DimensionValue.objects.all_workspaces().filter(workspace_id=wid)
+        if self.request.user.is_superuser:
+            return models.DimensionValue.objects.all_workspaces()
+        return models.DimensionValue.objects.all()
+
+    def get_object(self):
+        obj = super().get_object()
+        wid = self.get_workspace_id()
+        if wid is not None and obj.workspace_id != wid:
+            self.check_workspace_access(wid)
+        return obj
 
     def perform_create(self, serializer):
-        """Set created_by to the current user when creating a new dimension value"""
+        # require a write-only `workspace` field in the serializer
+        workspace_obj = serializer.validated_data.get('workspace')
+        if not workspace_obj:
+            raise PermissionDenied("No workspace context available")
+        wid = workspace_obj.id
+        self.check_workspace_access(wid)
+
+        kwargs = {}
         if self.request.user.is_authenticated:
-            serializer.save(created_by=self.request.user)
-        else:
-            serializer.save()
+            kwargs['created_by'] = self.request.user
+        serializer.save(**kwargs)
 
     @action(detail=False, methods=['post'])
     def bulk_create(self, request):
-        """Create multiple dimension values in a single request."""
+        """
+        POST /api/dimension-values/bulk_create/?workspace=<id>
+        with body { "dimension_values": [ {...}, ... ] }
+        """
+        wid = self.get_workspace_id()
+        if not wid:
+            return Response({'error': 'No workspace context available'},
+                            status=status.HTTP_400_BAD_REQUEST)
+        try:
+            self.check_workspace_access(wid)
+        except PermissionDenied as e:
+            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+
+        workspace_obj = models.Workspace.objects.get(pk=wid)
+
         serializer = serializers.DimensionValueBulkCreateSerializer(
             data=request.data)
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-        if serializer.is_valid():
-            try:
-                with transaction.atomic():
-                    results = []
-                    errors = []
+        values_data = serializer.validated_data['dimension_values']
+        for v in values_data:
+            v['workspace'] = workspace_obj
 
-                    for i, value_data in enumerate(serializer.validated_data['dimension_values']):
-                        try:
-                            # Set created_by if user is authenticated
-                            if request.user.is_authenticated:
-                                value_data['created_by'] = request.user
+        try:
+            with transaction.atomic():
+                results, errors = [], []
+                for i, data in enumerate(values_data):
+                    try:
+                        if request.user.is_authenticated:
+                            data['created_by'] = request.user
+                        dv = models.DimensionValue.objects.create(**data)
+                        results.append(self.get_serializer(dv).data)
+                    except Exception as e:
+                        errors.append({
+                            'index': i,
+                            'value': data.get('value', 'Unknown'),
+                            'error': str(e)
+                        })
 
-                            dimension_value = models.DimensionValue.objects.create(
-                                **value_data)
-                            value_serializer = self.get_serializer(
-                                dimension_value)
-                            results.append(value_serializer.data)
-
-                        except Exception as e:
-                            errors.append({
-                                'index': i,
-                                'dimension_value': value_data.get('value', 'Unknown'),
-                                'dimension_id': value_data.get('dimension', 'Unknown'),
-                                'error': str(e)
-                            })
-
-                    return Response({
-                        'success_count': len(results),
-                        'error_count': len(errors),
-                        'results': results,
-                        'errors': errors
-                    })
-
-            except Exception as e:
-                return Response(
-                    {'error': f'Bulk creation failed: {str(e)}'},
-                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
-                )
-
-        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+                return Response({
+                    'success_count': len(results),
+                    'error_count': len(errors),
+                    'results': results,
+                    'errors': errors
+                })
+        except Exception as e:
+            return Response(
+                {'error': f'Bulk creation failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

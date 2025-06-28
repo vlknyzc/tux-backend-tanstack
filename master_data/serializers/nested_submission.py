@@ -6,6 +6,8 @@ from .. import models
 from .string import StringSerializer, StringDetailSerializer
 from .submission import SubmissionSerializer
 
+from typing import Optional, Dict, List, Any
+
 logger = logging.getLogger(__name__)
 
 
@@ -45,13 +47,13 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
             "delimiter",
         ]
 
-    def get_dimension_name(self, obj):
+    def get_dimension_name(self, obj) -> Optional[str]:
         return obj.dimension.name if obj.dimension.name else None
 
-    def get_dimension_type(self, obj):
+    def get_dimension_type(self, obj) -> Optional[str]:
         return obj.dimension.type if obj.dimension else None
 
-    def get_dimension_order(self, obj):
+    def get_dimension_order(self, obj) -> Optional[int]:
         request = self.context.get('request')
 
         try:
@@ -72,14 +74,14 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
 
         return None
 
-    def get_prefix(self, obj):
+    def get_prefix(self, obj) -> Optional[str]:
         request = self.context.get('request')
 
         # Case 1: Check for rule_details_dict from list view
-        if hasattr(request, 'rule_details_dict') and obj.dimension_id:
+        if hasattr(request, 'rule_details_dict') and obj.dimension:
             try:
-                rule_id = obj.string.submission.rule_id
-                key = (rule_id, obj.dimension_id)
+                rule = obj.string.submission.rule
+                key = (rule, obj.dimension)
                 if key in request.rule_details_dict:
                     rule_detail = request.rule_details_dict[key]
                     if hasattr(rule_detail, 'prefix'):
@@ -89,10 +91,10 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
                 pass
 
         # Case 2: Check for rule_details from retrieve view
-        if hasattr(request, 'rule_details') and obj.dimension_id:
+        if hasattr(request, 'rule_details') and obj.dimension:
             rule_details = request.rule_details
-            if obj.dimension_id in rule_details:
-                rule_detail = rule_details[obj.dimension_id]
+            if obj.dimension in rule_details:
+                rule_detail = rule_details[obj.dimension]
                 if hasattr(rule_detail, 'prefix'):
                     return rule_detail.prefix
                 return None
@@ -110,14 +112,14 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
             pass
         return None
 
-    def get_suffix(self, obj):
+    def get_suffix(self, obj) -> Optional[str]:
         request = self.context.get('request')
 
         # Case 1: Check for rule_details_dict from list view
-        if hasattr(request, 'rule_details_dict') and obj.dimension_id:
+        if hasattr(request, 'rule_details_dict') and obj.dimension:
             try:
-                rule_id = obj.string.submission.rule_id
-                key = (rule_id, obj.dimension_id)
+                rule = obj.string.submission.rule
+                key = (rule, obj.dimension)
                 if key in request.rule_details_dict:
                     rule_detail = request.rule_details_dict[key]
                     if hasattr(rule_detail, 'suffix'):
@@ -127,10 +129,10 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
                 pass
 
         # Case 2: Check for rule_details from retrieve view
-        if hasattr(request, 'rule_details') and obj.dimension_id:
+        if hasattr(request, 'rule_details') and obj.dimension:
             rule_details = request.rule_details
-            if obj.dimension_id in rule_details:
-                rule_detail = rule_details[obj.dimension_id]
+            if obj.dimension in rule_details:
+                rule_detail = rule_details[obj.dimension]
                 if hasattr(rule_detail, 'suffix'):
                     return rule_detail.suffix
                 return None
@@ -173,10 +175,10 @@ class StringNestedSerializer(serializers.ModelSerializer):
             "next_field_code",
         ]
 
-    def get_field_name(self, obj):
+    def get_field_name(self, obj) -> Optional[str]:
         return obj.field.name if obj.field else None
 
-    def get_field_level(self, obj):
+    def get_field_level(self, obj) -> Optional[int]:
         return obj.field.field_level if obj.field else None
 
     def create(self, validated_data):
@@ -213,229 +215,12 @@ class StringNestedSerializer(serializers.ModelSerializer):
         return string
 
     def update(self, instance, validated_data):
-        block_items_data = validated_data.pop('string_details', [])
-        value = validated_data.pop('value', None)
-        string_uuid = validated_data.pop('string_uuid', None)
-
-        # Remove non-model fields
-        validated_data.pop('next_field_name', None)
-        validated_data.pop('next_field_code', None)
-        validated_data.pop('field_name', None)
-        validated_data.pop('field_level', None)
-
-        # Update String instance
-        for attr, val in validated_data.items():
-            setattr(instance, attr, val)
-        if value is not None:
-            instance.value = value
-        if string_uuid is not None:
-            instance.string_uuid = string_uuid
-        instance.save()
-
-        # Handle block_items
-        if block_items_data:
-            # Clear existing items if any
-            instance.string_details.all().delete()
-
-            # Create new items
-            for block_item_data in block_items_data:
-                # Remove non-model fields
-                block_item_data.pop('dimension_name', None)
-                block_item_data.pop('dimension_type', None)
-                block_item_data.pop('dimension_order', None)
-                block_item_data.pop('value', None)
-                block_item_data.pop('dimension_values', None)
-                block_item_data.pop('delimiter', None)
-                block_item_data.pop('prefix', None)
-                block_item_data.pop('suffix', None)
-
-                # Handle dimension_value_id
-                dimension_value_id = block_item_data.pop(
-                    'dimension_value_id', None)
-                if dimension_value_id:
-                    block_item_data['dimension_value'] = dimension_value_id
-
-                models.StringDetail.objects.create(
-                    string=instance, **block_item_data)
-
-        return instance
-
-
-class SubmissionNestedSerializer(serializers.ModelSerializer):
-    blocks = StringNestedSerializer(
-        source='submission_strings', many=True, required=False)
-    rule = serializers.PrimaryKeyRelatedField(
-        queryset=models.Rule.objects.all(), required=True)
-    selected_parent = serializers.PrimaryKeyRelatedField(
-        queryset=models.String.objects.all(),
-        required=False,
-        allow_null=True,
-        source='selected_parent_string'
-    )
-    created_by_name = serializers.SerializerMethodField()
-
-    class Meta:
-        model = models.Submission
-        fields = [
-            "id",
-            "name",
-            "selected_parent",
-            "starting_field",
-            "description",
-            "status",
-            "rule",
-            "blocks",
-            "created_by",
-            "created_by_name",
-        ]
-
-    def get_created_by_name(self, obj):
-        if obj.created_by:
-            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
-        return None
-
-    def to_representation(self, instance):
-        ret = super().to_representation(instance)
-        # Convert rule id to detailed representation
-        if instance.rule:
-            ret['rule'] = {
-                'id': instance.rule.id,
-                'name': instance.rule.name,
-                'platform': instance.rule.platform.name,
-                'platform_slug': instance.rule.platform.slug,
-            }
-
-        if instance.starting_field:
-            ret['starting_field'] = {
-                'id': instance.starting_field.id,
-                'name': instance.starting_field.name,
-                'field_level': instance.starting_field.field_level,
-            }
-        return ret
-
-    def validate_rule(self, value):
-        if isinstance(value, dict):
-            rule_id = value.get('id')
-            if rule_id:
-                try:
-                    return models.Rule.objects.get(id=rule_id)
-                except models.Rule.DoesNotExist:
-                    raise serializers.ValidationError(
-                        f"Rule with id {rule_id} does not exist.")
-        return value
-
-    def create(self, validated_data):
         blocks_data = validated_data.pop('submission_strings', [])
-
-        try:
-            # Validate required fields
-            if not validated_data.get('rule'):
-                raise serializers.ValidationError("Rule is required")
-
-            # Check for potential UUID conflicts before creating
-            string_uuids = []
-            for block_data in blocks_data:
-                string_uuid = block_data.get('string_uuid')
-                if string_uuid:
-                    if string_uuid in string_uuids:
-                        raise serializers.ValidationError(
-                            f"Duplicate string_uuid: {string_uuid}")
-                    string_uuids.append(string_uuid)
-
-                    # Check if UUID already exists in database
-                    if models.String.objects.filter(string_uuid=string_uuid).exists():
-                        raise serializers.ValidationError(
-                            f"String with UUID {string_uuid} already exists")
-
-            submission = models.Submission.objects.create(**validated_data)
-            logger.info(f"Created submission {submission.id}")
-
-            # Create strings and their details
-            for i, block_data in enumerate(blocks_data):
-                try:
-                    # Handle nested block_items
-                    block_items_data = block_data.pop('string_details', [])
-
-                    # Extract and preserve string_uuid from frontend
-                    string_uuid = block_data.pop('string_uuid', None)
-
-                    # Remove non-model fields
-                    block_data.pop('field_name', None)
-                    block_data.pop('field_level', None)
-                    block_data.pop('next_field_name', None)
-                    block_data.pop('next_field_code', None)
-
-                    # Preserve string_uuid if provided
-                    if string_uuid:
-                        block_data['string_uuid'] = string_uuid
-
-                    # Validate required fields for string
-                    if not block_data.get('field'):
-                        raise serializers.ValidationError(
-                            f"Field is required for string at index {i}")
-                    if not block_data.get('value'):
-                        raise serializers.ValidationError(
-                            f"Value is required for string at index {i}")
-
-                    # Create string
-                    string = models.String.objects.create(
-                        submission=submission,
-                        **block_data
-                    )
-                    logger.debug(
-                        f"Created string {string.id} with UUID {string.string_uuid}")
-
-                    # Create string details
-                    for j, detail_data in enumerate(block_items_data):
-                        try:
-                            # Remove non-model fields
-                            detail_data.pop('dimension_name', None)
-                            detail_data.pop('dimension_type', None)
-                            detail_data.pop('dimension_order', None)
-                            detail_data.pop('value', None)
-                            detail_data.pop('dimension_values', None)
-                            detail_data.pop('delimiter', None)
-                            detail_data.pop('prefix', None)
-                            detail_data.pop('suffix', None)
-
-                            # Handle dimension_value_id
-                            dimension_value_id = detail_data.pop(
-                                'dimension_value_id', None)
-                            if dimension_value_id:
-                                detail_data['dimension_value'] = dimension_value_id
-
-                            # Validate required fields for string detail
-                            if not detail_data.get('dimension'):
-                                raise serializers.ValidationError(
-                                    f"Dimension is required for string detail at string {i}, detail {j}")
-
-                            models.StringDetail.objects.create(
-                                string=string,
-                                **detail_data
-                            )
-                        except IntegrityError as e:
-                            logger.error(
-                                f"IntegrityError creating string detail {j} for string {i}: {str(e)}")
-                            raise serializers.ValidationError(
-                                f"Constraint violation in string detail {j}: {str(e)}")
-
-                except IntegrityError as e:
-                    logger.error(
-                        f"IntegrityError creating string {i}: {str(e)}")
-                    raise serializers.ValidationError(
-                        f"Constraint violation in string {i}: {str(e)}")
-
-            return submission
-
-        except IntegrityError as e:
-            logger.error(f"IntegrityError in submission creation: {str(e)}")
-            raise
-        except Exception as e:
-            logger.error(f"Unexpected error in submission creation: {str(e)}")
-            raise
-
-    def update(self, instance, validated_data):
-        blocks_data = validated_data.pop('submission_strings', [])
+        # Extract workspace for proper handling
+        workspace = validated_data.pop('workspace', None)
+        # Use existing workspace if not provided
+        if not workspace:
+            workspace = instance.workspace
 
         # Handle rule data if it comes as a dict
         rule = validated_data.pop('rule', None)
@@ -493,6 +278,7 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
 
                 string = models.String.objects.create(
                     submission=instance,
+                    workspace=workspace,  # Set workspace on string
                     **new_string_data
                 )
 
@@ -509,10 +295,326 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                     detail_data.pop('suffix', None)
                     detail_data.pop('dimension_order', None)
                     detail_data.pop('parent_dimension_name', None)
-                    detail_data.pop('parent_dimension_id', None)
+                    detail_data.pop('parent_dimension', None)
 
                     models.StringDetail.objects.create(
                         string=string,
+                        workspace=workspace,  # Set workspace on string detail
+                        **detail_data
+                    )
+
+        return instance
+
+
+class SubmissionNestedSerializer(serializers.ModelSerializer):
+    blocks = StringNestedSerializer(
+        source='submission_strings', many=True, required=False)
+    rule = serializers.PrimaryKeyRelatedField(
+        queryset=models.Rule.objects.all(), required=True)
+    selected_parent = serializers.PrimaryKeyRelatedField(
+        queryset=models.String.objects.all(),
+        required=False,
+        allow_null=True,
+        source='selected_parent_string'
+    )
+    created_by_name = serializers.SerializerMethodField()
+    workspace = serializers.IntegerField(
+        write_only=True, required=False, allow_null=True)
+
+    def validate_workspace(self, value):
+        """Validate workspace field"""
+        if value is not None:
+            request = self.context.get('request')
+            if request and hasattr(request, 'user'):
+                try:
+                    workspace = models.Workspace.objects.get(id=value)
+                    # Check if user has access to this workspace (skip for anonymous users in DEBUG)
+                    if (request.user.is_authenticated and
+                        not request.user.is_superuser and
+                            not request.user.has_workspace_access(value)):
+                        raise serializers.ValidationError(
+                            f"Access denied to workspace {value}")
+                    return workspace
+                except models.Workspace.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"Workspace {value} does not exist")
+            else:
+                # No request context - allow during testing
+                try:
+                    workspace = models.Workspace.objects.get(id=value)
+                    return workspace
+                except models.Workspace.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"Workspace {value} does not exist")
+        return value
+
+    class Meta:
+        model = models.Submission
+        fields = [
+            "id",
+            "name",
+            "selected_parent",
+            "starting_field",
+            "description",
+            "status",
+            "rule",
+            "blocks",
+            "created_by",
+            "created_by_name",
+            "workspace",
+        ]
+
+    def get_created_by_name(self, obj) -> Optional[str]:
+        if obj.created_by:
+            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        return None
+
+    def to_representation(self, instance):
+        ret = super().to_representation(instance)
+        # Convert rule id to detailed representation
+        if instance.rule:
+            ret['rule'] = {
+                'id': instance.rule.id,
+                'name': instance.rule.name,
+                'platform': instance.rule.platform.name,
+                'platform_slug': instance.rule.platform.slug,
+            }
+
+        if instance.starting_field:
+            ret['starting_field'] = {
+                'id': instance.starting_field.id,
+                'name': instance.starting_field.name,
+                'field_level': instance.starting_field.field_level,
+            }
+        return ret
+
+    def validate_rule(self, value):
+        if isinstance(value, dict):
+            rule = value.get('id')
+            if rule:
+                try:
+                    return models.Rule.objects.get(id=rule)
+                except models.Rule.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"Rule with id {rule} does not exist.")
+        return value
+
+    def create(self, validated_data):
+        blocks_data = validated_data.pop('submission_strings', [])
+        # Extract workspace for proper handling
+        workspace = validated_data.pop('workspace', None)
+
+        try:
+            # Validate required fields
+            if not validated_data.get('rule'):
+                raise serializers.ValidationError("Rule is required")
+
+            # Check for potential UUID conflicts before creating
+            string_uuids = []
+            for block_data in blocks_data:
+                string_uuid = block_data.get('string_uuid')
+                if string_uuid:
+                    if string_uuid in string_uuids:
+                        raise serializers.ValidationError(
+                            f"Duplicate string_uuid: {string_uuid}")
+                    string_uuids.append(string_uuid)
+
+                    # Check if UUID already exists in database
+                    if models.String.objects.filter(string_uuid=string_uuid).exists():
+                        raise serializers.ValidationError(
+                            f"String with UUID {string_uuid} already exists")
+
+            # Set workspace directly on validated_data if provided
+            if workspace:
+                validated_data['workspace'] = workspace
+
+            submission = models.Submission.objects.create(**validated_data)
+            logger.info(f"Created submission {submission.id}")
+
+            # Create strings and their details
+            for i, block_data in enumerate(blocks_data):
+                try:
+                    # Handle nested block_items
+                    block_items_data = block_data.pop('string_details', [])
+
+                    # Extract and preserve string_uuid from frontend
+                    string_uuid = block_data.pop('string_uuid', None)
+
+                    # Remove non-model fields
+                    block_data.pop('field_name', None)
+                    block_data.pop('field_level', None)
+                    block_data.pop('next_field_name', None)
+                    block_data.pop('next_field_code', None)
+
+                    # Preserve string_uuid if provided
+                    if string_uuid:
+                        block_data['string_uuid'] = string_uuid
+
+                    # Set parent_uuid from selected_parent_string if provided
+                    if submission.selected_parent_string and not block_data.get('parent_uuid'):
+                        block_data['parent_uuid'] = submission.selected_parent_string.string_uuid
+                        logger.debug(
+                            f"Setting parent_uuid to {submission.selected_parent_string.string_uuid} from selected_parent_string")
+
+                    # Validate required fields for string
+                    if not block_data.get('field'):
+                        raise serializers.ValidationError(
+                            f"Field is required for string at index {i}")
+                    if not block_data.get('value'):
+                        raise serializers.ValidationError(
+                            f"Value is required for string at index {i}")
+
+                    # Create string
+                    string = models.String.objects.create(
+                        submission=submission,
+                        workspace=workspace,
+                        **block_data
+                    )
+                    logger.debug(
+                        f"Created string {string.id} with UUID {string.string_uuid}")
+
+                    # Create string details
+                    for j, detail_data in enumerate(block_items_data):
+                        try:
+                            # Remove non-model fields
+                            detail_data.pop('dimension_name', None)
+                            detail_data.pop('dimension_type', None)
+                            detail_data.pop('dimension_order', None)
+                            detail_data.pop('value', None)
+                            detail_data.pop('dimension_values', None)
+                            detail_data.pop('delimiter', None)
+                            detail_data.pop('prefix', None)
+                            detail_data.pop('suffix', None)
+
+                            # Handle dimension_value
+                            dimension_value = detail_data.pop(
+                                'dimension_value', None)
+                            if dimension_value:
+                                detail_data['dimension_value'] = dimension_value
+
+                            # Validate required fields for string detail
+                            if not detail_data.get('dimension'):
+                                raise serializers.ValidationError(
+                                    f"Dimension is required for string detail at string {i}, detail {j}")
+
+                            models.StringDetail.objects.create(
+                                string=string,
+                                workspace=workspace,
+                                **detail_data
+                            )
+                        except IntegrityError as e:
+                            logger.error(
+                                f"IntegrityError creating string detail {j} for string {i}: {str(e)}")
+                            raise serializers.ValidationError(
+                                f"Constraint violation in string detail {j}: {str(e)}")
+
+                except IntegrityError as e:
+                    logger.error(
+                        f"IntegrityError creating string {i}: {str(e)}")
+                    raise serializers.ValidationError(
+                        f"Constraint violation in string {i}: {str(e)}")
+
+            return submission
+
+        except IntegrityError as e:
+            logger.error(f"IntegrityError in submission creation: {str(e)}")
+            raise
+        except Exception as e:
+            logger.error(f"Unexpected error in submission creation: {str(e)}")
+            raise
+
+    def update(self, instance, validated_data):
+        blocks_data = validated_data.pop('submission_strings', [])
+        # Extract workspace for proper handling
+        workspace = validated_data.pop('workspace', None)
+        # Use existing workspace if not provided
+        if not workspace:
+            workspace = instance.workspace
+
+        # Handle rule data if it comes as a dict
+        rule = validated_data.pop('rule', None)
+        if rule is not None:
+            instance.rule = rule
+
+        # Update Submission instance
+        for attr, value in validated_data.items():
+            setattr(instance, attr, value)
+        instance.save()
+
+        # Handle blocks
+        if blocks_data:
+            # Create UUID mapping to preserve parent-child relationships
+            uuid_mapping = {}  # old_uuid -> new_uuid
+
+            # First, collect all UUIDs from the payload to build mapping
+            for block_data in blocks_data:
+                old_uuid = block_data.get('string_uuid')
+                if old_uuid:
+                    uuid_mapping[old_uuid] = old_uuid  # preserve the same UUID
+
+            # First, delete all existing strings to avoid unique constraint conflicts
+            instance.submission_strings.all().delete()
+
+            # Create new strings
+            for block_data in blocks_data:
+                # Handle nested block_items
+                block_items_data = block_data.pop('string_details', [])
+
+                # Extract and preserve string_uuid from frontend
+                string_uuid = block_data.pop('string_uuid', None)
+
+                # Update parent_uuid if it exists in our mapping
+                parent_uuid = block_data.get('parent_uuid')
+                if parent_uuid and parent_uuid in uuid_mapping:
+                    block_data['parent_uuid'] = uuid_mapping[parent_uuid]
+
+                # Set parent_uuid from selected_parent_string if no explicit parent_uuid provided
+                if instance.selected_parent_string and not block_data.get('parent_uuid'):
+                    block_data['parent_uuid'] = instance.selected_parent_string.string_uuid
+                    logger.debug(
+                        f"Setting parent_uuid to {instance.selected_parent_string.string_uuid} from selected_parent_string in update")
+
+                # Remove non-model fields
+                block_data.pop('field_name', None)
+                block_data.pop('field_level', None)
+                block_data.pop('next_field_name', None)
+                block_data.pop('next_field_code', None)
+                block_data.pop('dimensions', None)
+                block_data.pop('field_rule', None)
+
+                # Create new string with preserved UUID
+                new_string_data = block_data.copy()
+                if 'id' in new_string_data:
+                    del new_string_data['id']
+
+                # Explicitly set the string_uuid if provided
+                if string_uuid:
+                    new_string_data['string_uuid'] = string_uuid
+
+                string = models.String.objects.create(
+                    submission=instance,
+                    workspace=workspace,  # Set workspace on string
+                    **new_string_data
+                )
+
+                # Create string details
+                for detail_data in block_items_data:
+                    # Remove non-model fields
+                    detail_data.pop('name', None)
+                    detail_data.pop('type', None)
+                    detail_data.pop('order', None)
+                    detail_data.pop('value', None)
+                    detail_data.pop('dimension_values', None)
+                    detail_data.pop('delimiter', None)
+                    detail_data.pop('prefix', None)
+                    detail_data.pop('suffix', None)
+                    detail_data.pop('dimension_order', None)
+                    detail_data.pop('parent_dimension_name', None)
+                    detail_data.pop('parent_dimension', None)
+
+                    models.StringDetail.objects.create(
+                        string=string,
+                        workspace=workspace,  # Set workspace on string detail
                         **detail_data
                     )
 

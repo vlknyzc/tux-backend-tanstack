@@ -6,12 +6,12 @@ from django.db import models
 from django.urls import reverse
 from django.conf import settings
 
-from .base import TimeStampModel
+from .base import TimeStampModel, WorkspaceMixin
 from ..constants import STANDARD_NAME_LENGTH, DESCRIPTION_LENGTH, SLUG_LENGTH, SubmissionStatusChoices
 from ..utils import generate_unique_slug
 
 
-class Submission(TimeStampModel):
+class Submission(TimeStampModel, WorkspaceMixin):
     """
     Represents a submission for naming convention generation.
 
@@ -48,7 +48,6 @@ class Submission(TimeStampModel):
     )
     slug = models.SlugField(
         max_length=SLUG_LENGTH,
-        unique=True,
         blank=True,
         help_text="URL-friendly version of the name (auto-generated)"
     )
@@ -68,7 +67,8 @@ class Submission(TimeStampModel):
     class Meta:
         verbose_name = "Submission"
         verbose_name_plural = "Submissions"
-        ordering = ['-created']
+        ordering = ['workspace', '-created']
+        unique_together = [('workspace', 'name')]  # Name unique per workspace
 
     def save(self, *args, **kwargs):
         """Override save to generate slug automatically."""

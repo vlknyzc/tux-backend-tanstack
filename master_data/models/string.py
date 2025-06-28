@@ -11,7 +11,7 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.utils import timezone
 
-from .base import TimeStampModel
+from .base import TimeStampModel, WorkspaceMixin
 from ..constants import STRING_VALUE_LENGTH, FREETEXT_LENGTH
 
 
@@ -37,7 +37,21 @@ class StringManager(models.Manager):
     """Custom manager for String model."""
 
     def get_queryset(self):
+        from .base import get_current_workspace, _thread_locals
+        queryset = StringQuerySet(self.model, using=self._db)
+        # Auto-filter by workspace if context is set and user is not superuser
+        current_workspace = get_current_workspace()
+        if current_workspace and not getattr(_thread_locals, 'is_superuser', False):
+            queryset = queryset.filter(workspace_id=current_workspace)
+        return queryset
+
+    def all_workspaces(self):
+        """Get queryset without workspace filtering (for superusers)"""
         return StringQuerySet(self.model, using=self._db)
+
+    def for_workspace(self, workspace_id):
+        """Filter queryset by specific workspace"""
+        return StringQuerySet(self.model, using=self._db).filter(workspace_id=workspace_id)
 
     def for_rule(self, rule):
         return self.get_queryset().for_rule(rule)
@@ -46,7 +60,7 @@ class StringManager(models.Manager):
         return self.get_queryset().for_field_level(level)
 
 
-class String(TimeStampModel):
+class String(TimeStampModel, WorkspaceMixin):
     """
     Represents a generated naming string based on rule configuration.
 
@@ -89,9 +103,8 @@ class String(TimeStampModel):
         help_text="Generated string value following naming convention"
     )
     string_uuid = models.UUIDField(
-        unique=True,
         default=uuid.uuid4,
-        help_text="Unique identifier for this string"
+        help_text="Unique identifier for this string (unique per workspace)"
     )
     parent_uuid = models.UUIDField(
         null=True,
@@ -114,12 +127,13 @@ class String(TimeStampModel):
     class Meta:
         verbose_name = "String"
         verbose_name_plural = "Strings"
-        unique_together = ('rule', 'field', 'value')
-        ordering = ['field__field_level', 'value']
+        # Unique per workspace
+        unique_together = [('workspace', 'rule', 'field', 'value')]
+        ordering = ['workspace', 'field__field_level', 'value']
         indexes = [
-            models.Index(fields=['rule', 'field']),
-            models.Index(fields=['string_uuid']),
-            models.Index(fields=['value']),
+            models.Index(fields=['workspace', 'rule', 'field']),
+            models.Index(fields=['workspace', 'string_uuid']),
+            models.Index(fields=['workspace', 'value']),
         ]
 
     def __str__(self):
@@ -134,11 +148,14 @@ class String(TimeStampModel):
             raise ValidationError("String value cannot be empty")
 
         # Validate rule belongs to same platform as field
-        if self.rule and self.field and self.rule.platform != self.field.platform:
-            raise ValidationError(
-                "Rule and field must belong to the same platform")
+        if self.rule and self.field:
+            if self.rule.platform != self.field.platform:
+                raise ValidationError(
+                    "Rule and field must belong to the same platform")
+            if self.workspace and self.rule.workspace != self.workspace:
+                raise ValidationError("Rule must belong to the same workspace")
 
-        # Check for naming conflicts
+        # Check for naming conflicts within workspace
         conflicts = self.check_naming_conflicts()
         if conflicts:
             raise ValidationError(f"Naming conflict: {conflicts[0]}")
@@ -198,28 +215,43 @@ class String(TimeStampModel):
         values = {}
 
         for detail in self.string_details.select_related('dimension', 'dimension_value'):
-            dimension_name = detail.dimension.name
-
             if detail.dimension_value:
-                values[dimension_name] = detail.dimension_value.value
-            elif detail.dimension_value_freetext:
-                values[dimension_name] = detail.dimension_value_freetext
+                values[detail.dimension.name] = detail.dimension_value.value
+            else:
+                values[detail.dimension.name] = detail.dimension_value_freetext
 
         return values
 
     def check_naming_conflicts(self, exclude_self=True):
-        """Check for naming conflicts with other strings."""
-        from ..services import StringGenerationService
+        """
+        Check for potential naming conflicts within the workspace.
 
-        exclude_id = self.id if exclude_self else None
-        return StringGenerationService.check_naming_conflicts(
-            self.rule, self.field, self.value, exclude_id
+        Returns:
+            List of conflict descriptions
+        """
+        conflicts = []
+
+        # Check for duplicate values within same workspace, rule, and field
+        duplicate_query = String.objects.filter(
+            workspace=self.workspace,
+            rule=self.rule,
+            field=self.field,
+            value=self.value
         )
+
+        if exclude_self and self.pk:
+            duplicate_query = duplicate_query.exclude(pk=self.pk)
+
+        if duplicate_query.exists():
+            conflicts.append(
+                f"Duplicate string value '{self.value}' exists in this workspace")
+
+        return conflicts
 
     def get_hierarchy_path(self):
         """Get the full hierarchy path for this string."""
-        path = [self]
-        current = self.parent
+        path = []
+        current = self
 
         while current:
             path.insert(0, current)
@@ -228,30 +260,45 @@ class String(TimeStampModel):
         return path
 
     def get_child_strings(self):
-        """Get all child strings in the hierarchy."""
-        return String.objects.filter(parent=self).order_by('field__field_level')
+        """Get all direct child strings."""
+        return self.child_strings.all()
 
     def can_have_children(self):
         """Check if this string can have child strings."""
-        # Check if there are fields at higher levels
-        next_field = self.field.child_fields.first()
+        next_field = self.field.next_field
         return next_field is not None
 
     def suggest_child_field(self):
-        """Suggest the next field for creating child strings."""
-        return self.field.child_fields.first()
+        """Suggest the next field for child string generation."""
+        return self.field.next_field
 
     @classmethod
     def generate_from_submission(cls, submission, field, dimension_values):
         """
-        Class method to generate a new string from a submission.
+        Generate a new string from submission configuration.
 
-        This is the recommended way to create new strings with auto-generation.
+        Args:
+            submission: Submission instance
+            field: Field to generate for
+            dimension_values: Dict of dimension values
+
+        Returns:
+            New String instance
         """
         from ..services import StringGenerationService
 
-        return StringGenerationService.create_string_with_details(
-            submission, field, dimension_values
+        value = StringGenerationService.generate_string_value(
+            submission.rule, field, dimension_values
+        )
+
+        return cls.objects.create(
+            submission=submission,
+            field=field,
+            rule=submission.rule,
+            workspace=submission.workspace,
+            value=value,
+            is_auto_generated=True,
+            generation_metadata={'dimension_values': dimension_values}
         )
 
     def get_absolute_url(self):
@@ -261,7 +308,28 @@ class String(TimeStampModel):
         return reverse("master_data_String_update", args=(self.pk,))
 
 
-class StringDetail(TimeStampModel):
+class StringDetailManager(models.Manager):
+    """Custom manager for StringDetail model."""
+
+    def get_queryset(self):
+        from .base import get_current_workspace, _thread_locals
+        queryset = super().get_queryset()
+        # Auto-filter by workspace if context is set and user is not superuser
+        current_workspace = get_current_workspace()
+        if current_workspace and not getattr(_thread_locals, 'is_superuser', False):
+            queryset = queryset.filter(workspace_id=current_workspace)
+        return queryset
+
+    def all_workspaces(self):
+        """Get queryset without workspace filtering (for superusers)"""
+        return super().get_queryset()
+
+    def for_workspace(self, workspace_id):
+        """Filter queryset by specific workspace"""
+        return super().get_queryset().filter(workspace_id=workspace_id)
+
+
+class StringDetail(TimeStampModel, WorkspaceMixin):
     """
     Represents dimension values used in string generation.
 
@@ -296,32 +364,41 @@ class StringDetail(TimeStampModel):
         max_length=FREETEXT_LENGTH,
         null=True,
         blank=True,
-        help_text="Free text value (for text-type dimensions)"
+        help_text="Free-text dimension value (for text-type dimensions)"
     )
+
+    # Custom manager
+    objects = StringDetailManager()
 
     class Meta:
         verbose_name = "String Detail"
         verbose_name_plural = "String Details"
-        unique_together = ('string', 'dimension')
-        ordering = ['string', 'dimension']
+        # Unique per workspace
+        unique_together = [('workspace', 'string', 'dimension')]
+        ordering = ['workspace', 'string', 'dimension']
 
     def clean(self):
-        """Validate string detail configuration."""
+        """Validate the string detail configuration."""
         super().clean()
 
         # Ensure either dimension_value or dimension_value_freetext is provided
         if not self.dimension_value and not self.dimension_value_freetext:
             raise ValidationError(
-                "Either dimension_value or dimension_value_freetext must be provided")
+                "Either dimension value or freetext value must be provided")
 
-        # Validate dimension type consistency
-        if self.dimension.type == 'list' and not self.dimension_value:
+        if self.dimension_value and self.dimension_value_freetext:
             raise ValidationError(
-                "List-type dimensions must use dimension_value, not freetext")
+                "Cannot specify both dimension value and freetext value")
 
-        if self.dimension.type == 'text' and self.dimension_value:
+        # Validate workspace consistency
+        if self.string and self.string.workspace != self.workspace:
+            raise ValidationError("String must belong to the same workspace")
+        if self.dimension and self.dimension.workspace != self.workspace:
             raise ValidationError(
-                "Text-type dimensions should use dimension_value_freetext")
+                "Dimension must belong to the same workspace")
+        if self.dimension_value and self.dimension_value.workspace != self.workspace:
+            raise ValidationError(
+                "Dimension value must belong to the same workspace")
 
     def get_effective_value(self):
         """Get the effective value (either from dimension_value or freetext)."""
@@ -330,8 +407,7 @@ class StringDetail(TimeStampModel):
         return self.dimension_value_freetext
 
     def __str__(self):
-        effective_value = self.get_effective_value()
-        return f"{self.string.field.name} - {self.dimension.name}: {effective_value}"
+        return f"{self.dimension.name}: {self.get_effective_value()}"
 
     def get_absolute_url(self):
         return reverse("master_data_StringDetail_detail", args=(self.pk,))
@@ -342,32 +418,28 @@ class StringDetail(TimeStampModel):
 
 @receiver(post_save, sender=String)
 def update_parent_relationship(sender, instance, created, **kwargs):
-    """Signal handler to update parent relationships based on parent_uuid."""
+    """Update parent-child relationships when string is saved."""
     if created and instance.parent_uuid and not instance.parent:
         try:
             parent_string = String.objects.get(
-                string_uuid=instance.parent_uuid)
+                workspace=instance.workspace,
+                string_uuid=instance.parent_uuid
+            )
             instance.parent = parent_string
-            # Avoid recursion by using update
-            String.objects.filter(pk=instance.pk).update(parent=parent_string)
+            instance.save(update_fields=['parent'])
         except String.DoesNotExist:
-            pass  # Parent not found - this is acceptable
+            # Parent might not exist yet in creation workflow
+            pass
 
 
 @receiver(post_save, sender=String)
 def log_string_generation(sender, instance, created, **kwargs):
-    """Signal handler to log string generation events."""
-    if created and instance.is_auto_generated:
-        # Update generation metadata
-        metadata = instance.generation_metadata.copy()
-        metadata.update({
-            'generated_at': timezone.now().isoformat(),
-            'rule_used': instance.rule.name,
-            'field_level': instance.field.field_level,
-            'platform': instance.rule.platform.name
-        })
-
-        # Use update to avoid recursion
-        String.objects.filter(pk=instance.pk).update(
-            generation_metadata=metadata
+    """Log string generation for audit purposes."""
+    if created:
+        import logging
+        logger = logging.getLogger('master_data.string_generation')
+        logger.info(
+            f"String generated: {instance.value} "
+            f"(Rule: {instance.rule.name}, Field: {instance.field.name}, "
+            f"Workspace: {instance.workspace.name})"
         )

@@ -7,7 +7,7 @@ from django.db import models
 from django.urls import reverse
 from django.core.exceptions import ValidationError
 
-from .base import TimeStampModel
+from .base import TimeStampModel, WorkspaceMixin
 from ..constants import (
     LONG_NAME_LENGTH, DESCRIPTION_LENGTH, PREFIX_SUFFIX_LENGTH,
     DELIMITER_LENGTH, STANDARD_NAME_LENGTH, SLUG_LENGTH, StatusChoices
@@ -35,6 +35,8 @@ class RuleManager(models.Manager):
     """Custom manager for Rule model."""
 
     def get_queryset(self):
+        # Import here to avoid circular import
+        from .base import WorkspaceManager
         return RuleQuerySet(self.model, using=self._db)
 
     def active(self):
@@ -44,7 +46,29 @@ class RuleManager(models.Manager):
         return self.get_queryset().for_platform(platform)
 
 
-class Rule(TimeStampModel):
+# Temporarily use custom manager
+class WorkspaceRuleManager(RuleManager):
+    """Custom manager that extends RuleManager with workspace filtering"""
+
+    def get_queryset(self):
+        from .base import get_current_workspace, _thread_locals
+        queryset = RuleQuerySet(self.model, using=self._db)
+        # Auto-filter by workspace if context is set and user is not superuser
+        current_workspace = get_current_workspace()
+        if current_workspace and not getattr(_thread_locals, 'is_superuser', False):
+            queryset = queryset.filter(workspace_id=current_workspace)
+        return queryset
+
+    def all_workspaces(self):
+        """Get queryset without workspace filtering (for superusers)"""
+        return RuleQuerySet(self.model, using=self._db)
+
+    def for_workspace(self, workspace_id):
+        """Filter queryset by specific workspace"""
+        return RuleQuerySet(self.model, using=self._db).filter(workspace_id=workspace_id)
+
+
+class Rule(TimeStampModel, WorkspaceMixin):
     """
     Represents a naming convention rule for a specific platform.
 
@@ -68,7 +92,6 @@ class Rule(TimeStampModel):
     )
     slug = models.SlugField(
         max_length=SLUG_LENGTH,
-        unique=True,
         blank=True,
         help_text="URL-friendly version of the name (auto-generated)"
     )
@@ -90,16 +113,17 @@ class Rule(TimeStampModel):
     )
 
     # Custom manager
-    objects = RuleManager()
+    objects = WorkspaceRuleManager()
 
     class Meta:
         verbose_name = "Rule"
         verbose_name_plural = "Rules"
-        unique_together = ('platform', 'name')
-        ordering = ['platform', 'name']
+        # Unique per workspace
+        unique_together = [('workspace', 'platform', 'name')]
+        ordering = ['workspace', 'platform', 'name']
         indexes = [
-            models.Index(fields=['platform', 'status']),
-            models.Index(fields=['is_default']),
+            models.Index(fields=['workspace', 'platform', 'status']),
+            models.Index(fields=['workspace', 'is_default']),
         ]
 
     def save(self, *args, **kwargs):
@@ -112,16 +136,17 @@ class Rule(TimeStampModel):
         """Validate rule configuration."""
         super().clean()
 
-        # Ensure only one default rule per platform
+        # Ensure only one default rule per platform per workspace
         if self.is_default:
             existing_default = Rule.objects.filter(
+                workspace=self.workspace,
                 platform=self.platform,
                 is_default=True
             ).exclude(pk=self.pk)
 
             if existing_default.exists():
                 raise ValidationError(
-                    f"Platform '{self.platform.name}' already has a default rule: "
+                    f"Platform '{self.platform.name}' already has a default rule in this workspace: "
                     f"'{existing_default.first().name}'"
                 )
 
@@ -198,11 +223,8 @@ class Rule(TimeStampModel):
 
     @classmethod
     def get_default_for_platform(cls, platform):
-        """Get the default rule for a platform."""
-        try:
-            return cls.objects.get(platform=platform, is_default=True, status=StatusChoices.ACTIVE)
-        except cls.DoesNotExist:
-            return None
+        """Get the default rule for a platform within current workspace."""
+        return cls.objects.filter(platform=platform, is_default=True).first()
 
     def get_absolute_url(self):
         return reverse("master_data_Rule_detail", args=(self.pk,))
@@ -215,11 +237,11 @@ class RuleDetailQuerySet(models.QuerySet):
     """Custom QuerySet for RuleDetail model."""
 
     def for_field(self, field):
-        """Filter details for a specific field."""
+        """Filter rule details for a specific field."""
         return self.filter(field=field)
 
     def ordered_by_dimension(self):
-        """Order by dimension_order for proper sequence."""
+        """Order rule details by dimension order."""
         return self.order_by('dimension_order')
 
 
@@ -227,13 +249,27 @@ class RuleDetailManager(models.Manager):
     """Custom manager for RuleDetail model."""
 
     def get_queryset(self):
+        from .base import get_current_workspace, _thread_locals
+        queryset = RuleDetailQuerySet(self.model, using=self._db)
+        # Auto-filter by workspace if context is set and user is not superuser
+        current_workspace = get_current_workspace()
+        if current_workspace and not getattr(_thread_locals, 'is_superuser', False):
+            queryset = queryset.filter(workspace_id=current_workspace)
+        return queryset
+
+    def all_workspaces(self):
+        """Get queryset without workspace filtering (for superusers)"""
         return RuleDetailQuerySet(self.model, using=self._db)
+
+    def for_workspace(self, workspace_id):
+        """Filter queryset by specific workspace"""
+        return RuleDetailQuerySet(self.model, using=self._db).filter(workspace_id=workspace_id)
 
     def for_field(self, field):
         return self.get_queryset().for_field(field)
 
 
-class RuleDetail(TimeStampModel):
+class RuleDetail(TimeStampModel, WorkspaceMixin):
     """
     Represents detailed configuration for how a rule formats dimension values.
 
@@ -295,77 +331,74 @@ class RuleDetail(TimeStampModel):
     class Meta:
         verbose_name = "Rule Detail"
         verbose_name_plural = "Rule Details"
-        unique_together = ("rule", "field", "dimension", 'dimension_order')
-        ordering = ['rule', 'field', 'dimension_order']
+        # Unique per workspace
+        unique_together = [("workspace", "rule", "field",
+                            "dimension", 'dimension_order')]
+        ordering = ['workspace', 'rule', 'field', 'dimension_order']
         indexes = [
-            models.Index(fields=['rule', 'field', 'dimension_order']),
+            models.Index(fields=['workspace', 'rule', 'field']),
+            models.Index(fields=['workspace', 'dimension']),
         ]
 
     def clean(self):
         """Validate rule detail configuration."""
         super().clean()
 
-        # Validate dimension_order is positive
-        if self.dimension_order <= 0:
-            raise ValidationError("Dimension order must be positive")
+        # Validate dimension order uniqueness within rule+field per workspace
+        if self.dimension_order is not None:
+            existing_order = RuleDetail.objects.filter(
+                workspace=self.workspace,
+                rule=self.rule,
+                field=self.field,
+                dimension_order=self.dimension_order
+            ).exclude(pk=self.pk)
 
-        # Validate rule and field belong to same platform
-        if self.rule.platform != self.field.platform:
-            raise ValidationError(
-                "Rule and field must belong to the same platform")
-
-        # Check for dimension_order gaps within the same rule+field
-        existing_orders = RuleDetail.objects.filter(
-            rule=self.rule,
-            field=self.field
-        ).exclude(pk=self.pk).values_list('dimension_order', flat=True)
-
-        if existing_orders:
-            all_orders = list(existing_orders) + [self.dimension_order]
-            all_orders.sort()
-            expected_orders = list(range(1, len(all_orders) + 1))
-
-            if all_orders != expected_orders:
+            if existing_order.exists():
                 raise ValidationError(
-                    f"Dimension order {self.dimension_order} creates gaps. "
-                    f"Expected sequence: {expected_orders}"
+                    f"Dimension order {self.dimension_order} is already used for "
+                    f"field '{self.field.name}' in rule '{self.rule.name}' in this workspace"
                 )
+
+        # Validate that rule and dimension belong to the same workspace
+        if self.rule and self.rule.workspace != self.workspace:
+            raise ValidationError("Rule must belong to the same workspace")
+        if self.dimension and self.dimension.workspace != self.workspace:
+            raise ValidationError(
+                "Dimension must belong to the same workspace")
 
     def format_value(self, value):
         """
-        Format a dimension value according to this rule detail.
+        Format a dimension value according to this rule detail's configuration.
 
         Args:
-            value: Raw dimension value
+            value: The raw dimension value to format
 
         Returns:
-            Formatted value with prefix and suffix applied
+            Formatted value with prefix/suffix applied
         """
+        if value is None:
+            return ""
+
         formatted = str(value)
+
         if self.prefix:
-            formatted = f"{self.prefix}{formatted}"
+            formatted = self.prefix + formatted
+
         if self.suffix:
-            formatted = f"{formatted}{self.suffix}"
+            formatted = formatted + self.suffix
+
         return formatted
 
     def get_effective_delimiter(self):
-        """Get the effective delimiter (using default if none specified)."""
-        return self.delimiter or '-'
+        """Get the effective delimiter (default to '-' if None)."""
+        return self.delimiter if self.delimiter is not None else '-'
 
     def __str__(self):
-        order_info = f"#{self.dimension_order}"
-        formatting = []
-
-        if self.prefix:
-            formatting.append(f"prefix: '{self.prefix}'")
-        if self.suffix:
-            formatting.append(f"suffix: '{self.suffix}'")
-        if self.delimiter:
-            formatting.append(f"delimiter: '{self.delimiter}'")
-
-        format_info = f" ({', '.join(formatting)})" if formatting else ""
-
-        return f"{self.rule.name} - {self.field.name} - {self.dimension.name} {order_info}{format_info}"
+        order_info = f" (Order: {self.dimension_order})" if self.dimension_order else ""
+        return (
+            f"{self.rule.name} - {self.field.name} - "
+            f"{self.dimension.name}{order_info}"
+        )
 
     def get_absolute_url(self):
         return reverse("master_data_RuleDetail_detail", args=(self.pk,))

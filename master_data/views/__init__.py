@@ -13,6 +13,7 @@ from .rule_configuration_views import (
     CacheManagementView,
     RuleConfigurationView,
 )
+from .version_views import APIVersionView, APIHealthView, VersionDemoView
 
 __all__ = [
     'DimensionViewSet',
@@ -34,4 +35,8 @@ __all__ = [
     'GenerationPreviewView',
     'CacheManagementView',
     'RuleConfigurationView',
+    # Version views
+    'APIVersionView',
+    'APIHealthView',
+    'VersionDemoView',
 ]

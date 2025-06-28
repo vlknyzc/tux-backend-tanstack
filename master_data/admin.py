@@ -66,10 +66,16 @@ class WorkspaceAdmin(admin.ModelAdmin):
 
     form = WorkspaceAdminForm
     list_display = [
-        "name",
+        "name", "status", "slug", "created", "last_updated",
+    ]
+    search_fields = [
+        "name", "slug",
+    ]
+    list_filter = [
+        "status", "created",
     ]
     readonly_fields = [
-        "name",
+        "slug", "created", "last_updated", "created_by",
     ]
 
 

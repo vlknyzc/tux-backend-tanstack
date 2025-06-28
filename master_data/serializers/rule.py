@@ -2,112 +2,24 @@ from rest_framework import serializers
 from django.db.models import Max
 from .. import models
 from ..services import NamingPatternValidator
-
-
-# # class ConventionSerializer(serializers.ModelSerializer):
-# #     class Meta:
-# #         model = models.Convention
-# #         fields = ['id', 'name', 'description',
-# #                   'status', 'valid_from', 'valid_until']
-
-# #     def validate(self, data):
-# #         """
-# #         Check that valid_until is after valid_from if provided
-# #         """
-# #         if data.get('valid_until') and data['valid_until'] < data['valid_from']:
-# #             raise serializers.ValidationError({
-# #                 "valid_until": "End date must be after start date"
-# #             })
-# #         return data
-
-
-# # class ConventionPlatformSerializer(serializers.ModelSerializer):
-# #     name = serializers.SerializerMethodField()
-# #     platforms = serializers.SerializerMethodField()
-# #     description = serializers.SerializerMethodField()
-# #     created = serializers.DateTimeField(format="%Y-%m-%d")
-# #     last_updated = serializers.DateTimeField(format="%Y-%m-%d")
-
-# #     class Meta:
-# #         model = models.ConventionPlatform
-# #         fields = [
-# #             'id',
-# #             'convention',
-# #             'name',
-# #             'platforms',
-# #             'description',
-# #             'created',
-# #             'last_updated'
-# #         ]
-
-# #     def get_name(self, obj):
-# #         return obj.convention.name
-
-# #     def get_description(self, obj):
-# #         return obj.convention.description
-
-# #     def get_platforms(self, obj):
-# #         return [obj.platform.name]
-
-
-# # class ConventionPlatformDetailSerializer(serializers.ModelSerializer):
-# #     platform_name = serializers.SerializerMethodField()
-# #     platform_fields = serializers.SerializerMethodField()
-# #     convention_name = serializers.SerializerMethodField()
-
-# #     class Meta:
-# #         model = models.ConventionPlatform
-# #         fields = [
-# #             'id',
-# #             'convention',
-# #             'convention_name',
-# #             'platform',
-# #             'platform_name',
-# #             'platform_fields',
-# #             'created',
-# #             'last_updated'
-# #         ]
-
-# #     def get_platform_name(self, obj):
-# #         return obj.platform.name
-
-# #     def get_platform_fields(self, obj):
-# #         from .platform import FieldSerializer
-# #         fields = models.Field.objects.filter(
-# #             platform=obj.platform).order_by('field_level')
-# #         return FieldSerializer(fields, many=True).data
-
-# #     def get_convention_name(self, obj):
-# #         return obj.convention.name
-
-
-# class RuleDetailSerializer(serializers.ModelSerializer):
-
-#     class Meta:
-#         model = models.RuleDetail
-#         fields = ['id', 'rule', 'field', 'dimension']
+from typing import Optional, Dict, List, Any
 
 
 class RuleDetailSerializer(serializers.ModelSerializer):
-    platform_id = serializers.SerializerMethodField()
+    platform = serializers.SerializerMethodField()
     platform_name = serializers.SerializerMethodField()
     platform_slug = serializers.SerializerMethodField()
     rule_name = serializers.SerializerMethodField()
     dimension_name = serializers.SerializerMethodField()
     dimension_type = serializers.SerializerMethodField()
-    parent_dimension_id = serializers.SerializerMethodField()
+    parent_dimension = serializers.SerializerMethodField()
     parent_dimension_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
-
-    field_id = serializers.SerializerMethodField()
     field_name = serializers.SerializerMethodField()
     field_level = serializers.SerializerMethodField()
     next_field = serializers.SerializerMethodField()
     in_parent_field = serializers.SerializerMethodField()
     is_max_field_level = serializers.SerializerMethodField()
-
-    # New business logic fields
-    effective_delimiter = serializers.SerializerMethodField()
 
     class Meta:
         model = models.RuleDetail
@@ -115,11 +27,10 @@ class RuleDetailSerializer(serializers.ModelSerializer):
             "id",
             "rule",
             "rule_name",
-            "platform_id",
+            "platform",
             "platform_name",
             "platform_slug",
             "field",
-            "field_id",
             "field_name",
             "field_level",
             "next_field",
@@ -130,10 +41,9 @@ class RuleDetailSerializer(serializers.ModelSerializer):
             "prefix",
             "suffix",
             "delimiter",
-            "effective_delimiter",
             "is_required",
             "parent_dimension_name",
-            "parent_dimension_id",
+            "parent_dimension",
             "in_parent_field",
             "is_max_field_level",
             "created_by",
@@ -142,56 +52,48 @@ class RuleDetailSerializer(serializers.ModelSerializer):
             "last_updated",
         ]
 
-    def get_field_id(self, obj):
-        return obj.field.id
-
-    def get_field_name(self, obj):
-        return obj.field.name
-
-    def get_field_level(self, obj):
-        return obj.field.field_level
-
-    def get_platform_id(self, obj):
+    def get_platform(self, obj) -> int:
         return obj.rule.platform.id
 
-    def get_platform_name(self, obj):
+    def get_field_name(self, obj) -> str:
+        return obj.field.name
+
+    def get_field_level(self, obj) -> int:
+        return obj.field.field_level
+
+    def get_platform_name(self, obj) -> str:
         return obj.rule.platform.name
 
-    def get_platform_slug(self, obj):
+    def get_platform_slug(self, obj) -> str:
         return obj.rule.platform.slug
 
-    def get_dimension_name(self, obj):
+    def get_dimension_name(self, obj) -> str:
         return obj.dimension.name
 
-    def get_dimension_type(self, obj):
+    def get_dimension_type(self, obj) -> str:
         return obj.dimension.type
 
-    def get_parent_dimension_name(self, obj):
-        if obj.dimension.parent_id:
-            parent = models.Dimension.objects.get(id=obj.dimension.parent_id)
+    def get_parent_dimension(self, obj) -> Optional[int]:
+        if obj.dimension.parent:
+            return obj.dimension.parent.id
+        return None
+
+    def get_parent_dimension_name(self, obj) -> Optional[str]:
+        if obj.dimension.parent:
+            parent = models.Dimension.objects.get(id=obj.dimension.parent.id)
             return parent.name
         else:
             return None
 
-    def get_parent_dimension_id(self, obj):
-        if obj.dimension.parent_id:
-            parent = models.Dimension.objects.get(id=obj.dimension.parent_id)
-            return parent.id
-        else:
-            return None
-
-    def get_next_field(self, obj):
+    def get_next_field(self, obj) -> Optional[str]:
         if obj.field.next_field_id:
-            next_field = models.Field.objects.get(
-                id=obj.field.next_field_id)
-            return next_field.name
-        else:
-            return None
+            return obj.field.next_field.name
+        return None
 
-    def get_rule_name(self, obj):
+    def get_rule_name(self, obj) -> str:
         return obj.rule.name
 
-    def get_in_parent_field(self, obj):
+    def get_in_parent_field(self, obj) -> bool:
         field_level = obj.field.field_level
         if field_level <= 1:
             return False
@@ -204,18 +106,18 @@ class RuleDetailSerializer(serializers.ModelSerializer):
 
         return parent_exists
 
-    def get_is_max_field_level(self, obj):
+    def get_is_max_field_level(self, obj) -> bool:
         max_field_level = models.Field.objects.filter(
             platform=obj.field.platform
         ).aggregate(max_level=Max('field_level'))['max_level']
 
         return obj.field.field_level == max_field_level
 
-    def get_effective_delimiter(self, obj):
+    def get_effective_delimiter(self, obj) -> str:
         """Get the effective delimiter for this rule detail."""
         return obj.get_effective_delimiter()
 
-    def get_created_by_name(self, obj):
+    def get_created_by_name(self, obj) -> Optional[str]:
         if obj.created_by:
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
         return None
@@ -225,6 +127,8 @@ class RuleSerializer(serializers.ModelSerializer):
     platform_name = serializers.SerializerMethodField()
     platform_slug = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
+    workspace = serializers.SerializerMethodField()
+    workspace_name = serializers.SerializerMethodField()
 
     # New business logic fields
     configuration_errors = serializers.SerializerMethodField()
@@ -243,6 +147,8 @@ class RuleSerializer(serializers.ModelSerializer):
             "platform",
             "platform_name",
             "platform_slug",
+            "workspace",
+            "workspace_name",
             "configuration_errors",
             "required_dimensions",
             "fields_with_rules",
@@ -252,35 +158,47 @@ class RuleSerializer(serializers.ModelSerializer):
             "last_updated",
         ]
 
-    def get_platform_name(self, obj):
+    extra_kwargs = {
+        'workspace': {'required': True, 'allow_null': False, "help_text": "ID of the workspace this rule belongs to"},
+    }
+
+    def get_platform_name(self, obj) -> str:
         return obj.platform.name
 
-    def get_platform_slug(self, obj):
+    def get_platform_slug(self, obj) -> str:
         return obj.platform.slug
 
-    def get_created_by_name(self, obj):
+    def get_created_by_name(self, obj) -> Optional[str]:
         if obj.created_by:
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
         return None
 
-    def get_configuration_errors(self, obj):
+    def get_workspace(self, obj) -> int:
+        return obj.workspace.id
+
+    def get_workspace_name(self, obj) -> Optional[str]:
+        return obj.workspace.name if obj.workspace else None
+
+    def get_configuration_errors(self, obj) -> List[str]:
         """Get configuration validation errors."""
         return obj.validate_configuration()
 
-    def get_required_dimensions(self, obj):
-        """Get required dimensions by field."""
-        result = {}
-        for field in obj.get_fields_with_rules():
-            field_obj = models.Field.objects.get(id=field)
-            result[field_obj.name] = list(
-                obj.get_required_dimensions(field_obj))
-        return result
-
-    def get_fields_with_rules(self, obj):
+    def get_fields_with_rules(self, obj) -> List[Dict[str, Any]]:
         """Get all fields that have rule details configured."""
-        field_ids = obj.get_fields_with_rules()
+        field_ids = list(obj.get_fields_with_rules()
+                         )  # Convert to list to avoid multiple evaluations
         fields = models.Field.objects.filter(id__in=field_ids)
         return [{"id": f.id, "name": f.name, "field_level": f.field_level} for f in fields]
+
+    def get_required_dimensions(self, obj) -> Dict[str, List[str]]:
+        """Get required dimensions by field."""
+        result = {}
+        # Convert to list to avoid multiple evaluations
+        field_ids = list(obj.get_fields_with_rules())
+        fields = models.Field.objects.filter(id__in=field_ids)
+        for field in fields:
+            result[field.name] = list(obj.get_required_dimensions(field))
+        return result
 
 
 class RuleNestedSerializer(serializers.ModelSerializer):
@@ -310,22 +228,22 @@ class RuleNestedSerializer(serializers.ModelSerializer):
             "last_updated",
         ]
 
-    def get_platform_name(self, obj):
+    def get_platform_name(self, obj) -> str:
         return obj.platform.name
 
-    def get_platform_slug(self, obj):
+    def get_platform_slug(self, obj) -> str:
         return obj.platform.slug
 
-    def get_created_by_name(self, obj):
+    def get_created_by_name(self, obj) -> Optional[str]:
         if obj.created_by:
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
         return None
 
-    def get_configuration_errors(self, obj):
+    def get_configuration_errors(self, obj) -> List[str]:
         """Get configuration validation errors."""
         return obj.validate_configuration()
 
-    def get_field_details(self, obj):
+    def get_field_details(self, obj) -> List[Dict[str, Any]]:
         """
         Get comprehensive field details including dimension values for frontend.
         This groups rule details by field and includes all dimension information.
@@ -341,42 +259,41 @@ class RuleNestedSerializer(serializers.ModelSerializer):
         grouped_details = {}
 
         # Create a lookup for parent-child relationships
-        # Key: (rule_id, dimension_id, field_level), Value: rule_detail
+        # Key: (rule, dimension, field_level), Value: rule_detail
         rule_detail_lookup = {}
 
         # First pass: build the lookup table
         for detail in rule_details:
-            key = (detail.rule_id, detail.dimension_id,
+            key = (detail.rule, detail.dimension,
                    detail.field.field_level)
             rule_detail_lookup[key] = detail
 
         for detail in rule_details:
-            field_id = detail.field.id
+            field = detail.field
 
-            if field_id not in grouped_details:
+            if field not in grouped_details:
                 # Initialize the field group with field information
-                grouped_details[field_id] = {
-                    'field': field_id,
+                grouped_details[field] = {
+                    'field': field,
                     'field_name': detail.field.name,
                     'field_level': detail.field.field_level,
-                    'next_field': detail.field.next_field.name if detail.field.next_field_id else None,
-                    'next_field_id': detail.field.next_field_id,
+                    'next_field': detail.field.next_field,
                     'can_generate': obj.can_generate_for_field(detail.field),
                     'dimensions': []
                 }
 
             # Check for parent-child relationship
-            parent_rule_detail_id = None
+            parent_rule_detail = None
             inherits_from_parent = False
 
             # Look for a rule detail with same rule and dimension but smaller field_level
             current_field_level = detail.field.field_level
             for check_field_level in range(1, current_field_level):
-                parent_key = (detail.rule_id, detail.dimension_id,
+                parent_key = (detail.rule, detail.dimension,
                               check_field_level)
                 if parent_key in rule_detail_lookup:
                     parent_rule_detail = rule_detail_lookup[parent_key]
-                    parent_rule_detail_id = parent_rule_detail.id
+                    parent_rule_detail = parent_rule_detail.id
                     inherits_from_parent = True
                     break  # Found the parent (smallest field_level)
 
@@ -394,11 +311,11 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                 'delimiter': detail.delimiter or '',
                 'effective_delimiter': detail.get_effective_delimiter(),
                 'parent_dimension_name': (detail.dimension.parent.name
-                                          if detail.dimension.parent_id else None),
-                'parent_dimension_id': detail.dimension.parent_id,
+                                          if detail.dimension.parent else None),
+                'parent_dimension': detail.dimension.parent,
                 # New parent-child relationship fields
                 'inherits_from_parent': inherits_from_parent,
-                'parent_rule_detail_id': parent_rule_detail_id,
+                'parent_rule_detail': parent_rule_detail,
                 'dimension_values': [
                     {
                         'id': value.id,
@@ -414,10 +331,10 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                 'is_dropdown': detail.dimension.type == 'list',
             }
 
-            grouped_details[field_id]['dimensions'].append(dimension_info)
+            grouped_details[field]['dimensions'].append(dimension_info)
 
         # Process each field group to add computed information
-        for field_id, field_data in grouped_details.items():
+        for field, field_data in grouped_details.items():
             # Sort dimensions by order
             field_data['dimensions'].sort(key=lambda x: x['dimension_order'])
 
@@ -436,7 +353,7 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                 1 for d in field_data['dimensions'] if d.get('is_required'))
 
             # Get required dimensions for this field
-            field_obj = models.Field.objects.get(id=field_id)
+            field_obj = models.Field.objects.get(id=field.id)
             field_data['required_dimensions'] = list(
                 obj.get_required_dimensions(field_obj))
 
@@ -449,13 +366,13 @@ class RuleNestedSerializer(serializers.ModelSerializer):
 
 class RulePreviewRequestSerializer(serializers.Serializer):
     """Serializer for rule preview requests."""
-    field_id = serializers.IntegerField()
+    field = serializers.IntegerField()
     sample_values = serializers.DictField(
         child=serializers.CharField(),
         help_text="Sample dimension values for preview generation"
     )
 
-    def validate_field_id(self, value):
+    def validate_field(self, value):
         """Validate that field exists."""
         try:
             models.Field.objects.get(id=value)
@@ -490,11 +407,11 @@ class RuleValidationSerializer(serializers.ModelSerializer):
             "last_updated",
         ]
 
-    def get_configuration_errors(self, obj):
+    def get_configuration_errors(self, obj) -> List[str]:
         """Get detailed configuration validation errors."""
         return obj.validate_configuration()
 
-    def get_can_generate_for_fields(self, obj):
+    def get_can_generate_for_fields(self, obj) -> Dict[str, bool]:
         """Get fields this rule can generate strings for."""
         fields = models.Field.objects.filter(platform=obj.platform)
         result = {}
@@ -502,7 +419,7 @@ class RuleValidationSerializer(serializers.ModelSerializer):
             result[field.name] = obj.can_generate_for_field(field)
         return result
 
-    def get_required_dimensions_by_field(self, obj):
+    def get_required_dimensions_by_field(self, obj) -> Dict[str, Dict[str, List[str]]]:
         """Get required dimensions organized by field."""
         result = {}
         fields = models.Field.objects.filter(platform=obj.platform)
@@ -514,7 +431,7 @@ class RuleValidationSerializer(serializers.ModelSerializer):
                 }
         return result
 
-    def get_created_by_name(self, obj):
+    def get_created_by_name(self, obj) -> Optional[str]:
         if obj.created_by:
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
         return None
@@ -563,9 +480,9 @@ class RuleDetailCreateSerializer(serializers.ModelSerializer):
 
 class DefaultRuleRequestSerializer(serializers.Serializer):
     """Serializer for setting default rule."""
-    rule_id = serializers.IntegerField()
+    rule = serializers.IntegerField()
 
-    def validate_rule_id(self, value):
+    def validate_rule(self, value):
         """Validate that rule exists."""
         try:
             models.Rule.objects.get(id=value)
