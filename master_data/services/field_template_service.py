@@ -405,23 +405,24 @@ class FieldTemplateService:
         if not rule_details.exists():
             return []
 
-        # Group by field
+        # Group by field ID instead of field object
         fields_map = {}
         for detail in rule_details:
-            field = detail.field
-            if field not in fields_map:
-                fields_map[field] = {
-                    'field': field,
+            field_id = detail.field.id
+            if field_id not in fields_map:
+                fields_map[field_id] = {
+                    'field': detail.field.id,  # Store field ID instead of object
                     'field_name': detail.field.name,
                     'field_level': detail.field.field_level,
-                    'next_field': getattr(detail.field, 'next_field', None),
+                    # Store next field ID
+                    'next_field': getattr(detail.field.next_field, 'id', None) if getattr(detail.field, 'next_field', None) else None,
                     'can_generate': self._check_can_generate(rule, detail.field),
                     'dimensions': [],
                 }
 
             # Add minimal dimension reference
             dimension_ref = self._build_dimension_reference(detail, rule)
-            fields_map[field]['dimensions'].append(dimension_ref)
+            fields_map[field_id]['dimensions'].append(dimension_ref)
 
         # Process each field to add computed information
         for field_data in fields_map.values():
@@ -456,7 +457,8 @@ class FieldTemplateService:
             delimiter_override = detail.delimiter or ''
 
         return {
-            'dimension': detail.dimension,
+            'dimension': detail.dimension.id,
+            'dimension_name': detail.dimension.name,
             'dimension_order': detail.dimension_order,
             'is_required': getattr(detail, 'is_required', True),
             'is_inherited': inheritance_info['is_inherited'],
@@ -465,6 +467,23 @@ class FieldTemplateService:
             'suffix_override': suffix_override,
             'delimiter_override': delimiter_override,
         }
+
+    def _calculate_optimized_completeness_score(self, field_data: Dict) -> float:
+        """Calculate completeness score for the field using optimized data (0-100)"""
+        total_score = 0
+        max_score = 0
+
+        for dim in field_data['dimensions']:
+            max_score += 10  # Each dimension contributes max 10 points
+
+            # Basic dimension setup (5 points)
+            total_score += 5
+
+            # Has proper formatting (5 points)
+            if dim.get('prefix_override') or dim.get('suffix_override') or dim.get('delimiter_override'):
+                total_score += 5
+
+        return (total_score / max_score * 100) if max_score > 0 else 0
 
     def _enrich_optimized_field_template(self, field_data: Dict, rule: Rule):
         """Enrich optimized field template with computed information"""
@@ -484,7 +503,7 @@ class FieldTemplateService:
         field_data['field_rule_preview'] = self._generate_optimized_preview(
             field_data['dimensions'], rule)
 
-        # Calculate completeness score
+        # Calculate completeness score using the optimized method
         field_data['completeness_score'] = self._calculate_optimized_completeness_score(
             field_data)
 
@@ -492,23 +511,13 @@ class FieldTemplateService:
         """Generate field rule preview from dimension references"""
         preview_parts = []
 
-        # Get dimension names from database (could be optimized with a lookup table)
-        dimensions = {d['dimension']: d for d in dimension_refs}
-
         for dim_ref in dimension_refs:
-            dimension = dimensions.get(dim_ref['dimension'])
-            if not dimension:
-                continue
-
             # Use override formatting if provided, otherwise use dimension defaults
-            prefix = dim_ref.get('prefix_override') if dim_ref.get(
-                'prefix_override') is not None else getattr(dimension, 'default_prefix', '')
-            suffix = dim_ref.get('suffix_override') if dim_ref.get(
-                'suffix_override') is not None else getattr(dimension, 'default_suffix', '')
-            delimiter = dim_ref.get('delimiter_override') if dim_ref.get(
-                'delimiter_override') is not None else getattr(dimension, 'default_delimiter', '')
+            prefix = dim_ref.get('prefix_override', '')
+            suffix = dim_ref.get('suffix_override', '')
+            delimiter = dim_ref.get('delimiter_override', '')
 
-            part = f"{prefix}[{dimension.name}]{suffix}{delimiter}"
+            part = f"{prefix}[{dim_ref['dimension_name']}]{suffix}{delimiter}"
             preview_parts.append(part)
 
         return ''.join(preview_parts)

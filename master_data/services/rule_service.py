@@ -19,6 +19,49 @@ class RuleService:
         self.field_template = FieldTemplateService()
         self.cache_timeout = 30 * 60  # 30 minutes
 
+    def _calculate_performance_metrics(self, field_templates, dimension_catalog):
+        """
+        Calculate performance metrics for the rule data.
+
+        Args:
+            field_templates: List of field templates
+            dimension_catalog: Dictionary containing dimension catalog data
+
+        Returns:
+            Dictionary containing performance metrics
+        """
+        total_dimensions = len(dimension_catalog.get('dimensions', {}))
+        total_fields = len(field_templates)
+
+        # Calculate completeness scores
+        field_completeness_scores = []
+        for template in field_templates:
+            if template.get('dimensions'):
+                required_dims = sum(
+                    1 for d in template['dimensions'] if d.get('is_required', False))
+                total_dims = len(template['dimensions'])
+                score = (required_dims / total_dims) * \
+                    100 if total_dims > 0 else 0
+                field_completeness_scores.append(score)
+
+        avg_completeness = sum(field_completeness_scores) / \
+            len(field_completeness_scores) if field_completeness_scores else 0
+
+        # Get inheritance stats
+        inheritance_stats = dimension_catalog.get(
+            'inheritance_lookup', {}).get('inheritance_stats', {})
+        inheritance_coverage = inheritance_stats.get(
+            'inheritance_coverage', 0.0)
+
+        return {
+            'total_dimensions': total_dimensions,
+            'total_fields': total_fields,
+            'average_completeness_score': round(avg_completeness, 2),
+            'inheritance_coverage': round(inheritance_coverage * 100, 2),
+            'fields_analyzed': len(field_completeness_scores),
+            'timestamp': timezone.now().isoformat()
+        }
+
     def get_lightweight_rule_data(self, rule: Rule) -> Dict:
         """
         Get lightweight rule data for list views or when full data isn't needed.
@@ -168,46 +211,44 @@ class RuleService:
         This provides comprehensive lookup structures for maximum performance.
         """
         try:
-            rule = Rule.objects.get(id=rule.id)
+            # Convert rule ID to Rule instance if needed
+            if isinstance(rule, int):
+                rule = Rule.objects.get(id=rule)
+            else:
+                rule = Rule.objects.get(id=rule.id)
 
             # Build optimized field templates (dimension ID references only)
             field_templates = self.field_template.get_optimized_templates_for_rule(
-                rule.id)
+                rule)
 
             # Build enhanced dimension catalog with fast lookups
             dimension_catalog = self.dimension_catalog.get_optimized_catalog_for_rule(
                 rule.id)
 
-            # Calculate performance metrics
-            performance_metrics = self._calculate_performance_metrics(
-                field_templates, dimension_catalog
-            )
-
-            # Build metadata (matching MetadataSerializer structure)
-            inheritance_stats = dimension_catalog.get(
-                'inheritance_lookup', {}).get('inheritance_stats', {})
-            inheritance_coverage = inheritance_stats.get(
-                'inheritance_coverage', 0.0)
-
+            # Build metadata
             metadata = {
                 'generated_at': timezone.now().isoformat(),
                 'total_fields': len(field_templates),
                 'total_dimensions': len(dimension_catalog.get('dimensions', {})),
-                'inheritance_coverage': inheritance_coverage,
-                'cache_status': 'generated'
+                'inheritance_coverage': dimension_catalog.get('inheritance_lookup', {}).get('inheritance_stats', {}).get('inheritance_coverage', 0.0)
             }
 
-            return {
-                'rule': rule,
+            result = {
+                'rule': rule.id,
                 'rule_name': rule.name,
                 'rule_slug': rule.slug,
                 'field_templates': field_templates,
                 'dimension_catalog': dimension_catalog,
-                'metadata': metadata,
-                'performance_metrics': performance_metrics
+                'metadata': metadata
             }
+
+            return result
 
         except Rule.DoesNotExist:
             raise ValueError(f"Rule with id {rule.id} not found")
         except Exception as e:
+            import traceback
+            print(f"Error occurred: {str(e)}")
+            print("Traceback:")
+            print(traceback.format_exc())
             raise Exception(f"Error building fast lookup rule data: {str(e)}")

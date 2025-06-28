@@ -58,7 +58,8 @@ class DimensionCatalogService:
 
         # Build components
         dimensions_map = self._build_dimensions_map(rule_details)
-        dimension_values = self._build_dimension_values(dimensions_map.keys())
+        dimension_values = self._build_dimension_values(
+            dimensions_map.keys(), rule)
         constraint_relationships = self._build_constraint_relationships(
             rule_details)
         field_templates = self._build_field_templates(rule_details)
@@ -123,15 +124,17 @@ class DimensionCatalogService:
 
         return dimensions
 
-    def _build_dimension_values(self, dimensions: Set[int]) -> Dict:
+    def _build_dimension_values(self, dimensions: Set[int], rule: Rule = None) -> Dict:
         """Build optimized dimension values lookup"""
         if not dimensions:
             return {}
 
-        # Get all dimension values for the dimensions we need
-        dimension_values = DimensionValue.objects.filter(
-            dimension_id__in=dimensions
-        ).select_related('dimension')
+        # Get all dimension values for the dimensions we need, filtered by workspace
+        query = DimensionValue.objects.filter(dimension_id__in=dimensions)
+        if rule and rule.workspace:
+            query = query.filter(workspace=rule.workspace)
+
+        dimension_values = query.select_related('dimension')
 
         values_map = {}
         for value in dimension_values:
@@ -306,7 +309,7 @@ class DimensionCatalogService:
         dimensions = self._build_centralized_dimensions(
             rule_details, dimensions)
         dimension_values = self._build_centralized_dimension_values(
-            dimensions)
+            dimensions, rule)
         constraints = self._build_optimized_constraints(rule_details)
         inheritance_lookup = self._build_inheritance_lookup(rule_details, rule)
 
@@ -368,14 +371,18 @@ class DimensionCatalogService:
 
         return dimensions
 
-    def _build_centralized_dimension_values(self, dimensions: Set[int]) -> Dict:
+    def _build_centralized_dimension_values(self, dimensions: Set[int], rule: Rule = None) -> Dict:
         """Build centralized dimension values lookup with parent-child relationships"""
         if not dimensions:
             return {}
 
-        dimension_values = DimensionValue.objects.filter(
-            dimension_id__in=dimensions
-        ).select_related('dimension', 'parent', 'parent__dimension')
+        # Get dimension values filtered by workspace
+        query = DimensionValue.objects.filter(dimension_id__in=dimensions)
+        if rule and rule.workspace:
+            query = query.filter(workspace=rule.workspace)
+
+        dimension_values = query.select_related(
+            'dimension', 'parent', 'parent__dimension')
 
         values_map = {}
         for value in dimension_values:
@@ -509,9 +516,15 @@ class DimensionCatalogService:
         # Get dimension values for involved dimensions
         all_involved_dims = set(parent_child_dimensions.keys()) | set(
             parent_child_dimensions.values())
-        dimension_values = DimensionValue.objects.filter(
-            dimension__in=all_involved_dims
-        ).select_related('dimension', 'parent')
+
+        # Filter by workspace context if available (get from rule_details)
+        query = DimensionValue.objects.filter(dimension__in=all_involved_dims)
+        if rule_details and rule_details.exists():
+            # Get workspace from first rule detail
+            workspace = rule_details.first().workspace
+            query = query.filter(workspace=workspace)
+
+        dimension_values = query.select_related('dimension', 'parent')
 
         # Build parent-to-children value mappings
         for child_dim, parent_dim in parent_child_dimensions.items():
@@ -1078,7 +1091,7 @@ class DimensionCatalogService:
 
             # Performance indexes
             'fast_lookups': {
-                'by_dimension': {},
+                'by_dimension_id': {},
                 'by_field_level': {},
                 'by_dimension_type': {},
                 'by_requirement_status': {},

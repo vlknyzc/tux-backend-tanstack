@@ -91,11 +91,22 @@ class OptimizedFieldTemplateSerializer(serializers.Serializer):
 
 
 class InheritanceLookupSerializer(serializers.Serializer):
-    """Simplified inheritance lookup table"""
-    dimension = serializers.IntegerField()
-    field_level_inherited_from = serializers.IntegerField(allow_null=True)
-    inherits_formatting = serializers.BooleanField()
-    inheritance_chain = serializers.ListField(child=serializers.IntegerField())
+    """Serializer for inheritance lookup tables"""
+    dimension = serializers.IntegerField(required=False)
+    field_level_inherited_from = serializers.IntegerField(required=False)
+    inherits_formatting = serializers.BooleanField(required=False)
+    inheritance_chain = serializers.ListField(
+        child=serializers.IntegerField(), required=False)
+    by_dimension = serializers.DictField(required=False)
+    by_target_field_level = serializers.DictField(required=False)
+    by_source_field_level = serializers.DictField(required=False)
+    inherits_from_dimension = serializers.DictField(required=False)
+    provides_inheritance_to = serializers.DictField(required=False)
+    inherited_dimensions = serializers.ListField(
+        child=serializers.IntegerField(), required=False)
+    source_dimensions = serializers.ListField(
+        child=serializers.IntegerField(), required=False)
+    inheritance_stats = serializers.DictField(required=False)
 
 
 class ConstraintRelationshipSerializer(serializers.Serializer):
@@ -301,7 +312,7 @@ class MetadataSerializer(serializers.Serializer):
     total_fields = serializers.IntegerField()
     total_dimensions = serializers.IntegerField()
     inheritance_coverage = serializers.FloatField()
-    cache_status = serializers.CharField()
+    cache_status = serializers.CharField(required=False)
 
 
 class GenerationPreviewSerializer(serializers.Serializer):
@@ -336,9 +347,12 @@ class ValidationSummarySerializer(serializers.Serializer):
 
 class PerformanceMetricsSerializer(serializers.Serializer):
     """Serializer for performance metrics"""
-    rule = serializers.IntegerField()
-    cache_status = serializers.DictField()
-    services_initialized = serializers.DictField()
+    rule = serializers.IntegerField(required=False)
+    cache_status = serializers.DictField(required=False)
+    services_initialized = serializers.DictField(required=False)
+    generation_time_ms = serializers.FloatField(required=False)
+    workspace = serializers.IntegerField(required=False)
+    timestamp = serializers.CharField(required=False)
 
 
 class LightweightRuleSerializer(serializers.Serializer):
@@ -387,19 +401,6 @@ class CacheInvalidationRequestSerializer(serializers.Serializer):
         child=serializers.IntegerField(),
         help_text="List of rule IDs to invalidate cache for"
     )
-
-
-class InheritanceLookupSerializer(serializers.Serializer):
-    """Serializer for inheritance lookup tables"""
-    by_dimension = serializers.DictField()
-    by_target_field_level = serializers.DictField()
-    by_source_field_level = serializers.DictField()
-    inherits_from_dimension = serializers.DictField()
-    provides_inheritance_to = serializers.DictField()
-    inherited_dimensions = serializers.ListField(
-        child=serializers.IntegerField())
-    source_dimensions = serializers.ListField(child=serializers.IntegerField())
-    inheritance_stats = serializers.DictField()
 
 
 class DimensionRelationshipMapsSerializer(serializers.Serializer):
@@ -455,10 +456,10 @@ class EnhancedDimensionCatalogSerializer(serializers.Serializer):
     rule_slug = serializers.CharField()
     dimensions = serializers.DictField()
     dimension_values = serializers.DictField()
-    constraints = ConstraintLookupSerializer()
-    inheritance_lookup = InheritanceLookupSerializer()
-    relationship_maps = DimensionRelationshipMapsSerializer()
-    metadata_indexes = MetadataIndexesSerializer()
+    constraints = ConstraintLookupSerializer(required=False)
+    inheritance_lookup = InheritanceLookupSerializer(required=False)
+    relationship_maps = DimensionRelationshipMapsSerializer(required=False)
+    metadata_indexes = MetadataIndexesSerializer(required=False)
     generated_at = serializers.DateTimeField()
 
 
@@ -474,6 +475,6 @@ class CompleteRuleSerializer(serializers.Serializer):
     # Centralized dimension catalog with lookup tables
     dimension_catalog = EnhancedDimensionCatalogSerializer()
 
-    # Metadata and performance metrics
-    metadata = MetadataSerializer()
-    performance_metrics = PerformanceMetricsSerializer()
+    # Metadata and performance metrics (optional)
+    metadata = MetadataSerializer(required=False)
+    performance_metrics = PerformanceMetricsSerializer(required=False)

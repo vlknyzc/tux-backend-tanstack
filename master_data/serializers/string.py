@@ -162,6 +162,9 @@ class StringSerializer(serializers.ModelSerializer):
             return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
         return None
 
+    def get_platform(self, obj) -> Optional[int]:
+        return obj.field.platform.id if obj.field and obj.field.platform else None
+
     def get_workspace_name(self, obj) -> Optional[str]:
         return obj.workspace.name if obj.workspace else None
 

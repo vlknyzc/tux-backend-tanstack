@@ -52,6 +52,9 @@ class RuleDetailSerializer(serializers.ModelSerializer):
             "last_updated",
         ]
 
+    def get_platform(self, obj) -> int:
+        return obj.rule.platform.id
+
     def get_field_name(self, obj) -> str:
         return obj.field.name
 
@@ -69,6 +72,11 @@ class RuleDetailSerializer(serializers.ModelSerializer):
 
     def get_dimension_type(self, obj) -> str:
         return obj.dimension.type
+
+    def get_parent_dimension(self, obj) -> Optional[int]:
+        if obj.dimension.parent:
+            return obj.dimension.parent.id
+        return None
 
     def get_parent_dimension_name(self, obj) -> Optional[str]:
         if obj.dimension.parent:

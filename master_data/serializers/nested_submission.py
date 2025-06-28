@@ -450,6 +450,12 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                     if string_uuid:
                         block_data['string_uuid'] = string_uuid
 
+                    # Set parent_uuid from selected_parent_string if provided
+                    if submission.selected_parent_string and not block_data.get('parent_uuid'):
+                        block_data['parent_uuid'] = submission.selected_parent_string.string_uuid
+                        logger.debug(
+                            f"Setting parent_uuid to {submission.selected_parent_string.string_uuid} from selected_parent_string")
+
                     # Validate required fields for string
                     if not block_data.get('field'):
                         raise serializers.ValidationError(
@@ -561,6 +567,12 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                 parent_uuid = block_data.get('parent_uuid')
                 if parent_uuid and parent_uuid in uuid_mapping:
                     block_data['parent_uuid'] = uuid_mapping[parent_uuid]
+
+                # Set parent_uuid from selected_parent_string if no explicit parent_uuid provided
+                if instance.selected_parent_string and not block_data.get('parent_uuid'):
+                    block_data['parent_uuid'] = instance.selected_parent_string.string_uuid
+                    logger.debug(
+                        f"Setting parent_uuid to {instance.selected_parent_string.string_uuid} from selected_parent_string in update")
 
                 # Remove non-model fields
                 block_data.pop('field_name', None)
