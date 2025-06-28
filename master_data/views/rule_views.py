@@ -50,15 +50,20 @@ class RuleViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Get rules filtered by workspace context"""
         # Check if workspace_id is explicitly provided in query params
-        workspace = self.request.query_params.get('workspace')
+        # Handle both DRF Request (has query_params) and Django WSGIRequest (has GET)
+        if hasattr(self.request, 'query_params'):
+            workspace = self.request.query_params.get('workspace')
+        else:
+            workspace = self.request.GET.get('workspace')
 
         if workspace:
             # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
             try:
                 workspace = int(workspace)
                 # Validate user has access to this workspace (unless superuser)
-                if hasattr(self.request, 'user') and not self.request.user.is_superuser:
-                    if not self.request.user.has_workspace_access(workspace):
+                user = getattr(self.request, 'user', None)
+                if user and not user.is_superuser:
+                    if not user.has_workspace_access(workspace):
                         # Return empty queryset for unauthorized access
                         return models.Rule.objects.none()
 
@@ -73,7 +78,8 @@ class RuleViewSet(viewsets.ModelViewSet):
 
         # Default behavior when no workspace is specified
         # If user is superuser, they can see all workspaces
-        if hasattr(self.request, 'user') and self.request.user.is_superuser:
+        user = getattr(self.request, 'user', None)
+        if user and user.is_superuser:
             return models.Rule.objects.all_workspaces().select_related(
                 'platform').prefetch_related('rule_details')
 
@@ -88,7 +94,10 @@ class RuleViewSet(viewsets.ModelViewSet):
             raise PermissionDenied("No workspace context available")
 
         # Validate user has access to this workspace
-        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace):
+        user = getattr(self.request, 'user', None)
+        if not user:
+            raise PermissionDenied("Authentication required")
+        if not user.is_superuser and not user.has_workspace_access(workspace):
             raise PermissionDenied("Access denied to this workspace")
 
         kwargs = {}
@@ -216,7 +225,11 @@ class RuleViewSet(viewsets.ModelViewSet):
         active_rules = models.Rule.objects.active()
 
         # Filter by platform if provided
-        platform_id = request.query_params.get('platform_id')
+        # Handle both DRF Request (has query_params) and Django WSGIRequest (has GET)
+        if hasattr(request, 'query_params'):
+            platform_id = request.query_params.get('platform_id')
+        else:
+            platform_id = request.GET.get('platform_id')
         if platform_id:
             active_rules = active_rules.filter(platform_id=platform_id)
 
@@ -246,15 +259,20 @@ class RuleDetailViewSet(viewsets.ModelViewSet):
     def get_queryset(self):
         """Get rule details filtered by workspace context"""
         # Check if workspace_id is explicitly provided in query params
-        workspace = self.request.query_params.get('workspace')
+        # Handle both DRF Request (has query_params) and Django WSGIRequest (has GET)
+        if hasattr(self.request, 'query_params'):
+            workspace = self.request.query_params.get('workspace')
+        else:
+            workspace = self.request.GET.get('workspace')
 
         if workspace:
             # If workspace_id is explicitly provided, filter by it (for both superusers and regular users)
             try:
                 workspace = int(workspace)
                 # Validate user has access to this workspace (unless superuser)
-                if hasattr(self.request, 'user') and not self.request.user.is_superuser:
-                    if not self.request.user.has_workspace_access(workspace):
+                user = getattr(self.request, 'user', None)
+                if user and not user.is_superuser:
+                    if not user.has_workspace_access(workspace):
                         # Return empty queryset for unauthorized access
                         return models.RuleDetail.objects.none()
 

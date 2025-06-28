@@ -23,18 +23,43 @@ class WorkspaceMixin:
     and to check access in one place.
     """
 
+    def get_workspace_param(self, param_name='workspace'):
+        """
+        Get a parameter from request, handling both DRF and Django requests.
+        This is a defensive method to handle production issues where DRF request
+        wrapper might not be applied properly.
+        """
+        # Handle both DRF Request (has query_params) and Django WSGIRequest (has GET)
+        if hasattr(self.request, 'query_params'):
+            return self.request.query_params.get(param_name)
+        else:
+            return self.request.GET.get(param_name)
+
     def get_workspace_id(self):
-        raw = getattr(self.request, 'workspace',
-                      None) or self.request.query_params.get('workspace')
+        raw = getattr(self.request, 'workspace', None)
+        if not raw:
+            raw = self.get_workspace_param('workspace')
         try:
             return int(raw)
         except (TypeError, ValueError):
             return None
 
     def check_workspace_access(self, workspace_id):
-        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(workspace_id):
-            raise PermissionDenied(
-                f"Access denied to workspace {workspace_id}")
+        # Handle both DRF Request and Django WSGIRequest
+        user = getattr(self.request, 'user', None)
+        if not user or not user.is_authenticated:
+            raise PermissionDenied("Authentication required")
+
+        # Check workspace access for non-superusers
+        if not user.is_superuser:
+            # Some user models might not have has_workspace_access method
+            if hasattr(user, 'has_workspace_access'):
+                if not user.has_workspace_access(workspace_id):
+                    raise PermissionDenied(
+                        f"Access denied to workspace {workspace_id}")
+            else:
+                # Fallback: if method doesn't exist, only allow superusers
+                raise PermissionDenied("Workspace access method not available")
 
 
 #
@@ -69,7 +94,8 @@ class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
             return models.Dimension.objects.all_workspaces().filter(workspace_id=wid)
 
         # no `?workspace=`: superusers see all, regular users auto-filter via manager
-        if self.request.user.is_superuser:
+        user = getattr(self.request, 'user', None)
+        if user and user.is_superuser:
             return models.Dimension.objects.all_workspaces()
         return models.Dimension.objects.all()
 
@@ -217,7 +243,8 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
         if wid:
             self.check_workspace_access(wid)
             return models.DimensionValue.objects.all_workspaces().filter(workspace_id=wid)
-        if self.request.user.is_superuser:
+        user = getattr(self.request, 'user', None)
+        if user and user.is_superuser:
             return models.DimensionValue.objects.all_workspaces()
         return models.DimensionValue.objects.all()
 
@@ -237,8 +264,9 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
         self.check_workspace_access(wid)
 
         kwargs = {}
-        if self.request.user.is_authenticated:
-            kwargs['created_by'] = self.request.user
+        user = getattr(self.request, 'user', None)
+        if user and user.is_authenticated:
+            kwargs['created_by'] = user
         serializer.save(**kwargs)
 
     @action(detail=False, methods=['post'])
@@ -272,8 +300,9 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
                 results, errors = [], []
                 for i, data in enumerate(values_data):
                     try:
-                        if request.user.is_authenticated:
-                            data['created_by'] = request.user
+                        user = getattr(request, 'user', None)
+                        if user and user.is_authenticated:
+                            data['created_by'] = user
                         dv = models.DimensionValue.objects.create(**data)
                         results.append(self.get_serializer(dv).data)
                     except Exception as e:
