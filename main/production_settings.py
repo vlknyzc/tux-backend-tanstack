@@ -85,7 +85,8 @@ INSTALLED_APPS = [
     "master_data",
     "django_filters",
     "users",
-    "coreapi"
+    "coreapi",
+    "drf_spectacular",
 ]
 
 MIDDLEWARE = [
@@ -174,7 +175,7 @@ REST_FRAMEWORK = {
     'DEFAULT_PERMISSION_CLASSES': [
         'rest_framework.permissions.IsAuthenticated',
     ],
-    'DEFAULT_SCHEMA_CLASS': 'rest_framework.schemas.coreapi.AutoSchema',
+    'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
     'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
 
     # API Versioning
@@ -208,6 +209,26 @@ SIMPLE_JWT = {
     "REFRESH_TOKEN_LIFETIME": timedelta(days=1),
     "ALGORITHM": "HS256",
     "AUTH_HEADER_TYPES": ("Bearer", "JWT"),
+}
+
+# ────────────────────────────────────────────────────────────────
+# DRF Spectacular Settings
+# ────────────────────────────────────────────────────────────────
+SPECTACULAR_SETTINGS = {
+    'TITLE': 'Tux API',
+    'DESCRIPTION': 'Tux API',
+    'VERSION': '1.0.0',
+    'SERVE_INCLUDE_SCHEMA': False,
+    'SECURITY_DEFINITIONS': {
+        'BearerAuth': {
+            'type': 'http',
+            'scheme': 'bearer',
+            'bearerFormat': 'JWT',
+        },
+    },
+    'SECURITY': [
+        {'BearerAuth': []},
+    ],
 }
 
 # ────────────────────────────────────────────────────────────────
