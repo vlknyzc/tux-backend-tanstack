@@ -55,9 +55,14 @@ class LightweightRuleView(APIView):
                 rule = Rule.objects.get(id=rule_id)
                 workspace = getattr(request, 'workspace', None)
 
+                # Get user safely to handle both DRF Request and raw Django WSGIRequest
+                user = getattr(request, 'user', None)
+                if not user or not user.is_authenticated:
+                    raise PermissionDenied("Authentication required")
+
                 # Validate workspace access
-                if not request.user.is_superuser:
-                    if workspace and not request.user.has_workspace_access(workspace):
+                if not user.is_superuser:
+                    if workspace and not user.has_workspace_access(workspace):
                         raise PermissionDenied(
                             "Access denied to this workspace")
 
@@ -111,9 +116,14 @@ class FieldSpecificRuleView(APIView):
                 rule = Rule.objects.get(id=rule_id)
                 workspace = getattr(request, 'workspace', None)
 
+                # Get user safely to handle both DRF Request and raw Django WSGIRequest
+                user = getattr(request, 'user', None)
+                if not user or not user.is_authenticated:
+                    raise PermissionDenied("Authentication required")
+
                 # Validate workspace access
-                if not request.user.is_superuser:
-                    if workspace and not request.user.has_workspace_access(workspace):
+                if not user.is_superuser:
+                    if workspace and not user.has_workspace_access(workspace):
                         raise PermissionDenied(
                             "Access denied to this workspace")
 
@@ -166,9 +176,14 @@ class RuleValidationView(APIView):
                 rule = Rule.objects.get(id=rule_id)
                 workspace = getattr(request, 'workspace', None)
 
+                # Get user safely to handle both DRF Request and raw Django WSGIRequest
+                user = getattr(request, 'user', None)
+                if not user or not user.is_authenticated:
+                    raise PermissionDenied("Authentication required")
+
                 # Validate workspace access
-                if not request.user.is_superuser:
-                    if workspace and not request.user.has_workspace_access(workspace):
+                if not user.is_superuser:
+                    if workspace and not user.has_workspace_access(workspace):
                         raise PermissionDenied(
                             "Access denied to this workspace")
 
@@ -212,7 +227,7 @@ class GenerationPreviewView(APIView):
         self.rule_service = RuleService()
 
     def post(self, request):
-        """Generate a preview of string generation"""
+        """Generate string preview based on rule and sample values"""
         start_time = time.time()
 
         workspace = getattr(request, 'workspace', None)
@@ -234,9 +249,14 @@ class GenerationPreviewView(APIView):
             try:
                 rule = Rule.objects.get(id=rule)
 
+                # Get user safely to handle both DRF Request and raw Django WSGIRequest
+                user = getattr(request, 'user', None)
+                if not user or not user.is_authenticated:
+                    raise PermissionDenied("Authentication required")
+
                 # Validate workspace access
-                if not request.user.is_superuser:
-                    if not request.user.has_workspace_access(workspace):
+                if not user.is_superuser:
+                    if not user.has_workspace_access(workspace):
                         raise PermissionDenied(
                             "Access denied to this workspace")
 
@@ -294,8 +314,13 @@ class CacheManagementView(APIView):
         rule_ids = request_serializer.validated_data['rule_ids']
 
         try:
+            # Get user safely to handle both DRF Request and raw Django WSGIRequest
+            user = getattr(request, 'user', None)
+            if not user or not user.is_authenticated:
+                raise PermissionDenied("Authentication required")
+
             # Validate all rules belong to current workspace
-            if not request.user.is_superuser:
+            if not user.is_superuser:
                 rules = Rule.objects.filter(id__in=rule_ids)
                 for rule in rules:
                     if rule.workspace_id != workspace:
@@ -327,9 +352,14 @@ class CacheManagementView(APIView):
             try:
                 rule = Rule.objects.get(id=rule_id)
 
+                # Get user safely to handle both DRF Request and raw Django WSGIRequest
+                user = getattr(request, 'user', None)
+                if not user or not user.is_authenticated:
+                    raise PermissionDenied("Authentication required")
+
                 # Validate workspace access
-                if not request.user.is_superuser:
-                    if not request.user.has_workspace_access(workspace):
+                if not user.is_superuser:
+                    if not user.has_workspace_access(workspace):
                         raise PermissionDenied(
                             "Access denied to this workspace")
 
@@ -374,9 +404,14 @@ class RuleConfigurationView(APIView):
             try:
                 rule = Rule.objects.get(id=rule_id)
 
+                # Get user safely to handle both DRF Request and raw Django WSGIRequest
+                user = getattr(request, 'user', None)
+                if not user or not user.is_authenticated:
+                    raise PermissionDenied("Authentication required")
+
                 # Validate workspace access
-                if not request.user.is_superuser:
-                    if workspace and not request.user.has_workspace_access(workspace):
+                if not user.is_superuser:
+                    if workspace and not user.has_workspace_access(workspace):
                         raise PermissionDenied(
                             "Access denied to this workspace")
 
