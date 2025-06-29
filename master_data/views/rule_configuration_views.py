@@ -437,11 +437,18 @@ class RuleConfigurationView(APIView):
                 'timestamp': timezone.now().isoformat()
             }
 
-            serializer = CompleteRuleSerializer(data=complete_data)
-            if serializer.is_valid():
-                return Response(serializer.validated_data)
-            else:
-                return Response({'error': 'Serialization error', 'details': serializer.errors}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            try:
+                serializer = CompleteRuleSerializer(data=complete_data)
+                if serializer.is_valid():
+                    return Response(serializer.validated_data)
+                else:
+                    logger.error(
+                        f"CompleteRuleSerializer validation failed for rule {rule_id}: {serializer.errors}")
+                    return Response({'error': 'Serialization error', 'details': serializer.errors}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            except Exception as e:
+                logger.error(
+                    f"CompleteRuleSerializer instantiation failed for rule {rule_id}: {str(e)}")
+                return Response({'error': f'Serializer error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
         except PermissionDenied as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)

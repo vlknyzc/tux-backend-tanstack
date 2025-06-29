@@ -190,6 +190,33 @@ class RuleService:
             'overall_score': self._calculate_overall_rule_score(field_templates, validation_issues, warnings),
         }
 
+    def _calculate_overall_rule_score(self, field_templates: List[Dict], validation_issues: List[str], warnings: List[str]) -> float:
+        """
+        Calculate an overall rule quality score based on completeness, validation issues, and warnings.
+        Returns a score from 0-100.
+        """
+        if not field_templates:
+            return 0.0
+
+        # Base score from field completeness
+        completeness_scores = [template.get(
+            'completeness_score', 0) for template in field_templates]
+        avg_completeness = sum(completeness_scores) / \
+            len(completeness_scores) if completeness_scores else 0
+
+        # Penalty for validation issues (critical)
+        # 15 points per validation issue
+        validation_penalty = len(validation_issues) * 15
+
+        # Penalty for warnings (less critical)
+        warning_penalty = len(warnings) * 5  # 5 points per warning
+
+        # Calculate final score
+        final_score = avg_completeness - validation_penalty - warning_penalty
+
+        # Ensure score is between 0 and 100
+        return max(0.0, min(100.0, final_score))
+
     def invalidate_all_caches(self, rule: Rule):
         """Invalidate all caches for a rule across all services"""
         self.dimension_catalog.invalidate_cache(rule.id)
@@ -213,25 +240,50 @@ class RuleService:
         try:
             # Convert rule ID to Rule instance if needed
             if isinstance(rule, int):
+                rule_id = rule
                 rule = Rule.objects.get(id=rule)
             else:
+                rule_id = rule.id
                 rule = Rule.objects.get(id=rule.id)
 
+            logger.info(
+                f"Building complete rule data for rule {rule_id}: {rule.name}")
+
             # Build optimized field templates (dimension ID references only)
-            field_templates = self.field_template.get_optimized_templates_for_rule(
-                rule)
+            try:
+                field_templates = self.field_template.get_optimized_templates_for_rule(
+                    rule)
+                logger.info(
+                    f"Field templates built successfully: {len(field_templates)} templates")
+            except Exception as e:
+                logger.error(
+                    f"Error building field templates for rule {rule_id}: {str(e)}")
+                raise Exception(f"Field template generation failed: {str(e)}")
 
             # Build enhanced dimension catalog with fast lookups
-            dimension_catalog = self.dimension_catalog.get_optimized_catalog_for_rule(
-                rule.id)
+            try:
+                dimension_catalog = self.dimension_catalog.get_optimized_catalog_for_rule(
+                    rule.id)
+                logger.info(
+                    f"Dimension catalog built successfully: {len(dimension_catalog.get('dimensions', {}))} dimensions")
+            except Exception as e:
+                logger.error(
+                    f"Error building dimension catalog for rule {rule_id}: {str(e)}")
+                raise Exception(
+                    f"Dimension catalog generation failed: {str(e)}")
 
             # Build metadata
-            metadata = {
-                'generated_at': timezone.now().isoformat(),
-                'total_fields': len(field_templates),
-                'total_dimensions': len(dimension_catalog.get('dimensions', {})),
-                'inheritance_coverage': dimension_catalog.get('inheritance_lookup', {}).get('inheritance_stats', {}).get('inheritance_coverage', 0.0)
-            }
+            try:
+                metadata = {
+                    'generated_at': timezone.now().isoformat(),
+                    'total_fields': len(field_templates),
+                    'total_dimensions': len(dimension_catalog.get('dimensions', {})),
+                    'inheritance_coverage': dimension_catalog.get('inheritance_lookup', {}).get('inheritance_stats', {}).get('inheritance_coverage', 0.0)
+                }
+            except Exception as e:
+                logger.error(
+                    f"Error building metadata for rule {rule_id}: {str(e)}")
+                raise Exception(f"Metadata generation failed: {str(e)}")
 
             result = {
                 'rule': rule.id,
@@ -242,13 +294,22 @@ class RuleService:
                 'metadata': metadata
             }
 
+            logger.info(
+                f"Complete rule data built successfully for rule {rule_id}")
             return result
 
         except Rule.DoesNotExist:
-            raise ValueError(f"Rule with id {rule.id} not found")
+            logger.error(
+                f"Rule with id {rule if isinstance(rule, int) else rule.id} not found")
+            raise ValueError(
+                f"Rule with id {rule if isinstance(rule, int) else rule.id} not found")
         except Exception as e:
+            rule_id = rule if isinstance(rule, int) else (
+                rule.id if hasattr(rule, 'id') else 'unknown')
+            logger.error(
+                f"Error building complete rule data for rule {rule_id}: {str(e)}")
             import traceback
-            print(f"Error occurred: {str(e)}")
-            print("Traceback:")
-            print(traceback.format_exc())
-            raise Exception(f"Error building fast lookup rule data: {str(e)}")
+            logger.error("Traceback:")
+            logger.error(traceback.format_exc())
+            raise Exception(
+                f"Error building fast lookup rule data for rule {rule_id}: {str(e)}")
