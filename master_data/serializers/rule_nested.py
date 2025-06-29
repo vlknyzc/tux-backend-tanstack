@@ -138,57 +138,83 @@ class RuleNestedSerializer(serializers.ModelSerializer):
         grouped_details = {}
 
         for detail in rule_details:
+            if not detail.field:
+                continue
+
             field = detail.field.id
 
             if field not in grouped_details:
-                # Initialize the field group with field information
+                # Initialize the field group with field information safely
+                next_field_name = None
+                if detail.field and detail.field.next_field:
+                    next_field_name = detail.field.next_field.name
 
                 grouped_details[field] = {
                     'field': field,
-                    'field_name': detail.field.name,
-                    'field_level': detail.field.field_level,
-                    'next_field': detail.field.next_field.name if detail.field.next_field else None,
+                    'field_name': detail.field.name if detail.field else None,
+                    'field_level': detail.field.field_level if detail.field else None,
+                    'next_field': next_field_name,
                     'dimensions': []
                 }
 
-            # Add dimension information
+            # Add dimension information safely
+            if not detail.dimension:
+                continue
+
             dimension_info = {
                 'id': detail.id,
-                'dimension': detail.dimension.id,
-                'dimension_name': detail.dimension.name,
-                'dimension_type': detail.dimension.type,
+                'dimension': detail.dimension.id if detail.dimension else None,
+                'dimension_name': detail.dimension.name if detail.dimension else None,
+                'dimension_type': detail.dimension.type if detail.dimension else None,
                 'dimension_order': detail.dimension_order,
                 'prefix': detail.prefix or '',  # Convert None to empty string
                 'suffix': detail.suffix or '',  # Convert None to empty string
                 'delimiter': detail.delimiter or '',  # Convert None to empty string
                 'parent_dimension_name': (detail.dimension.parent.name
-                                          if detail.dimension.parent else None),
-                'parent_dimension': detail.dimension.parent,
-                'dimension_values': [
-                    {
-                        'id': value.id,
-                        'value': value.value,
-                        'label': value.label,
-                        'utm': value.utm,
-                    } for value in detail.dimension.dimension_values.all()
-                ]
+                                          if detail.dimension and detail.dimension.parent
+                                          else None),
+                'parent_dimension': (detail.dimension.parent.id
+                                     if detail.dimension and detail.dimension.parent
+                                     else None),
+                'dimension_values': []
             }
+
+            # Safely get dimension values
+            if detail.dimension:
+                try:
+                    dimension_info['dimension_values'] = [
+                        {
+                            'id': value.id,
+                            'value': value.value,
+                            'label': value.label,
+                            'utm': value.utm,
+                        } for value in detail.dimension.dimension_values.all()
+                        if value is not None  # Extra safety check
+                    ]
+                except Exception:
+                    # If there's any error getting dimension values, use empty list
+                    dimension_info['dimension_values'] = []
 
             grouped_details[field]['dimensions'].append(dimension_info)
 
-            # combine dimensions to form field_rule
-            dimension_names = [
-                (dim.get('prefix', '') or '') +  # Handle None values
-                (dim.get('dimension_name', '') or '') +
-                (dim.get('suffix', '') or '') +
-                (dim.get('delimiter', '') or '')
-                for dim in sorted(
-                    grouped_details[field]['dimensions'],
-                    key=lambda x: x['dimension_order']
-                )
-            ]
-            field_rule = ''.join(dimension_names)
-            grouped_details[field]['field_rule'] = field_rule
+            # combine dimensions to form field_rule safely
+            try:
+                dimension_names = [
+                    (dim.get('prefix', '') or '') +  # Handle None values
+                    (dim.get('dimension_name', '') or '') +
+                    (dim.get('suffix', '') or '') +
+                    (dim.get('delimiter', '') or '')
+                    for dim in sorted(
+                        grouped_details[field]['dimensions'],
+                        # Default to 0 if missing
+                        key=lambda x: x.get('dimension_order', 0)
+                    )
+                ]
+                field_rule = ''.join(dimension_names)
+                grouped_details[field]['field_rule'] = field_rule
+            except Exception:
+                # If there's any error forming the field_rule, use empty string
+                grouped_details[field]['field_rule'] = ''
 
         # Convert dictionary to list
         return list(grouped_details.values())

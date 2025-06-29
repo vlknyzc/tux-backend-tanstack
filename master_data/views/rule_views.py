@@ -374,7 +374,13 @@ class RuleNestedViewSet(viewsets.ModelViewSet):
                 # Return queryset filtered by the specified workspace
                 return models.Rule.objects.all_workspaces().filter(
                     workspace=workspace
-                ).prefetch_related('rule_details__field', 'rule_details__dimension')
+                ).prefetch_related(
+                    'rule_details__field',
+                    'rule_details__field__next_field',
+                    'rule_details__dimension',
+                    'rule_details__dimension__parent',
+                    'rule_details__dimension__dimension_values'
+                )
 
             except (ValueError, TypeError):
                 # Invalid workspace parameter, return empty queryset
@@ -384,11 +390,19 @@ class RuleNestedViewSet(viewsets.ModelViewSet):
         # If user is superuser, they can see all workspaces
         if hasattr(self.request, 'user') and self.request.user.is_superuser:
             return models.Rule.objects.all_workspaces().prefetch_related(
-                'rule_details__field', 'rule_details__dimension')
+                'rule_details__field',
+                'rule_details__field__next_field',
+                'rule_details__dimension',
+                'rule_details__dimension__parent',
+                'rule_details__dimension__dimension_values')
 
         # For regular users, automatic workspace filtering is applied by managers
         return models.Rule.objects.all().prefetch_related(
-            'rule_details__field', 'rule_details__dimension')
+            'rule_details__field',
+            'rule_details__field__next_field',
+            'rule_details__dimension',
+            'rule_details__dimension__parent',
+            'rule_details__dimension__dimension_values')
 
     def perform_create(self, serializer):
         """Set created_by when creating a new rule"""
