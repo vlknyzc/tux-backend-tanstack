@@ -102,7 +102,8 @@ class DimensionCatalogService:
 
                     # Constraint metadata
                     'has_parent_constraint': bool(detail.dimension.parent),
-                    'parent_dimension': detail.dimension.parent,
+                    # Store ID instead of object
+                    'parent_dimension': detail.dimension.parent.id if detail.dimension.parent else None,
                     'parent_dimension_name': detail.dimension.parent.name if detail.dimension.parent else None,
 
                     # Order and positioning
@@ -359,7 +360,8 @@ class DimensionCatalogService:
 
                     # Constraint metadata
                     'has_parent_constraint': bool(detail.dimension.parent),
-                    'parent_dimension': detail.dimension.parent,
+                    # Store ID instead of object
+                    'parent_dimension': detail.dimension.parent.id if detail.dimension.parent else None,
                     'parent_dimension_name': detail.dimension.parent.name if detail.dimension.parent else None,
 
                     # Value metadata
@@ -394,10 +396,10 @@ class DimensionCatalogService:
             parent_data = None
             if value.parent:
                 parent_data = {
-                    'parent': value.parent,
+                    'parent': value.parent.id,  # Store ID instead of object
                     'parent_value': value.parent.value,
                     'parent_label': value.parent.label,
-                    'parent_dimension': value.parent.dimension,
+                    'parent_dimension': value.parent.dimension.id,  # Store ID instead of object
                     'parent_dimension_name': value.parent.dimension.name,
                 }
 
@@ -415,10 +417,11 @@ class DimensionCatalogService:
                 'has_parent': value.parent is not None,
 
                 # For backward compatibility and easier access
-                'parent': value.parent,
+                'parent': value.parent.id if value.parent else None,  # Store ID instead of object
                 'parent_value': value.parent.value if value.parent else None,
                 'parent_label': value.parent.label if value.parent else None,
-                'parent_dimension': value.parent.dimension if value.parent else None,
+                # Store ID instead of object
+                'parent_dimension': value.parent.dimension.id if value.parent else None,
                 'parent_dimension_name': value.parent.dimension.name if value.parent else None,
             })
 
@@ -449,7 +452,7 @@ class DimensionCatalogService:
         parent_child_map = {}
         for detail in rule_details:
             if detail.dimension.parent:
-                parent_id = detail.dimension.parent
+                parent_id = detail.dimension.parent.id  # Store ID instead of object
                 child_id = detail.dimension.id
 
                 constraint_key = f"{parent_id}_{child_id}"
@@ -506,7 +509,7 @@ class DimensionCatalogService:
         parent_child_dimensions = {}
         for detail in rule_details:
             if detail.dimension.parent:
-                parent = detail.dimension.parent
+                parent = detail.dimension.parent.id  # Store ID instead of object
                 child = detail.dimension.id
                 parent_child_dimensions[child] = parent
 
@@ -543,10 +546,10 @@ class DimensionCatalogService:
 
             for child_value in child_values:
                 if child_value.parent:
-                    parent_value = child_value.parent
-                    if parent_value not in parent_to_children:
-                        parent_to_children[parent_value] = []
-                    parent_to_children[parent_value].append({
+                    parent_value_id = child_value.parent.id  # Use ID as key instead of object
+                    if parent_value_id not in parent_to_children:
+                        parent_to_children[parent_value_id] = []
+                    parent_to_children[parent_value_id].append({
                         'child_value_id': child_value.id,
                         'child_value': child_value.value,
                         'child_label': child_value.label
@@ -559,11 +562,11 @@ class DimensionCatalogService:
                     parent_value = next(
                         (v for v in parent_values if v == child_value.parent), None)
                     if parent_value:
-                        child_to_parent[child_value] = {
-                            'parent_value': parent_value,
+                        child_to_parent[child_value.id] = {  # Use ID as key instead of object
+                            'parent_value': parent_value.id,  # Store ID instead of object
                             'parent_value_value': parent_value.value,
                             'parent_value_label': parent_value.label,
-                            'parent_value_dimension': parent_value.dimension
+                            'parent_value_dimension': parent_value.dimension.id  # Store ID instead of object
                         }
 
             constraints['value_constraints'][parent_dim][child_dim] = {
@@ -649,11 +652,13 @@ class DimensionCatalogService:
                 'field_level': field_level,
                 'dimension': dimension,
                 'has_constraints': dimension in constrained_dimensions,
-                'parent_dimension': detail.dimension.parent,
+                # Store ID instead of object
+                'parent_dimension': detail.dimension.parent.id if detail.dimension.parent else None,
                 'validation_required': bool(detail.dimension.parent),
                 'quick_check': {
                     'is_constrained': dimension in constrained_dimensions,
-                    'parent': detail.dimension.parent,
+                    # Store ID instead of object
+                    'parent': detail.dimension.parent.id if detail.dimension.parent else None,
                     'constraint_type': 'parent_child' if detail.dimension.parent else 'none'
                 }
             }

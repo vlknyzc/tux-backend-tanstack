@@ -75,8 +75,8 @@ class FieldTemplateService:
         inheritance_info = self._check_dimension_inheritance(detail, rule)
 
         return {
-            'rule_detail': detail,
-            'dimension': detail.dimension,
+            'rule_detail': detail.id,  # Store ID instead of object
+            'dimension': detail.dimension.id,  # Store ID instead of object
             'dimension_name': detail.dimension.name,
             'dimension_type': detail.dimension.type,
             'dimension_description': detail.dimension.description or '',
@@ -90,7 +90,8 @@ class FieldTemplateService:
             'effective_delimiter': detail.get_effective_delimiter() if hasattr(detail, 'get_effective_delimiter') else (detail.delimiter or ''),
 
             # Parent-child relationships
-            'parent_dimension': detail.dimension.parent,
+            # Store ID instead of object
+            'parent_dimension': detail.dimension.parent.id if detail.dimension.parent else None,
             'parent_dimension_name': detail.dimension.parent.name if detail.dimension.parent else None,
 
             # Inheritance information
@@ -142,7 +143,7 @@ class FieldTemplateService:
         if parent_detail:
             return {
                 'is_inherited': True,
-                'parent_rule_detail': parent_detail,
+                'parent_rule_detail': parent_detail.id,  # Store ID instead of object
                 'parent_field_level': parent_detail.field.field_level,
                 'parent_field_name': parent_detail.field.name,
                 'inherits_formatting': self._check_formatting_inheritance(detail, parent_detail),
