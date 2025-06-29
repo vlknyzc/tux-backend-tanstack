@@ -1,10 +1,13 @@
 from typing import Dict, List, Optional
 from django.core.cache import cache
 from django.utils import timezone
+import logging
 from .dimension_catalog_service import DimensionCatalogService
 from .inheritance_matrix_service import InheritanceMatrixService
 from .field_template_service import FieldTemplateService
 from ..models import Rule, Field
+
+logger = logging.getLogger(__name__)
 
 
 class RuleService:
