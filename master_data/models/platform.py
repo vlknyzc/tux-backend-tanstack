@@ -14,6 +14,8 @@ class Platform(TimeStampModel):
 
     A platform is a target environment or system where naming conventions apply.
     Examples: AWS, Azure, Kubernetes, etc.
+
+    Platforms are workspace-agnostic - they are shared across all workspaces.
     """
 
     # Fields

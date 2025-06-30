@@ -15,6 +15,8 @@ class Field(TimeStampModel):
 
     Fields define the hierarchical components of a naming convention.
     For example: environment, project, service, etc.
+
+    Fields are workspace-agnostic - they are shared across all workspaces.
     """
 
     # Relationships

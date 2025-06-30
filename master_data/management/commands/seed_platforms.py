@@ -189,7 +189,7 @@ class Command(BaseCommand):
         self.stdout.write("Seeding platforms…")
         created_platforms = {}
         for pdata in PLATFORMS:
-            platform, _ = Platform.objects.update_or_create(
+            platform, created = Platform.objects.update_or_create(
                 platform_type=pdata['platform_type'],
                 name=pdata['name'],
                 defaults={
@@ -199,6 +199,10 @@ class Command(BaseCommand):
                 }
             )
             created_platforms[platform.name] = platform
+            if created:
+                self.stdout.write(f"  Created platform: {platform.name}")
+            else:
+                self.stdout.write(f"  Updated platform: {platform.name}")
 
         # 2) Create/update fields
         self.stdout.write("Seeding fields…")
@@ -212,12 +216,15 @@ class Command(BaseCommand):
 
             # create/update each field
             for fd in field_list:
-                field, _ = Field.objects.update_or_create(
+                field, created = Field.objects.update_or_create(
                     platform=platform,
                     field_level=fd['field_level'],
                     defaults={'name': fd['name']},
                 )
                 created_fields[(platform_name, fd['field_level'])] = field
+                if created:
+                    self.stdout.write(
+                        f"    Created field: {field.name} (Level {field.field_level})")
 
         # 3) Link next_field pointers
         self.stdout.write("Linking next_field relations…")
@@ -226,5 +233,7 @@ class Command(BaseCommand):
             if next_field and field.next_field_id != next_field.id:
                 field.next_field = next_field
                 field.save(update_fields=['next_field'])
+                self.stdout.write(
+                    f"    Linked {field.name} -> {next_field.name}")
 
         self.stdout.write(self.style.SUCCESS("Seeding complete."))

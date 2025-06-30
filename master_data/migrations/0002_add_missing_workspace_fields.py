@@ -16,11 +16,10 @@ def add_workspace_fields_if_missing(apps, schema_editor):
     introspection = connection.introspection
 
     # List of models and their table names that need workspace fields
+    # Platform and Field are excluded as they are workspace-agnostic
     models_to_update = [
         ('Dimension', 'master_data_dimension'),
         ('DimensionValue', 'master_data_dimensionvalue'),
-        ('Platform', 'master_data_platform'),
-        ('Field', 'master_data_field'),
         ('Rule', 'master_data_rule'),
         ('RuleDetail', 'master_data_ruledetail'),
         ('String', 'master_data_string'),
@@ -206,8 +205,6 @@ def reverse_add_workspace_fields(apps, schema_editor):
     tables_to_update = [
         'master_data_dimension',
         'master_data_dimensionvalue',
-        'master_data_platform',
-        'master_data_field',
         'master_data_rule',
         'master_data_ruledetail',
         'master_data_string',
