@@ -15,6 +15,7 @@ class StringSerializer(serializers.ModelSerializer):
     submission_name = serializers.SerializerMethodField()
     # rule = serializers.SerializerMethodField()
     rule_name = serializers.SerializerMethodField()
+    created_by = serializers.SerializerMethodField()  # Override model field
     created_by_name = serializers.SerializerMethodField()
     workspace_name = serializers.SerializerMethodField()
     # workspace = serializers.SerializerMethodField()
@@ -157,9 +158,12 @@ class StringSerializer(serializers.ModelSerializer):
     def get_rule_name(self, obj) -> Optional[str]:
         return obj.submission.rule.name if obj.submission and obj.submission.rule else None
 
+    def get_created_by(self, obj) -> Optional[int]:
+        return obj.submission.created_by.id if obj.submission and obj.submission.created_by else None
+
     def get_created_by_name(self, obj) -> Optional[str]:
-        if obj.created_by:
-            return f"{obj.created_by.first_name} {obj.created_by.last_name}".strip()
+        if obj.submission and obj.submission.created_by:
+            return f"{obj.submission.created_by.first_name} {obj.submission.created_by.last_name}".strip()
         return None
 
     def get_platform(self, obj) -> Optional[int]:

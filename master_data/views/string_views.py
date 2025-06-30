@@ -73,7 +73,7 @@ class StringViewSet(viewsets.ModelViewSet):
                 return models.String.objects.all_workspaces().filter(
                     workspace=workspace
                 ).select_related(
-                    'field', 'submission', 'rule', 'field__platform'
+                    'field', 'submission', 'submission__created_by', 'rule', 'field__platform'
                 ).prefetch_related('string_details__dimension', 'string_details__dimension_value')
 
             except (ValueError, TypeError):
@@ -84,12 +84,12 @@ class StringViewSet(viewsets.ModelViewSet):
         # If user is superuser, they can see all workspaces
         if hasattr(self.request, 'user') and self.request.user.is_superuser:
             return models.String.objects.all_workspaces().select_related(
-                'field', 'submission', 'rule', 'field__platform'
+                'field', 'submission', 'submission__created_by', 'rule', 'field__platform'
             ).prefetch_related('string_details__dimension', 'string_details__dimension_value')
 
         # For regular users, automatic workspace filtering is applied by managers
         return models.String.objects.all().select_related(
-            'field', 'submission', 'rule', 'field__platform'
+            'field', 'submission', 'submission__created_by', 'rule', 'field__platform'
         ).prefetch_related('string_details__dimension', 'string_details__dimension_value')
 
     def perform_create(self, serializer):
