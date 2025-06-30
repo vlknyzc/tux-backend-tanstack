@@ -122,14 +122,26 @@ class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
         serializer.save(**kwargs)
 
     @action(detail=False, methods=['post'])
-    def bulk_create(self, request):
+    def bulk_create(self, request, version=None):
         """
         POST /api/dimensions/bulk_create/?workspace=<id>
         with body { "dimensions": [ {name, type, …}, … ] }
+
+        Workspace can be provided either as a query parameter (?workspace=<id>) 
+        or in the request body ("workspace": <id>).
         """
         wid = self.get_workspace_id()
+
+        # If workspace not found in query params, check request body
+        if not wid and hasattr(request, 'data') and 'workspace' in request.data:
+            try:
+                wid = int(request.data['workspace'])
+            except (ValueError, TypeError):
+                return Response({'error': 'Invalid workspace ID in request body'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
         if not wid:
-            return Response({'error': 'No workspace context available'},
+            return Response({'error': 'No workspace context available. Provide workspace as query parameter (?workspace=<id>) or in request body ("workspace": <id>)'},
                             status=status.HTTP_400_BAD_REQUEST)
         try:
             self.check_workspace_access(wid)
@@ -270,14 +282,26 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
         serializer.save(**kwargs)
 
     @action(detail=False, methods=['post'])
-    def bulk_create(self, request):
+    def bulk_create(self, request, version=None):
         """
         POST /api/dimension-values/bulk_create/?workspace=<id>
         with body { "dimension_values": [ {...}, ... ] }
+
+        Workspace can be provided either as a query parameter (?workspace=<id>) 
+        or in the request body ("workspace": <id>).
         """
         wid = self.get_workspace_id()
+
+        # If workspace not found in query params, check request body
+        if not wid and hasattr(request, 'data') and 'workspace' in request.data:
+            try:
+                wid = int(request.data['workspace'])
+            except (ValueError, TypeError):
+                return Response({'error': 'Invalid workspace ID in request body'},
+                                status=status.HTTP_400_BAD_REQUEST)
+
         if not wid:
-            return Response({'error': 'No workspace context available'},
+            return Response({'error': 'No workspace context available. Provide workspace as query parameter (?workspace=<id>) or in request body ("workspace": <id>)'},
                             status=status.HTTP_400_BAD_REQUEST)
         try:
             self.check_workspace_access(wid)
