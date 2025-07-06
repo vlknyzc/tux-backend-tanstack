@@ -1,0 +1,75 @@
+{
+    "id": 32,
+    "name": "test 1",
+    "selected_parent": null,
+    "starting_field": 50,
+    "description": null,
+    "status": "draft",
+    "rule": {
+        "id": 22,
+        "name": "Shopping",
+        "platform": 1
+    },
+    "platform": {
+        "id": 1,
+        "name": "Amazon Ads",
+        "slug": "amazon-ads"
+    },
+    "fields": [
+        {
+            "id": 50,
+            "name": "Advertiser",
+            "field_level": 1,
+            "parent": null
+        },
+        {
+            "id": 51,
+            "name": "Campaign",
+            "field_level": 2,
+            "parent": 50
+        }
+    ],
+    "strings": [
+        {
+            "id": 35,
+            "field": 50,
+            "uuid": "d63c73bb-7f4d-4ade-be97-18256a3ce6d5",
+            "value": "tr",
+            "parent": null,
+            "parent_uuid": null,
+            "items": [40],
+            "created_by": 1
+            
+        }
+    ],
+    "string_items": [
+        {
+            "id": 40,
+            "dimension": 22,
+            "order": 1,            
+            "dimension_value": 13,
+            "prefix": "",
+            "suffix": "",
+            "delimiter": null
+        }
+    ],
+    "dimensions": [
+        {
+            "id": 22,
+            "name": "Country",
+            "type": "list"
+           
+        }
+    ],
+    "dimension_values": [
+        {
+            "id": 13,
+            "value": "tr",
+            "label": "Turkey"
+        }
+    ],
+    "created_by": {
+        "id": 1,
+        "name": "Volkan Yazici"
+    }
+}

@@ -17,6 +17,8 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
     dimension_name = serializers.SerializerMethodField()
     dimension_type = serializers.SerializerMethodField()
     dimension_order = serializers.SerializerMethodField()
+    dimension_value_label = serializers.SerializerMethodField()
+    dimension_value_display = serializers.SerializerMethodField()
     value = serializers.CharField(required=False, allow_blank=True)
     dimension_values = serializers.JSONField(required=False, allow_null=True)
     delimiter = serializers.CharField(
@@ -38,12 +40,13 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
             "dimension_order",
             "dimension_type",
             "dimension_value",
+            "dimension_value_display",
+            "dimension_value_label",
             "dimension_value_freetext",
             "prefix",
             "suffix",
             "value",
             "dimension_values",
-
             "delimiter",
         ]
 
@@ -150,6 +153,18 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
             pass
         return None
 
+    def get_dimension_value_label(self, obj) -> Optional[str]:
+        """Get the human-readable label for the dimension value."""
+        if obj.dimension_value and hasattr(obj.dimension_value, 'label'):
+            return obj.dimension_value.label
+        return None
+
+    def get_dimension_value_display(self, obj) -> Optional[str]:
+        """Get the actual value for the dimension value."""
+        if obj.dimension_value and hasattr(obj.dimension_value, 'value'):
+            return obj.dimension_value.value
+        return None
+
 
 class StringNestedSerializer(serializers.ModelSerializer):
     block_items = StringDetailNestedSerializer(
@@ -200,6 +215,7 @@ class StringNestedSerializer(serializers.ModelSerializer):
 
         for block_item_data in block_items_data:
             # Remove non-model fields
+            block_item_data.pop('id', None)  # Remove frontend ID
             block_item_data.pop('dimension_name', None)
             block_item_data.pop('dimension_type', None)
             block_item_data.pop('dimension_order', None)
@@ -210,7 +226,13 @@ class StringNestedSerializer(serializers.ModelSerializer):
             block_item_data.pop('suffix', None)
 
             models.StringDetail.objects.create(
-                string=string, **block_item_data)
+                string=string,
+                workspace=string.workspace,
+                dimension=block_item_data.get('dimension'),
+                dimension_value=block_item_data.get('dimension_value'),
+                dimension_value_freetext=block_item_data.get(
+                    'dimension_value_freetext')
+            )
 
         return string
 
@@ -285,10 +307,11 @@ class StringNestedSerializer(serializers.ModelSerializer):
                 # Create string details
                 for detail_data in block_items_data:
                     # Remove non-model fields
+                    detail_data.pop('id', None)  # Remove frontend ID
                     detail_data.pop('name', None)
                     detail_data.pop('type', None)
                     detail_data.pop('order', None)
-                    detail_data.pop('value', None)
+                    raw_value = detail_data.pop('value', None)
                     detail_data.pop('dimension_values', None)
                     detail_data.pop('delimiter', None)
                     detail_data.pop('prefix', None)
@@ -297,10 +320,58 @@ class StringNestedSerializer(serializers.ModelSerializer):
                     detail_data.pop('parent_dimension_name', None)
                     detail_data.pop('parent_dimension', None)
 
+                    # Handle dimension_value properly based on dimension type
+                    dimension_value_id = detail_data.pop(
+                        'dimension_value', None)
+                    dimension_id = detail_data.get('dimension')
+
+                    # Reset dimension_value and dimension_value_freetext
+                    detail_data['dimension_value'] = None
+                    detail_data['dimension_value_freetext'] = None
+
+                    # Case 1: dimension_value ID is provided directly (from frontend)
+                    if dimension_value_id:
+                        try:
+                            # Check if dimension_value_id is already a DimensionValue object (converted by DRF)
+                            if hasattr(dimension_value_id, '_meta') and dimension_value_id._meta.model_name == 'dimensionvalue':
+                                dimension_value = dimension_value_id
+                            else:
+                                # It's an ID, so fetch the object
+                                dimension_value = models.DimensionValue.objects.get(
+                                    id=dimension_value_id)
+                            detail_data['dimension_value'] = dimension_value
+                        except models.DimensionValue.DoesNotExist:
+                            logger.warning(
+                                f"DimensionValue {dimension_value_id} not found")
+
+                    # Case 2: raw_value is provided, need to look up dimension value
+                    elif dimension_id and raw_value:
+                        try:
+                            dimension = models.Dimension.objects.get(
+                                id=dimension_id)
+
+                            if dimension.type == 'list':
+                                # For list type dimensions, look up the DimensionValue
+                                dimension_value = models.DimensionValue.objects.filter(
+                                    dimension=dimension,
+                                    value=raw_value
+                                ).first()
+                                detail_data['dimension_value'] = dimension_value
+                            else:
+                                # For text type dimensions, use freetext
+                                detail_data['dimension_value_freetext'] = raw_value
+
+                        except models.Dimension.DoesNotExist:
+                            logger.warning(
+                                f"Dimension {dimension_id} not found")
+
                     models.StringDetail.objects.create(
                         string=string,
-                        workspace=workspace,  # Set workspace on string detail
-                        **detail_data
+                        workspace=workspace,
+                        dimension=detail_data.get('dimension'),
+                        dimension_value=detail_data.get('dimension_value'),
+                        dimension_value_freetext=detail_data.get(
+                            'dimension_value_freetext')
                     )
 
         return instance
@@ -477,20 +548,60 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                     for j, detail_data in enumerate(block_items_data):
                         try:
                             # Remove non-model fields
+                            detail_data.pop('id', None)  # Remove frontend ID
                             detail_data.pop('dimension_name', None)
                             detail_data.pop('dimension_type', None)
                             detail_data.pop('dimension_order', None)
-                            detail_data.pop('value', None)
+                            raw_value = detail_data.pop('value', None)
                             detail_data.pop('dimension_values', None)
                             detail_data.pop('delimiter', None)
                             detail_data.pop('prefix', None)
                             detail_data.pop('suffix', None)
 
-                            # Handle dimension_value
-                            dimension_value = detail_data.pop(
+                            # Handle dimension_value properly based on dimension type
+                            dimension_value_id = detail_data.pop(
                                 'dimension_value', None)
-                            if dimension_value:
-                                detail_data['dimension_value'] = dimension_value
+                            dimension_id = detail_data.get('dimension')
+
+                            # Reset dimension_value and dimension_value_freetext
+                            detail_data['dimension_value'] = None
+                            detail_data['dimension_value_freetext'] = None
+
+                            # Case 1: dimension_value ID is provided directly (from frontend)
+                            if dimension_value_id:
+                                try:
+                                    # Check if dimension_value_id is already a DimensionValue object (converted by DRF)
+                                    if hasattr(dimension_value_id, '_meta') and dimension_value_id._meta.model_name == 'dimensionvalue':
+                                        dimension_value = dimension_value_id
+                                    else:
+                                        # It's an ID, so fetch the object
+                                        dimension_value = models.DimensionValue.objects.get(
+                                            id=dimension_value_id)
+                                    detail_data['dimension_value'] = dimension_value
+                                except models.DimensionValue.DoesNotExist:
+                                    logger.warning(
+                                        f"DimensionValue {dimension_value_id} not found")
+
+                            # Case 2: raw_value is provided, need to look up dimension value
+                            elif dimension_id and raw_value:
+                                try:
+                                    dimension = models.Dimension.objects.get(
+                                        id=dimension_id)
+
+                                    if dimension.type == 'list':
+                                        # For list type dimensions, look up the DimensionValue
+                                        dimension_value = models.DimensionValue.objects.filter(
+                                            dimension=dimension,
+                                            value=raw_value
+                                        ).first()
+                                        detail_data['dimension_value'] = dimension_value
+                                    else:
+                                        # For text type dimensions, use freetext
+                                        detail_data['dimension_value_freetext'] = raw_value
+
+                                except models.Dimension.DoesNotExist:
+                                    logger.warning(
+                                        f"Dimension {dimension_id} not found")
 
                             # Validate required fields for string detail
                             if not detail_data.get('dimension'):
@@ -500,7 +611,11 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                             models.StringDetail.objects.create(
                                 string=string,
                                 workspace=workspace,
-                                **detail_data
+                                dimension=detail_data.get('dimension'),
+                                dimension_value=detail_data.get(
+                                    'dimension_value'),
+                                dimension_value_freetext=detail_data.get(
+                                    'dimension_value_freetext')
                             )
                         except IntegrityError as e:
                             logger.error(
@@ -600,10 +715,11 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                 # Create string details
                 for detail_data in block_items_data:
                     # Remove non-model fields
+                    detail_data.pop('id', None)  # Remove frontend ID
                     detail_data.pop('name', None)
                     detail_data.pop('type', None)
                     detail_data.pop('order', None)
-                    detail_data.pop('value', None)
+                    raw_value = detail_data.pop('value', None)
                     detail_data.pop('dimension_values', None)
                     detail_data.pop('delimiter', None)
                     detail_data.pop('prefix', None)
@@ -612,10 +728,58 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                     detail_data.pop('parent_dimension_name', None)
                     detail_data.pop('parent_dimension', None)
 
+                    # Handle dimension_value properly based on dimension type
+                    dimension_value_id = detail_data.pop(
+                        'dimension_value', None)
+                    dimension_id = detail_data.get('dimension')
+
+                    # Reset dimension_value and dimension_value_freetext
+                    detail_data['dimension_value'] = None
+                    detail_data['dimension_value_freetext'] = None
+
+                    # Case 1: dimension_value ID is provided directly (from frontend)
+                    if dimension_value_id:
+                        try:
+                            # Check if dimension_value_id is already a DimensionValue object (converted by DRF)
+                            if hasattr(dimension_value_id, '_meta') and dimension_value_id._meta.model_name == 'dimensionvalue':
+                                dimension_value = dimension_value_id
+                            else:
+                                # It's an ID, so fetch the object
+                                dimension_value = models.DimensionValue.objects.get(
+                                    id=dimension_value_id)
+                            detail_data['dimension_value'] = dimension_value
+                        except models.DimensionValue.DoesNotExist:
+                            logger.warning(
+                                f"DimensionValue {dimension_value_id} not found")
+
+                    # Case 2: raw_value is provided, need to look up dimension value
+                    elif dimension_id and raw_value:
+                        try:
+                            dimension = models.Dimension.objects.get(
+                                id=dimension_id)
+
+                            if dimension.type == 'list':
+                                # For list type dimensions, look up the DimensionValue
+                                dimension_value = models.DimensionValue.objects.filter(
+                                    dimension=dimension,
+                                    value=raw_value
+                                ).first()
+                                detail_data['dimension_value'] = dimension_value
+                            else:
+                                # For text type dimensions, use freetext
+                                detail_data['dimension_value_freetext'] = raw_value
+
+                        except models.Dimension.DoesNotExist:
+                            logger.warning(
+                                f"Dimension {dimension_id} not found")
+
                     models.StringDetail.objects.create(
                         string=string,
-                        workspace=workspace,  # Set workspace on string detail
-                        **detail_data
+                        workspace=workspace,
+                        dimension=detail_data.get('dimension'),
+                        dimension_value=detail_data.get('dimension_value'),
+                        dimension_value_freetext=detail_data.get(
+                            'dimension_value_freetext')
                     )
 
         return instance
