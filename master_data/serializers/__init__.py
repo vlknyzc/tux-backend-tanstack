@@ -30,6 +30,7 @@ from .rule_serializers import (
     EnhancedDimensionCatalogSerializer,
     PerformanceMetricsSerializer,
     CompleteRuleSerializer,
+    RuleConfigurationSerializer,
 )
 from .platform import PlatformSerializer, FieldSerializer, PlatformTemplateSerializer
 from .string import (

@@ -478,3 +478,29 @@ class CompleteRuleSerializer(serializers.Serializer):
     # Metadata and performance metrics (optional)
     metadata = MetadataSerializer(required=False)
     performance_metrics = PerformanceMetricsSerializer(required=False)
+
+
+class RuleConfigurationSerializer(serializers.Serializer):
+    """Serializer that matches the structure of rule_configuration.json"""
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    slug = serializers.CharField()
+
+    # Platform object
+    platform = serializers.DictField()
+
+    # Workspace object
+    workspace = serializers.DictField()
+
+    # Fields as array instead of object
+    fields = serializers.ListField()
+
+    # Dimensions object keyed by dimension ID
+    dimensions = serializers.DictField()
+
+    # Dimension values object keyed by dimension ID
+    dimension_values = serializers.DictField()
+
+    # Metadata
+    generated_at = serializers.CharField()
+    created_by = serializers.DictField()

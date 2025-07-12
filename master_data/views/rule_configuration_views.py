@@ -11,7 +11,7 @@ from django.conf import settings
 import logging
 
 from drf_spectacular.openapi import AutoSchema
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from drf_spectacular.utils import extend_schema, OpenApiParameter, OpenApiExample
 
 from ..models import Rule
 from ..services import (
@@ -28,7 +28,8 @@ from ..serializers import (
     PerformanceMetricsSerializer,
     GenerationPreviewRequestSerializer,
     CacheInvalidationRequestSerializer,
-    CompleteRuleSerializer
+    CompleteRuleSerializer,
+    RuleConfigurationSerializer
 )
 from ..permissions import IsAuthenticatedOrDebugReadOnly
 
@@ -393,6 +394,118 @@ class RuleConfigurationView(APIView):
         super().__init__()
         self.rule_service = RuleService()
 
+    @extend_schema(
+        summary="Get Rule Configuration",
+        description="Retrieve complete rule configuration data including fields, dimensions, and dimension values",
+        parameters=[
+            OpenApiParameter(
+                name="rule_id",
+                type=int,
+                location=OpenApiParameter.PATH,
+                description="ID of the rule to get configuration for",
+                required=True
+            ),
+        ],
+        responses={
+            200: RuleConfigurationSerializer,
+            403: {
+                "type": "object",
+                "properties": {
+                    "error": {"type": "string", "example": "Access denied to this workspace"}
+                }
+            },
+            404: {
+                "type": "object",
+                "properties": {
+                    "error": {"type": "string", "example": "Rule not found"}
+                }
+            },
+            500: {
+                "type": "object",
+                "properties": {
+                    "error": {"type": "string", "example": "Internal server error"}
+                }
+            }
+        },
+        examples=[
+            OpenApiExample(
+                "Success Response",
+                value={
+                    "id": 22,
+                    "name": "Shopping",
+                    "slug": "shopping-1",
+                    "platform": {
+                        "id": 12,
+                        "name": "Amazon Ads",
+                        "slug": "amazon-ads"
+                    },
+                    "workspace": {
+                        "id": 2,
+                        "name": "Client 1"
+                    },
+                    "fields": [
+                        {
+                            "id": 50,
+                            "name": "Advertiser",
+                            "level": 1,
+                            "next_field_id": 51,
+                            "next_field_name": "Campaign",
+                            "field_items": [
+                                {
+                                    "id": 1,
+                                    "dimension_id": 22,
+                                    "order": 1,
+                                    "is_required": True,
+                                    "is_inherited": False,
+                                    "inherits_from_field_item": None,
+                                    "prefix": None,
+                                    "suffix": None,
+                                    "delimiter": None
+                                }
+                            ]
+                        }
+                    ],
+                    "dimensions": {
+                        "22": {
+                            "id": 22,
+                            "name": "Country",
+                            "type": "list",
+                            "description": ""
+                        }
+                    },
+                    "dimension_values": {
+                        "22": [
+                            {
+                                "id": 13,
+                                "dimension_id": 22,
+                                "value": "tr",
+                                "label": "Turkey",
+                                "utm": "tr",
+                                "description": "",
+                                "parent": None,
+                                "has_parent": False,
+                                "parent_dimension": None
+                            }
+                        ]
+                    },
+                    "generated_at": "2025-07-06T13:56:16.403076Z",
+                    "created_by": {
+                        "id": 1,
+                        "name": "John Doe"
+                    },
+                    "performance_metrics": {
+                        "generation_time_ms": 45.2,
+                        "cached": True,
+                        "workspace": 2
+                    }
+                },
+                response_only=True,
+                status_codes=["200"]
+            )
+        ],
+        tags=["Rules"]
+    )
+    @method_decorator(cache_page(15 * 60))  # 15 minutes cache
     def get(self, request, rule_id, version=None):
         """Get complete rule configuration data"""
         start_time = time.time()
@@ -400,59 +513,65 @@ class RuleConfigurationView(APIView):
         workspace = getattr(request, 'workspace', None)
 
         try:
-            # Check rule exists and user has access
-            try:
-                rule = Rule.objects.get(id=rule_id)
+            # Validate rule exists and user has access
+            rule = self._validate_rule_access(request, rule_id, workspace)
 
-                # Get user safely to handle both DRF Request and raw Django WSGIRequest
-                user = getattr(request, 'user', None)
-                if not user or not user.is_authenticated:
-                    raise PermissionDenied("Authentication required")
-
-                # Validate workspace access
-                if not user.is_superuser:
-                    if workspace and not user.has_workspace_access(workspace):
-                        raise PermissionDenied(
-                            "Access denied to this workspace")
-
-                    # Ensure rule belongs to the same workspace
-                    if workspace and rule.workspace_id != workspace:
-                        raise PermissionDenied(
-                            "Rule not found in current workspace")
-
-            except Rule.DoesNotExist:
-                return Response({'error': 'Rule not found'}, status=status.HTTP_404_NOT_FOUND)
-
-            complete_data = self.rule_service.get_complete_rule_data(
+            # Get configuration data from service
+            configuration_data = self.rule_service.get_rule_configuration_data(
                 rule_id)
 
-            # Add view-specific performance metrics to the existing ones
-            if 'performance_metrics' not in complete_data:
-                complete_data['performance_metrics'] = {}
-
-            # Store the view metrics separately to avoid overwriting service metrics
-            complete_data['view_performance_metrics'] = {
-                'generation_time_ms': (time.time() - start_time) * 1000,
-                'workspace': workspace,
-                'timestamp': timezone.now().isoformat()
+            # Add performance metrics
+            configuration_data['performance_metrics'] = {
+                'generation_time_ms': round((time.time() - start_time) * 1000, 2),
+                'cached': True,
+                'workspace': workspace
             }
 
-            try:
-                serializer = CompleteRuleSerializer(data=complete_data)
-                if serializer.is_valid():
-                    return Response(serializer.validated_data)
-                else:
-                    logger.error(
-                        f"CompleteRuleSerializer validation failed for rule {rule_id}: {serializer.errors}")
-                    return Response({'error': 'Serialization error', 'details': serializer.errors}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
-            except Exception as e:
+            # Validate and serialize response
+            serializer = RuleConfigurationSerializer(data=configuration_data)
+            if not serializer.is_valid():
                 logger.error(
-                    f"CompleteRuleSerializer instantiation failed for rule {rule_id}: {str(e)}")
-                return Response({'error': f'Serializer error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+                    f"RuleConfigurationSerializer validation failed for rule {rule_id}: {serializer.errors}")
+                return Response(
+                    {'error': 'Serialization error', 'details': serializer.errors},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+            return Response(serializer.validated_data)
 
         except PermissionDenied as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        except Rule.DoesNotExist:
+            return Response({'error': 'Rule not found'}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
             return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
         except Exception as e:
-            return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            logger.error(
+                f"Unexpected error in rule configuration endpoint: {str(e)}")
+            return Response(
+                {'error': 'Internal server error'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    def _validate_rule_access(self, request, rule_id, workspace):
+        """Validate rule exists and user has access"""
+        try:
+            rule = Rule.objects.get(id=rule_id)
+        except Rule.DoesNotExist:
+            raise Rule.DoesNotExist()
+
+        # Get user safely to handle both DRF Request and raw Django WSGIRequest
+        user = getattr(request, 'user', None)
+        if not user or not user.is_authenticated:
+            raise PermissionDenied("Authentication required")
+
+        # Validate workspace access
+        if not user.is_superuser:
+            if workspace and not user.has_workspace_access(workspace):
+                raise PermissionDenied("Access denied to this workspace")
+
+            # Ensure rule belongs to the same workspace
+            if workspace and rule.workspace_id != workspace:
+                raise PermissionDenied("Rule not found in current workspace")
+
+        return rule

@@ -1,0 +1,6556 @@
+openapi: 3.0.3
+info:
+  title: Tux API
+  version: 1.0.0
+  description: Tux API
+paths:
+  /api/v1/demo/:
+    get:
+      operationId: v1_demo_retrieve
+      description: |-
+        Demonstration view showing how to implement version-specific behavior.
+        This shows how existing endpoints can be enhanced for v2 while maintaining v1 compatibility.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/dimension-values/:
+    get:
+      operationId: v1_dimension_values_list
+      description: CRUD + bulk_create for DimensionValue, scoped per-workspace.
+      parameters:
+      - in: query
+        name: dimension
+        schema:
+          type: integer
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - in: query
+        name: value
+        schema:
+          type: string
+      - in: query
+        name: workspace
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DimensionValue'
+          description: ''
+    post:
+      operationId: v1_dimension_values_create
+      description: CRUD + bulk_create for DimensionValue, scoped per-workspace.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DimensionValue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DimensionValue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DimensionValue'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionValue'
+          description: ''
+  /api/v1/dimension-values/{id}/:
+    get:
+      operationId: v1_dimension_values_retrieve
+      description: CRUD + bulk_create for DimensionValue, scoped per-workspace.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Dimension Value.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionValue'
+          description: ''
+    put:
+      operationId: v1_dimension_values_update
+      description: CRUD + bulk_create for DimensionValue, scoped per-workspace.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Dimension Value.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DimensionValue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DimensionValue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DimensionValue'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionValue'
+          description: ''
+    patch:
+      operationId: v1_dimension_values_partial_update
+      description: CRUD + bulk_create for DimensionValue, scoped per-workspace.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Dimension Value.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDimensionValue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDimensionValue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDimensionValue'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionValue'
+          description: ''
+    delete:
+      operationId: v1_dimension_values_destroy
+      description: CRUD + bulk_create for DimensionValue, scoped per-workspace.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Dimension Value.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/dimension-values/bulk_create/:
+    post:
+      operationId: v1_dimension_values_bulk_create_create
+      description: |-
+        POST /api/dimension-values/bulk_create/?workspace=<id>
+        with body { "dimension_values": [ {...}, ... ] }
+
+        Workspace can be provided either as a query parameter (?workspace=<id>)
+        or in the request body ("workspace": <id>).
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DimensionValue'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/DimensionValue'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/DimensionValue'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DimensionValue'
+          description: ''
+  /api/v1/dimensions/:
+    get:
+      operationId: v1_dimensions_list
+      description: CRUD + bulk_create for Dimension, scoped per-workspace.
+      parameters:
+      - in: query
+        name: dimension
+        schema:
+          type: number
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - active
+          - inactive
+        description: |-
+          Current status of this dimension
+
+          * `active` - Active
+          * `inactive` - Inactive
+      - in: query
+        name: type
+        schema:
+          type: string
+          enum:
+          - list
+          - text
+        description: |-
+          Type of dimension: list of values or free text
+
+          * `list` - List
+          * `text` - Free Text
+      - in: query
+        name: workspace
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Dimension'
+          description: ''
+    post:
+      operationId: v1_dimensions_create
+      description: CRUD + bulk_create for Dimension, scoped per-workspace.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Dimension'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Dimension'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Dimension'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dimension'
+          description: ''
+  /api/v1/dimensions/{id}/:
+    get:
+      operationId: v1_dimensions_retrieve
+      description: CRUD + bulk_create for Dimension, scoped per-workspace.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Dimension.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dimension'
+          description: ''
+    put:
+      operationId: v1_dimensions_update
+      description: CRUD + bulk_create for Dimension, scoped per-workspace.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Dimension.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Dimension'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Dimension'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Dimension'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dimension'
+          description: ''
+    patch:
+      operationId: v1_dimensions_partial_update
+      description: CRUD + bulk_create for Dimension, scoped per-workspace.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Dimension.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedDimension'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedDimension'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedDimension'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dimension'
+          description: ''
+    delete:
+      operationId: v1_dimensions_destroy
+      description: CRUD + bulk_create for Dimension, scoped per-workspace.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Dimension.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/dimensions/bulk_create/:
+    post:
+      operationId: v1_dimensions_bulk_create_create
+      description: |-
+        POST /api/dimensions/bulk_create/?workspace=<id>
+        with body { "dimensions": [ {name, type, …}, … ] }
+
+        Workspace can be provided either as a query parameter (?workspace=<id>)
+        or in the request body ("workspace": <id>).
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Dimension'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Dimension'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Dimension'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Dimension'
+          description: ''
+  /api/v1/fields/:
+    get:
+      operationId: v1_fields_list
+      parameters:
+      - in: query
+        name: field_level
+        schema:
+          type: integer
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - in: query
+        name: platform
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Field'
+          description: ''
+    post:
+      operationId: v1_fields_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Field'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Field'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Field'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Field'
+          description: ''
+  /api/v1/fields/{id}/:
+    get:
+      operationId: v1_fields_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Field.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Field'
+          description: ''
+    put:
+      operationId: v1_fields_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Field.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Field'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Field'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Field'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Field'
+          description: ''
+    patch:
+      operationId: v1_fields_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Field.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedField'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedField'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedField'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Field'
+          description: ''
+    delete:
+      operationId: v1_fields_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Field.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/health/:
+    get:
+      operationId: v1_health_retrieve
+      description: Health check endpoint that includes version information.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/jwt/create/:
+    post:
+      operationId: v1_jwt_create_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/v1/jwt/refresh/:
+    post:
+      operationId: v1_jwt_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/jwt/verify/:
+    post:
+      operationId: v1_jwt_verify_create
+      description: |-
+        Takes a token and indicates if it is valid.  This view provides no
+        information about a token's fitness for a particular use.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenVerify'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenVerify'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenVerify'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenVerify'
+          description: ''
+  /api/v1/logout/:
+    post:
+      operationId: v1_logout_create
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/nested-submissions/:
+    get:
+      operationId: v1_nested_submissions_list
+      description: Override list to optimize rule detail lookups for all submissions
+      parameters:
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - in: query
+        name: rule
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: workspace
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SubmissionNested'
+          description: ''
+    post:
+      operationId: v1_nested_submissions_create
+      description: Create a submission with nested strings and string details atomically
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionNestedCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubmissionNestedCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubmissionNestedCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionNestedCreate'
+          description: ''
+  /api/v1/nested-submissions/{id}/:
+    get:
+      operationId: v1_nested_submissions_retrieve
+      description: Override retrieve to optimize rule detail lookups
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Submission.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionNested'
+          description: ''
+    put:
+      operationId: v1_nested_submissions_update
+      description: Update a submission with nested strings and string details atomically
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Submission.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SubmissionNested'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SubmissionNested'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SubmissionNested'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionNested'
+          description: ''
+    patch:
+      operationId: v1_nested_submissions_partial_update
+      description: Partially update a submission with nested strings and string details
+        atomically
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Submission.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubmissionNested'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSubmissionNested'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSubmissionNested'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionNested'
+          description: ''
+    delete:
+      operationId: v1_nested_submissions_destroy
+      description: Delete a submission with its related strings and string details
+        atomically
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Submission.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/platforms/:
+    get:
+      operationId: v1_platforms_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Platform'
+          description: ''
+    post:
+      operationId: v1_platforms_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Platform'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Platform'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Platform'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Platform'
+          description: ''
+  /api/v1/platforms/{id}/:
+    get:
+      operationId: v1_platforms_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Platform.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Platform'
+          description: ''
+    put:
+      operationId: v1_platforms_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Platform.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Platform'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Platform'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Platform'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Platform'
+          description: ''
+    patch:
+      operationId: v1_platforms_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Platform.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPlatform'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPlatform'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPlatform'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Platform'
+          description: ''
+    delete:
+      operationId: v1_platforms_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Platform.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '204':
+          description: No response body
+  /api/v1/rule-details/:
+    get:
+      operationId: v1_rule_details_list
+      parameters:
+      - in: query
+        name: dimension_order
+        schema:
+          type: integer
+      - in: query
+        name: field
+        schema:
+          type: integer
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - in: query
+        name: is_required
+        schema:
+          type: boolean
+      - in: query
+        name: platform
+        schema:
+          type: integer
+      - in: query
+        name: rule
+        schema:
+          type: integer
+      - in: query
+        name: workspace
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RuleDetail'
+          description: ''
+    post:
+      operationId: v1_rule_details_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuleDetailCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RuleDetailCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RuleDetailCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDetailCreate'
+          description: ''
+  /api/v1/rule-details/{id}/:
+    get:
+      operationId: v1_rule_details_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule Detail.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDetail'
+          description: ''
+    put:
+      operationId: v1_rule_details_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule Detail.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuleDetail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RuleDetail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RuleDetail'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDetail'
+          description: ''
+    patch:
+      operationId: v1_rule_details_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule Detail.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRuleDetail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRuleDetail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRuleDetail'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDetail'
+          description: ''
+    delete:
+      operationId: v1_rule_details_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule Detail.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/rule-details/validate_order/:
+    post:
+      operationId: v1_rule_details_validate_order_create
+      description: Validate dimension order for a rule and field.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuleDetail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RuleDetail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RuleDetail'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleDetail'
+          description: ''
+  /api/v1/rule-nested/:
+    get:
+      operationId: v1_rule_nested_list
+      parameters:
+      - in: query
+        name: field
+        schema:
+          type: number
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - in: query
+        name: is_default
+        schema:
+          type: boolean
+      - in: query
+        name: platform
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: workspace
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/RuleNested'
+          description: ''
+    post:
+      operationId: v1_rule_nested_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuleNested'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RuleNested'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RuleNested'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleNested'
+          description: ''
+  /api/v1/rule-nested/{id}/:
+    get:
+      operationId: v1_rule_nested_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleNested'
+          description: ''
+    put:
+      operationId: v1_rule_nested_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuleNested'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RuleNested'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RuleNested'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleNested'
+          description: ''
+    patch:
+      operationId: v1_rule_nested_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRuleNested'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRuleNested'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRuleNested'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleNested'
+          description: ''
+    delete:
+      operationId: v1_rule_nested_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/rule-nested/{id}/clone/:
+    post:
+      operationId: v1_rule_nested_clone_create
+      description: Clone a rule with all its details within the same workspace.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RuleNested'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/RuleNested'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RuleNested'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleNested'
+          description: ''
+  /api/v1/rules/:
+    get:
+      operationId: v1_rules_list
+      parameters:
+      - in: query
+        name: field
+        schema:
+          type: number
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - in: query
+        name: is_default
+        schema:
+          type: boolean
+      - in: query
+        name: platform
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+      - in: query
+        name: workspace
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Rule'
+          description: ''
+    post:
+      operationId: v1_rules_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Rule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Rule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Rule'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+          description: ''
+  /api/v1/rules/{id}/:
+    get:
+      operationId: v1_rules_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+          description: ''
+    put:
+      operationId: v1_rules_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Rule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Rule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Rule'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+          description: ''
+    patch:
+      operationId: v1_rules_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedRule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedRule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedRule'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+          description: ''
+    delete:
+      operationId: v1_rules_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/rules/{id}/preview/:
+    post:
+      operationId: v1_rules_preview_create
+      description: Generate a preview of string generation for this rule.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Rule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Rule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Rule'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+          description: ''
+  /api/v1/rules/{id}/required_dimensions/:
+    get:
+      operationId: v1_rules_required_dimensions_retrieve
+      description: Get required dimensions for all fields in this rule.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+          description: ''
+  /api/v1/rules/{id}/set_default/:
+    post:
+      operationId: v1_rules_set_default_create
+      description: Set this rule as the default for its platform within the workspace.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Rule'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Rule'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Rule'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+          description: ''
+  /api/v1/rules/{id}/validate_configuration/:
+    get:
+      operationId: v1_rules_validate_configuration_retrieve
+      description: Validate the rule configuration.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Rule.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+          description: ''
+  /api/v1/rules/{rule_id}/configuration/:
+    get:
+      operationId: v1_rules_configuration_retrieve
+      description: Retrieve complete rule configuration data including fields, dimensions,
+        and dimension values
+      summary: Get Rule Configuration
+      parameters:
+      - in: path
+        name: rule_id
+        schema:
+          type: integer
+        description: ID of the rule to get configuration for
+        required: true
+      tags:
+      - Rules
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/RuleConfiguration'
+              examples:
+                SuccessResponse:
+                  value:
+                    id: 22
+                    name: Shopping
+                    slug: shopping-1
+                    platform:
+                      id: 12
+                      name: Amazon Ads
+                      slug: amazon-ads
+                    workspace:
+                      id: 2
+                      name: Client 1
+                    fields:
+                    - id: 50
+                      name: Advertiser
+                      level: 1
+                      next_field_id: 51
+                      next_field_name: Campaign
+                      field_items:
+                      - id: 1
+                        dimension_id: 22
+                        order: 1
+                        is_required: true
+                        is_inherited: false
+                        inherits_from_field_item: null
+                        prefix: null
+                        suffix: null
+                        delimiter: null
+                    dimensions:
+                      '22':
+                        id: 22
+                        name: Country
+                        type: list
+                        description: ''
+                    dimension_values:
+                      '22':
+                      - id: 13
+                        dimension_id: 22
+                        value: tr
+                        label: Turkey
+                        utm: tr
+                        description: ''
+                        parent: null
+                        has_parent: false
+                        parent_dimension: null
+                    generated_at: '2025-07-06T13:56:16.403076Z'
+                    created_by:
+                      id: 1
+                      name: John Doe
+                    performance_metrics:
+                      generation_time_ms: 45.2
+                      cached: true
+                      workspace: 2
+                  summary: Success Response
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Access denied to this workspace
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Rule not found
+          description: ''
+        '500':
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+                    example: Internal server error
+          description: ''
+  /api/v1/rules/{rule_id}/fields/{field_id}/:
+    get:
+      operationId: v1_rules_fields_retrieve
+      description: Get field-specific rule data
+      parameters:
+      - in: path
+        name: field_id
+        schema:
+          type: integer
+        required: true
+      - in: path
+        name: rule_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/rules/{rule_id}/lightweight/:
+    get:
+      operationId: v1_rules_lightweight_retrieve
+      description: Get lightweight rule data
+      parameters:
+      - in: path
+        name: rule_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/rules/{rule_id}/metrics/:
+    get:
+      operationId: v1_rules_metrics_retrieve
+      description: Get performance metrics for a specific rule
+      parameters:
+      - in: path
+        name: rule_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_rules_metrics_create
+      description: Invalidate cache for specified rules
+      parameters:
+      - in: path
+        name: rule_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/rules/{rule_id}/validation/:
+    get:
+      operationId: v1_rules_validation_retrieve
+      description: Get comprehensive rule validation summary
+      parameters:
+      - in: path
+        name: rule_id
+        schema:
+          type: integer
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/rules/active/:
+    get:
+      operationId: v1_rules_active_retrieve
+      description: Get all active rules in current workspace.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+          description: ''
+  /api/v1/rules/cache/invalidate/:
+    get:
+      operationId: v1_rules_cache_invalidate_retrieve
+      description: Get performance metrics for a specific rule
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
+    post:
+      operationId: v1_rules_cache_invalidate_create
+      description: Invalidate cache for specified rules
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/rules/defaults/:
+    get:
+      operationId: v1_rules_defaults_retrieve
+      description: Get all default rules by platform in current workspace.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Rule'
+          description: ''
+  /api/v1/rules/generation-preview/:
+    post:
+      operationId: v1_rules_generation_preview_create
+      description: Generate string preview based on rule and sample values
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          description: No response body
+  /api/v1/string-details/:
+    get:
+      operationId: v1_string_details_list
+      parameters:
+      - in: query
+        name: dimension
+        schema:
+          type: integer
+      - in: query
+        name: dimension_type
+        schema:
+          type: string
+      - in: query
+        name: dimension_value
+        schema:
+          type: integer
+      - in: query
+        name: dimension_value_freetext
+        schema:
+          type: string
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - in: query
+        name: string
+        schema:
+          type: integer
+      - in: query
+        name: workspace
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StringDetail'
+          description: ''
+    post:
+      operationId: v1_string_details_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StringDetail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StringDetail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StringDetail'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringDetail'
+          description: ''
+  /api/v1/string-details/{id}/:
+    get:
+      operationId: v1_string_details_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String Detail.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringDetail'
+          description: ''
+    put:
+      operationId: v1_string_details_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String Detail.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StringDetail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StringDetail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StringDetail'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringDetail'
+          description: ''
+    patch:
+      operationId: v1_string_details_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String Detail.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStringDetail'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStringDetail'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStringDetail'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringDetail'
+          description: ''
+    delete:
+      operationId: v1_string_details_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String Detail.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/strings/:
+    get:
+      operationId: v1_strings_list
+      parameters:
+      - in: query
+        name: field
+        schema:
+          type: integer
+      - in: query
+        name: field_level
+        schema:
+          type: number
+      - in: query
+        name: has_conflicts
+        schema:
+          type: boolean
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - in: query
+        name: is_auto_generated
+        schema:
+          type: boolean
+      - in: query
+        name: parent
+        schema:
+          type: integer
+      - in: query
+        name: platform
+        schema:
+          type: number
+      - in: query
+        name: rule
+        schema:
+          type: integer
+      - in: query
+        name: workspace
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/String'
+          description: ''
+    post:
+      operationId: v1_strings_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/String'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/String'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/String'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+  /api/v1/strings/{id}/:
+    get:
+      operationId: v1_strings_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+    put:
+      operationId: v1_strings_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/String'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/String'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/String'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+    patch:
+      operationId: v1_strings_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedString'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedString'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedString'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+    delete:
+      operationId: v1_strings_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/strings/{id}/hierarchy/:
+    get:
+      operationId: v1_strings_hierarchy_retrieve
+      description: Get the complete hierarchy for a string (parents and children).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+  /api/v1/strings/{id}/regenerate/:
+    post:
+      operationId: v1_strings_regenerate_create
+      description: Regenerate an existing string with new dimension values.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/String'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/String'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/String'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+  /api/v1/strings/bulk_generate/:
+    post:
+      operationId: v1_strings_bulk_generate_create
+      description: Generate multiple strings in a single request.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/String'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/String'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/String'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+  /api/v1/strings/check_conflicts/:
+    post:
+      operationId: v1_strings_check_conflicts_create
+      description: Check for naming conflicts before string creation.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/String'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/String'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/String'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+  /api/v1/strings/conflicts/:
+    get:
+      operationId: v1_strings_conflicts_retrieve
+      description: Get all strings that have naming conflicts in current workspace.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+  /api/v1/strings/generate/:
+    post:
+      operationId: v1_strings_generate_create
+      description: Generate a new string using business logic.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/String'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/String'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/String'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+  /api/v1/submissions/:
+    get:
+      operationId: v1_submissions_list
+      parameters:
+      - in: query
+        name: id
+        schema:
+          type: integer
+      - in: query
+        name: rule
+        schema:
+          type: integer
+      - in: query
+        name: starting_field
+        schema:
+          type: integer
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - approved
+          - draft
+          - rejected
+          - submitted
+        description: |-
+          Current status of this submission
+
+          * `submitted` - Submitted
+          * `draft` - Draft
+          * `approved` - Approved
+          * `rejected` - Rejected
+      - in: query
+        name: workspace
+        schema:
+          type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Submission'
+          description: ''
+    post:
+      operationId: v1_submissions_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Submission'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Submission'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Submission'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+          description: ''
+  /api/v1/submissions/{id}/:
+    get:
+      operationId: v1_submissions_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Submission.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+          description: ''
+    put:
+      operationId: v1_submissions_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Submission.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Submission'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Submission'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Submission'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+          description: ''
+    patch:
+      operationId: v1_submissions_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Submission.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedSubmission'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedSubmission'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedSubmission'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Submission'
+          description: ''
+    delete:
+      operationId: v1_submissions_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Submission.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/token/:
+    post:
+      operationId: v1_token_create
+      description: |-
+        Takes a set of user credentials and returns an access and refresh JSON web
+        token pair to prove the authentication of those credentials.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenObtainPair'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenObtainPair'
+          description: ''
+  /api/v1/token/refresh/:
+    post:
+      operationId: v1_token_refresh_create
+      description: |-
+        Takes a refresh type JSON web token and returns an access type JSON web
+        token if the refresh token is valid.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefresh'
+        required: true
+      security:
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/users/:
+    get:
+      operationId: v1_users_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/User'
+          description: ''
+    post:
+      operationId: v1_users_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserCreatePasswordRetype'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserCreatePasswordRetype'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserCreatePasswordRetype'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserCreatePasswordRetype'
+          description: ''
+  /api/v1/users/{id}/:
+    get:
+      operationId: v1_users_retrieve
+      description: |-
+        ViewSet for managing users and their basic information.
+        Provides CRUD operations for user accounts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+          description: ''
+    put:
+      operationId: v1_users_update
+      description: |-
+        ViewSet for managing users and their basic information.
+        Provides CRUD operations for user accounts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UserUpdate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserUpdate'
+          description: ''
+    patch:
+      operationId: v1_users_partial_update
+      description: |-
+        ViewSet for managing users and their basic information.
+        Provides CRUD operations for user accounts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUserUpdate'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserUpdate'
+          description: ''
+    delete:
+      operationId: v1_users_destroy
+      description: |-
+        ViewSet for managing users and their basic information.
+        Provides CRUD operations for user accounts.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/users/{id}/authorizations/:
+    get:
+      operationId: v1_users_authorizations_retrieve
+      description: Get detailed authorization information for a user
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDetail'
+          description: ''
+  /api/v1/users/activation/:
+    post:
+      operationId: v1_users_activation_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Activation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Activation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Activation'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Activation'
+          description: ''
+  /api/v1/users/me/:
+    get:
+      operationId: v1_users_me_retrieve
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    put:
+      operationId: v1_users_me_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/User'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/User'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/User'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    patch:
+      operationId: v1_users_me_partial_update
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedUser'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/User'
+          description: ''
+    delete:
+      operationId: v1_users_me_destroy
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/users/resend_activation/:
+    post:
+      operationId: v1_users_resend_activation_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendEmailReset'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SendEmailReset'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SendEmailReset'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendEmailReset'
+          description: ''
+  /api/v1/users/reset_email/:
+    post:
+      operationId: v1_users_reset_email_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendEmailReset'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SendEmailReset'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SendEmailReset'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendEmailReset'
+          description: ''
+  /api/v1/users/reset_email_confirm/:
+    post:
+      operationId: v1_users_reset_email_confirm_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UsernameResetConfirm'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/UsernameResetConfirm'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/UsernameResetConfirm'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UsernameResetConfirm'
+          description: ''
+  /api/v1/users/reset_password/:
+    post:
+      operationId: v1_users_reset_password_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SendEmailReset'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SendEmailReset'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SendEmailReset'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SendEmailReset'
+          description: ''
+  /api/v1/users/reset_password_confirm/:
+    post:
+      operationId: v1_users_reset_password_confirm_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PasswordResetConfirm'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetConfirm'
+          description: ''
+  /api/v1/users/set_email/:
+    post:
+      operationId: v1_users_set_email_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetUsername'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SetUsername'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SetUsername'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetUsername'
+          description: ''
+  /api/v1/users/set_password/:
+    post:
+      operationId: v1_users_set_password_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPassword'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/SetPassword'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SetPassword'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SetPassword'
+          description: ''
+  /api/v1/version/:
+    get:
+      operationId: v1_version_retrieve
+      description: |-
+        Simple view to demonstrate API versioning.
+        Returns different responses based on the API version.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      - {}
+      responses:
+        '200':
+          description: No response body
+  /api/v1/workspace-users/:
+    get:
+      operationId: v1_workspace_users_list
+      description: |-
+        ViewSet for managing workspace-user relationships.
+        Allows assigning/removing users from workspaces and managing roles.
+
+        list:
+            Return a list of workspace-user relationships.
+
+        create:
+            Create a new workspace-user relationship.
+
+        retrieve:
+            Return the given workspace-user relationship.
+
+        update:
+            Update the given workspace-user relationship.
+
+        partial_update:
+            Update part of the given workspace-user relationship.
+
+        destroy:
+            Delete the given workspace-user relationship.
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/WorkspaceUser'
+          description: ''
+    post:
+      operationId: v1_workspace_users_create
+      description: |-
+        ViewSet for managing workspace-user relationships.
+        Allows assigning/removing users from workspaces and managing roles.
+
+        list:
+            Return a list of workspace-user relationships.
+
+        create:
+            Create a new workspace-user relationship.
+
+        retrieve:
+            Return the given workspace-user relationship.
+
+        update:
+            Update the given workspace-user relationship.
+
+        partial_update:
+            Update part of the given workspace-user relationship.
+
+        destroy:
+            Delete the given workspace-user relationship.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceUserCreate'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkspaceUserCreate'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkspaceUserCreate'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceUserCreate'
+          description: ''
+  /api/v1/workspace-users/{id}/:
+    get:
+      operationId: v1_workspace_users_retrieve
+      description: |-
+        ViewSet for managing workspace-user relationships.
+        Allows assigning/removing users from workspaces and managing roles.
+
+        list:
+            Return a list of workspace-user relationships.
+
+        create:
+            Create a new workspace-user relationship.
+
+        retrieve:
+            Return the given workspace-user relationship.
+
+        update:
+            Update the given workspace-user relationship.
+
+        partial_update:
+            Update part of the given workspace-user relationship.
+
+        destroy:
+            Delete the given workspace-user relationship.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceUser'
+          description: ''
+    put:
+      operationId: v1_workspace_users_update
+      description: |-
+        ViewSet for managing workspace-user relationships.
+        Allows assigning/removing users from workspaces and managing roles.
+
+        list:
+            Return a list of workspace-user relationships.
+
+        create:
+            Create a new workspace-user relationship.
+
+        retrieve:
+            Return the given workspace-user relationship.
+
+        update:
+            Update the given workspace-user relationship.
+
+        partial_update:
+            Update part of the given workspace-user relationship.
+
+        destroy:
+            Delete the given workspace-user relationship.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkspaceUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkspaceUser'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceUser'
+          description: ''
+    patch:
+      operationId: v1_workspace_users_partial_update
+      description: |-
+        ViewSet for managing workspace-user relationships.
+        Allows assigning/removing users from workspaces and managing roles.
+
+        list:
+            Return a list of workspace-user relationships.
+
+        create:
+            Create a new workspace-user relationship.
+
+        retrieve:
+            Return the given workspace-user relationship.
+
+        update:
+            Update the given workspace-user relationship.
+
+        partial_update:
+            Update part of the given workspace-user relationship.
+
+        destroy:
+            Delete the given workspace-user relationship.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkspaceUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkspaceUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkspaceUser'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceUser'
+          description: ''
+    delete:
+      operationId: v1_workspace_users_destroy
+      description: |-
+        ViewSet for managing workspace-user relationships.
+        Allows assigning/removing users from workspaces and managing roles.
+
+        list:
+            Return a list of workspace-user relationships.
+
+        create:
+            Create a new workspace-user relationship.
+
+        retrieve:
+            Return the given workspace-user relationship.
+
+        update:
+            Update the given workspace-user relationship.
+
+        partial_update:
+            Update part of the given workspace-user relationship.
+
+        destroy:
+            Delete the given workspace-user relationship.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/workspace-users/bulk_assign/:
+    post:
+      operationId: v1_workspace_users_bulk_assign_create
+      description: |-
+        Bulk assign users to workspaces.
+        Only available to superusers.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/WorkspaceUser'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/WorkspaceUser'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/WorkspaceUser'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceUser'
+          description: ''
+  /api/v1/workspace-users/workspace_summary/:
+    get:
+      operationId: v1_workspace_users_workspace_summary_retrieve
+      description: |-
+        Get summary of all workspace assignments.
+
+        get:
+            Returns a summary of user assignments grouped by workspace,
+            including counts of total users, active users, and users by role.
+
+        responses:
+            200:
+                description: Successfully retrieved workspace summary
+                content:
+                    application/json:
+                        schema:
+                            type: object
+                            properties:
+                                workspace_summaries:
+                                    type: array
+                                    items:
+                                        type: object
+                                        properties:
+                                            workspace__id:
+                                                type: integer
+                                            workspace__name:
+                                                type: string
+                                            total_users:
+                                                type: integer
+                                            active_users:
+                                                type: integer
+                                            admin_count:
+                                                type: integer
+                                            user_count:
+                                                type: integer
+                                            viewer_count:
+                                                type: integer
+                                total_workspaces:
+                                    type: integer
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/WorkspaceUser'
+          description: ''
+  /api/v1/workspaces/:
+    get:
+      operationId: v1_workspaces_list
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/Workspace'
+          description: ''
+    post:
+      operationId: v1_workspaces_create
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Workspace'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Workspace'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Workspace'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+          description: ''
+  /api/v1/workspaces/{id}/:
+    get:
+      operationId: v1_workspaces_retrieve
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+          description: ''
+    put:
+      operationId: v1_workspaces_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/Workspace'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/Workspace'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/Workspace'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+          description: ''
+    patch:
+      operationId: v1_workspaces_partial_update
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkspace'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkspace'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedWorkspace'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Workspace'
+          description: ''
+    delete:
+      operationId: v1_workspaces_destroy
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+components:
+  schemas:
+    Activation:
+      type: object
+      properties:
+        uid:
+          type: string
+        token:
+          type: string
+      required:
+      - token
+      - uid
+    Dimension:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Name for this dimension (unique per workspace)
+          maxLength: 30
+        slug:
+          type: string
+          description: URL-friendly version of the name (auto-generated)
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          nullable: true
+          description: Description of what this dimension represents
+          maxLength: 500
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          description: |-
+            Type of dimension: list of values or free text
+
+            * `list` - List
+            * `text` - Free Text
+        parent:
+          type: integer
+          nullable: true
+          description: Parent dimension if this is a sub-dimension
+        parent_name:
+          type: string
+          nullable: true
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusA3eEnum'
+          description: |-
+            Current status of this dimension
+
+            * `active` - Active
+            * `inactive` - Inactive
+        workspace:
+          type: integer
+          description: ID of the workspace this dimension belongs to
+        workspace_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+      required:
+      - created
+      - created_by
+      - created_by_name
+      - id
+      - last_updated
+      - name
+      - parent_name
+      - type
+      - workspace
+      - workspace_name
+    DimensionValue:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        valid_from:
+          type: string
+          format: date
+          nullable: true
+          description: Date from which this value is valid
+        description:
+          type: string
+          nullable: true
+          description: Description of what this value represents
+          maxLength: 500
+        value:
+          type: string
+          description: The actual value (e.g., 'prod', 'dev')
+          maxLength: 30
+        valid_until:
+          type: string
+          format: date
+          nullable: true
+          description: Date until which this value is valid
+        label:
+          type: string
+          description: Human-readable label for this value
+          maxLength: 50
+        utm:
+          type: string
+          description: UTM or tracking code for this value
+          maxLength: 30
+        dimension:
+          type: integer
+          description: The dimension this value belongs to
+        dimension_name:
+          type: string
+          readOnly: true
+        dimension_parent_name:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension_parent:
+          type: integer
+          nullable: true
+          readOnly: true
+        parent:
+          type: integer
+          nullable: true
+          description: Parent value if this is a sub-value
+        parent_name:
+          type: string
+          nullable: true
+          readOnly: true
+        parent_value:
+          type: string
+          nullable: true
+          readOnly: true
+        workspace:
+          type: integer
+          description: Workspace this record belongs to
+        workspace_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+      required:
+      - created
+      - created_by
+      - created_by_name
+      - dimension
+      - dimension_name
+      - dimension_parent
+      - dimension_parent_name
+      - id
+      - label
+      - last_updated
+      - parent_name
+      - parent_value
+      - utm
+      - value
+      - workspace
+      - workspace_name
+    Field:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        platform:
+          type: integer
+          description: Platform this field belongs to
+        platform_name:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          description: Name of this field (e.g., 'environment', 'project')
+          maxLength: 30
+        field_level:
+          type: integer
+          description: Hierarchical level of this field (1, 2, 3, etc.)
+        next_field:
+          type: integer
+          nullable: true
+          description: Next field in the hierarchy sequence
+        next_field_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+      required:
+      - created
+      - created_by
+      - created_by_name
+      - field_level
+      - id
+      - last_updated
+      - name
+      - next_field_name
+      - platform
+      - platform_name
+    PasswordResetConfirm:
+      type: object
+      properties:
+        uid:
+          type: string
+        token:
+          type: string
+        new_password:
+          type: string
+      required:
+      - new_password
+      - token
+      - uid
+    PatchedDimension:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Name for this dimension (unique per workspace)
+          maxLength: 30
+        slug:
+          type: string
+          description: URL-friendly version of the name (auto-generated)
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          nullable: true
+          description: Description of what this dimension represents
+          maxLength: 500
+        type:
+          allOf:
+          - $ref: '#/components/schemas/TypeEnum'
+          description: |-
+            Type of dimension: list of values or free text
+
+            * `list` - List
+            * `text` - Free Text
+        parent:
+          type: integer
+          nullable: true
+          description: Parent dimension if this is a sub-dimension
+        parent_name:
+          type: string
+          nullable: true
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusA3eEnum'
+          description: |-
+            Current status of this dimension
+
+            * `active` - Active
+            * `inactive` - Inactive
+        workspace:
+          type: integer
+          description: ID of the workspace this dimension belongs to
+        workspace_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+    PatchedDimensionValue:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        valid_from:
+          type: string
+          format: date
+          nullable: true
+          description: Date from which this value is valid
+        description:
+          type: string
+          nullable: true
+          description: Description of what this value represents
+          maxLength: 500
+        value:
+          type: string
+          description: The actual value (e.g., 'prod', 'dev')
+          maxLength: 30
+        valid_until:
+          type: string
+          format: date
+          nullable: true
+          description: Date until which this value is valid
+        label:
+          type: string
+          description: Human-readable label for this value
+          maxLength: 50
+        utm:
+          type: string
+          description: UTM or tracking code for this value
+          maxLength: 30
+        dimension:
+          type: integer
+          description: The dimension this value belongs to
+        dimension_name:
+          type: string
+          readOnly: true
+        dimension_parent_name:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension_parent:
+          type: integer
+          nullable: true
+          readOnly: true
+        parent:
+          type: integer
+          nullable: true
+          description: Parent value if this is a sub-value
+        parent_name:
+          type: string
+          nullable: true
+          readOnly: true
+        parent_value:
+          type: string
+          nullable: true
+          readOnly: true
+        workspace:
+          type: integer
+          description: Workspace this record belongs to
+        workspace_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+    PatchedField:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        platform:
+          type: integer
+          description: Platform this field belongs to
+        platform_name:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          description: Name of this field (e.g., 'environment', 'project')
+          maxLength: 30
+        field_level:
+          type: integer
+          description: Hierarchical level of this field (1, 2, 3, etc.)
+        next_field:
+          type: integer
+          nullable: true
+          description: Next field in the hierarchy sequence
+        next_field_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+    PatchedPlatform:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        platform_type:
+          type: string
+          description: Type or category of this platform
+          maxLength: 30
+        name:
+          type: string
+          description: Human-readable name of the platform
+          maxLength: 30
+        slug:
+          type: string
+          description: URL-friendly identifier for this platform
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        icon_name:
+          type: string
+          nullable: true
+          description: Name of the icon to display for this platform
+          maxLength: 30
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+    PatchedRule:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Name of this naming rule
+          maxLength: 50
+        slug:
+          type: string
+          description: URL-friendly version of the name (auto-generated)
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          nullable: true
+          description: Description of what this rule generates
+          maxLength: 500
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusA3eEnum'
+          description: |-
+            Current status of this rule
+
+            * `active` - Active
+            * `inactive` - Inactive
+        is_default:
+          type: boolean
+          description: Whether this is the default rule for the platform
+        platform:
+          type: integer
+          description: Platform this rule applies to
+        platform_name:
+          type: string
+          readOnly: true
+        platform_slug:
+          type: string
+          readOnly: true
+        workspace:
+          type: integer
+          readOnly: true
+        workspace_name:
+          type: string
+          nullable: true
+          readOnly: true
+        configuration_errors:
+          type: array
+          items:
+            type: string
+          description: Get configuration validation errors.
+          readOnly: true
+        required_dimensions:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Get required dimensions by field.
+          readOnly: true
+        fields_with_rules:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Get all fields that have rule details configured.
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+    PatchedRuleDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        rule:
+          type: integer
+          description: Rule this detail belongs to
+        rule_name:
+          type: string
+          readOnly: true
+        platform:
+          type: integer
+          readOnly: true
+        platform_name:
+          type: string
+          readOnly: true
+        platform_slug:
+          type: string
+          readOnly: true
+        field:
+          type: integer
+          description: Field this formatting applies to
+        field_name:
+          type: string
+          readOnly: true
+        field_level:
+          type: integer
+          readOnly: true
+        next_field:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension:
+          type: integer
+          description: Dimension this formatting applies to
+        dimension_name:
+          type: string
+          readOnly: true
+        dimension_type:
+          type: string
+          readOnly: true
+        dimension_order:
+          type: integer
+          description: Order of this dimension in the naming sequence (1, 2, 3, etc.)
+        prefix:
+          type: string
+          nullable: true
+          description: Text to prepend to the dimension value
+          maxLength: 20
+        suffix:
+          type: string
+          nullable: true
+          description: Text to append to the dimension value
+          maxLength: 20
+        delimiter:
+          type: string
+          nullable: true
+          description: Character to separate this dimension from others
+          maxLength: 1
+        is_required:
+          type: boolean
+          description: Whether this dimension is required for string generation
+        parent_dimension_name:
+          type: string
+          nullable: true
+          readOnly: true
+        parent_dimension:
+          type: integer
+          nullable: true
+          readOnly: true
+        in_parent_field:
+          type: boolean
+          readOnly: true
+        is_max_field_level:
+          type: boolean
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+    PatchedRuleNested:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusA3eEnum'
+          description: |-
+            Current status of this rule
+
+            * `active` - Active
+            * `inactive` - Inactive
+        platform:
+          type: integer
+        platform_name:
+          type: string
+          readOnly: true
+        platform_slug:
+          type: string
+          readOnly: true
+        field_details:
+          type: string
+          readOnly: true
+        rule_details:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleDetailCreate'
+          writeOnly: true
+        workspace:
+          type: integer
+          writeOnly: true
+          nullable: true
+        workspace_name:
+          type: string
+          readOnly: true
+    PatchedString:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        submission:
+          type: integer
+          description: Submission that generated this string
+        submission_name:
+          type: string
+          nullable: true
+          readOnly: true
+        rule:
+          type: integer
+          readOnly: true
+          description: Rule used to generate this string (auto-set from submission)
+        rule_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: integer
+          nullable: true
+          readOnly: true
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+        field:
+          type: integer
+          description: Field this string belongs to
+        field_name:
+          type: string
+          readOnly: true
+        field_level:
+          type: integer
+          readOnly: true
+        platform:
+          type: integer
+          nullable: true
+          readOnly: true
+        platform_name:
+          type: string
+          nullable: true
+          readOnly: true
+        platform_slug:
+          type: string
+          nullable: true
+          readOnly: true
+        string_uuid:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Unique identifier for this string (unique per workspace)
+        value:
+          type: string
+          description: Generated string value following naming convention
+          maxLength: 400
+        parent:
+          type: integer
+          nullable: true
+          description: Parent string in hierarchical naming structure
+        parent_uuid:
+          type: string
+          format: uuid
+          nullable: true
+          description: UUID of parent string for hierarchical linking
+        workspace:
+          type: integer
+          readOnly: true
+          description: Workspace this record belongs to
+        workspace_name:
+          type: string
+          nullable: true
+          readOnly: true
+        is_auto_generated:
+          type: boolean
+          description: Whether this string was automatically generated
+        generation_metadata:
+          description: Metadata about how this string was generated
+        dimension_values:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Get dimension values used to generate this string.
+          readOnly: true
+        hierarchy_path:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Get the hierarchy path for this string.
+          readOnly: true
+        can_have_children:
+          type: boolean
+          description: Check if this string can have child strings.
+          readOnly: true
+        suggested_child_field:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          description: Get suggested child field for creating child strings.
+          readOnly: true
+        naming_conflicts:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Get any naming conflicts for this string.
+          readOnly: true
+    PatchedStringDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        submission_name:
+          type: string
+          nullable: true
+          readOnly: true
+        string:
+          type: integer
+          description: String this detail belongs to
+        dimension:
+          type: integer
+          description: Dimension this value represents
+        dimension_name:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension_type:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension_value:
+          type: integer
+          nullable: true
+          description: Predefined dimension value (for list-type dimensions)
+        dimension_value_display:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension_value_label:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension_value_freetext:
+          type: string
+          nullable: true
+          description: Free-text dimension value (for text-type dimensions)
+          maxLength: 100
+        effective_value:
+          type: string
+          nullable: true
+          description: Get the effective value (either from dimension_value or freetext).
+          readOnly: true
+        workspace:
+          type: integer
+          writeOnly: true
+          nullable: true
+        workspace_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+    PatchedSubmission:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Name for this submission
+          maxLength: 30
+        slug:
+          type: string
+          description: URL-friendly version of the name (auto-generated)
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          nullable: true
+          description: Optional description of this submission
+          maxLength: 500
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status941Enum'
+          description: |-
+            Current status of this submission
+
+            * `submitted` - Submitted
+            * `draft` - Draft
+            * `approved` - Approved
+            * `rejected` - Rejected
+        rule:
+          type: integer
+          description: The naming rule to apply for this submission
+        rule_name:
+          type: string
+          nullable: true
+          readOnly: true
+        platform:
+          type: integer
+          nullable: true
+          readOnly: true
+        platform_name:
+          type: string
+          nullable: true
+          readOnly: true
+        selected_parent_string:
+          type: integer
+          nullable: true
+          description: Parent string to base this submission on (if any)
+        starting_field:
+          type: integer
+          description: The field to start the naming sequence from
+        workspace:
+          type: integer
+          description: Workspace this record belongs to
+        workspace_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+    PatchedSubmissionNested:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Name for this submission
+          maxLength: 30
+        selected_parent:
+          type: integer
+          nullable: true
+        starting_field:
+          type: integer
+          description: The field to start the naming sequence from
+        description:
+          type: string
+          nullable: true
+          description: Optional description of this submission
+          maxLength: 500
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status941Enum'
+          description: |-
+            Current status of this submission
+
+            * `submitted` - Submitted
+            * `draft` - Draft
+            * `approved` - Approved
+            * `rejected` - Rejected
+        rule:
+          type: integer
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/StringNested'
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        workspace:
+          type: integer
+          writeOnly: true
+          nullable: true
+    PatchedUser:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 255
+        last_name:
+          type: string
+          maxLength: 255
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+    PatchedUserUpdate:
+      type: object
+      description: Serializer for updating users
+      properties:
+        first_name:
+          type: string
+          maxLength: 255
+        last_name:
+          type: string
+          maxLength: 255
+        is_active:
+          type: boolean
+        is_staff:
+          type: boolean
+        is_superuser:
+          type: boolean
+    PatchedWorkspace:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Unique name for this workspace
+          maxLength: 30
+        slug:
+          type: string
+          description: URL-friendly version of the name (auto-generated)
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        logo:
+          type: string
+          format: uri
+          nullable: true
+          description: Logo image for this workspace
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusA3eEnum'
+          description: |-
+            Current status of this workspace
+
+            * `active` - Active
+            * `inactive` - Inactive
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+    PatchedWorkspaceUser:
+      type: object
+      description: Serializer for WorkspaceUser relationships
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+        user_email:
+          type: string
+          readOnly: true
+        user_name:
+          type: string
+          readOnly: true
+        workspace:
+          type: integer
+        workspace_name:
+          type: string
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          description: |-
+            User's role in this workspace
+
+            * `admin` - Admin
+            * `user` - User
+            * `viewer` - Viewer
+        is_active:
+          type: boolean
+          description: Whether this workspace assignment is active
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+        updated:
+          type: string
+          format: date-time
+          readOnly: true
+    Platform:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        platform_type:
+          type: string
+          description: Type or category of this platform
+          maxLength: 30
+        name:
+          type: string
+          description: Human-readable name of the platform
+          maxLength: 30
+        slug:
+          type: string
+          description: URL-friendly identifier for this platform
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        icon_name:
+          type: string
+          nullable: true
+          description: Name of the icon to display for this platform
+          maxLength: 30
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+      required:
+      - created
+      - created_by
+      - created_by_name
+      - id
+      - last_updated
+      - name
+      - platform_type
+      - slug
+    RoleEnum:
+      enum:
+      - admin
+      - user
+      - viewer
+      type: string
+      description: |-
+        * `admin` - Admin
+        * `user` - User
+        * `viewer` - Viewer
+    Rule:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Name of this naming rule
+          maxLength: 50
+        slug:
+          type: string
+          description: URL-friendly version of the name (auto-generated)
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          nullable: true
+          description: Description of what this rule generates
+          maxLength: 500
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusA3eEnum'
+          description: |-
+            Current status of this rule
+
+            * `active` - Active
+            * `inactive` - Inactive
+        is_default:
+          type: boolean
+          description: Whether this is the default rule for the platform
+        platform:
+          type: integer
+          description: Platform this rule applies to
+        platform_name:
+          type: string
+          readOnly: true
+        platform_slug:
+          type: string
+          readOnly: true
+        workspace:
+          type: integer
+          readOnly: true
+        workspace_name:
+          type: string
+          nullable: true
+          readOnly: true
+        configuration_errors:
+          type: array
+          items:
+            type: string
+          description: Get configuration validation errors.
+          readOnly: true
+        required_dimensions:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          description: Get required dimensions by field.
+          readOnly: true
+        fields_with_rules:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Get all fields that have rule details configured.
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+      required:
+      - configuration_errors
+      - created
+      - created_by
+      - created_by_name
+      - fields_with_rules
+      - id
+      - last_updated
+      - name
+      - platform
+      - platform_name
+      - platform_slug
+      - required_dimensions
+      - workspace
+      - workspace_name
+    RuleConfiguration:
+      type: object
+      description: Serializer that matches the structure of rule_configuration.json
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        platform:
+          type: object
+          additionalProperties: {}
+        workspace:
+          type: object
+          additionalProperties: {}
+        fields:
+          type: array
+          items: {}
+        dimensions:
+          type: object
+          additionalProperties: {}
+        dimension_values:
+          type: object
+          additionalProperties: {}
+        generated_at:
+          type: string
+        created_by:
+          type: object
+          additionalProperties: {}
+      required:
+      - created_by
+      - dimension_values
+      - dimensions
+      - fields
+      - generated_at
+      - id
+      - name
+      - platform
+      - slug
+      - workspace
+    RuleDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        rule:
+          type: integer
+          description: Rule this detail belongs to
+        rule_name:
+          type: string
+          readOnly: true
+        platform:
+          type: integer
+          readOnly: true
+        platform_name:
+          type: string
+          readOnly: true
+        platform_slug:
+          type: string
+          readOnly: true
+        field:
+          type: integer
+          description: Field this formatting applies to
+        field_name:
+          type: string
+          readOnly: true
+        field_level:
+          type: integer
+          readOnly: true
+        next_field:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension:
+          type: integer
+          description: Dimension this formatting applies to
+        dimension_name:
+          type: string
+          readOnly: true
+        dimension_type:
+          type: string
+          readOnly: true
+        dimension_order:
+          type: integer
+          description: Order of this dimension in the naming sequence (1, 2, 3, etc.)
+        prefix:
+          type: string
+          nullable: true
+          description: Text to prepend to the dimension value
+          maxLength: 20
+        suffix:
+          type: string
+          nullable: true
+          description: Text to append to the dimension value
+          maxLength: 20
+        delimiter:
+          type: string
+          nullable: true
+          description: Character to separate this dimension from others
+          maxLength: 1
+        is_required:
+          type: boolean
+          description: Whether this dimension is required for string generation
+        parent_dimension_name:
+          type: string
+          nullable: true
+          readOnly: true
+        parent_dimension:
+          type: integer
+          nullable: true
+          readOnly: true
+        in_parent_field:
+          type: boolean
+          readOnly: true
+        is_max_field_level:
+          type: boolean
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+      required:
+      - created
+      - created_by
+      - created_by_name
+      - dimension
+      - dimension_name
+      - dimension_order
+      - dimension_type
+      - field
+      - field_level
+      - field_name
+      - id
+      - in_parent_field
+      - is_max_field_level
+      - last_updated
+      - next_field
+      - parent_dimension
+      - parent_dimension_name
+      - platform
+      - platform_name
+      - platform_slug
+      - rule
+      - rule_name
+    RuleDetailCreate:
+      type: object
+      description: Enhanced serializer for creating rule details with validation.
+      properties:
+        rule:
+          type: integer
+          description: Rule this detail belongs to
+        field:
+          type: integer
+          description: Field this formatting applies to
+        dimension:
+          type: integer
+          description: Dimension this formatting applies to
+        prefix:
+          type: string
+          nullable: true
+          description: Text to prepend to the dimension value
+          maxLength: 20
+        suffix:
+          type: string
+          nullable: true
+          description: Text to append to the dimension value
+          maxLength: 20
+        delimiter:
+          type: string
+          nullable: true
+          description: Character to separate this dimension from others
+          maxLength: 1
+        dimension_order:
+          type: integer
+          description: Order of this dimension in the naming sequence (1, 2, 3, etc.)
+        is_required:
+          type: boolean
+          description: Whether this dimension is required for string generation
+      required:
+      - dimension
+      - dimension_order
+      - field
+      - rule
+    RuleNested:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+        description:
+          type: string
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusA3eEnum'
+          description: |-
+            Current status of this rule
+
+            * `active` - Active
+            * `inactive` - Inactive
+        platform:
+          type: integer
+        platform_name:
+          type: string
+          readOnly: true
+        platform_slug:
+          type: string
+          readOnly: true
+        field_details:
+          type: string
+          readOnly: true
+        rule_details:
+          type: array
+          items:
+            $ref: '#/components/schemas/RuleDetailCreate'
+          writeOnly: true
+        workspace:
+          type: integer
+          writeOnly: true
+          nullable: true
+        workspace_name:
+          type: string
+          readOnly: true
+      required:
+      - field_details
+      - id
+      - name
+      - platform
+      - platform_name
+      - platform_slug
+      - rule_details
+      - workspace_name
+    SendEmailReset:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+      required:
+      - email
+    SetPassword:
+      type: object
+      properties:
+        new_password:
+          type: string
+        current_password:
+          type: string
+      required:
+      - current_password
+      - new_password
+    SetUsername:
+      type: object
+      properties:
+        current_password:
+          type: string
+        new_email:
+          type: string
+          format: email
+          title: Email
+          maxLength: 255
+      required:
+      - current_password
+      - new_email
+    Status941Enum:
+      enum:
+      - submitted
+      - draft
+      - approved
+      - rejected
+      type: string
+      description: |-
+        * `submitted` - Submitted
+        * `draft` - Draft
+        * `approved` - Approved
+        * `rejected` - Rejected
+    StatusA3eEnum:
+      enum:
+      - active
+      - inactive
+      type: string
+      description: |-
+        * `active` - Active
+        * `inactive` - Inactive
+    String:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        submission:
+          type: integer
+          description: Submission that generated this string
+        submission_name:
+          type: string
+          nullable: true
+          readOnly: true
+        rule:
+          type: integer
+          readOnly: true
+          description: Rule used to generate this string (auto-set from submission)
+        rule_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: integer
+          nullable: true
+          readOnly: true
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+        field:
+          type: integer
+          description: Field this string belongs to
+        field_name:
+          type: string
+          readOnly: true
+        field_level:
+          type: integer
+          readOnly: true
+        platform:
+          type: integer
+          nullable: true
+          readOnly: true
+        platform_name:
+          type: string
+          nullable: true
+          readOnly: true
+        platform_slug:
+          type: string
+          nullable: true
+          readOnly: true
+        string_uuid:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Unique identifier for this string (unique per workspace)
+        value:
+          type: string
+          description: Generated string value following naming convention
+          maxLength: 400
+        parent:
+          type: integer
+          nullable: true
+          description: Parent string in hierarchical naming structure
+        parent_uuid:
+          type: string
+          format: uuid
+          nullable: true
+          description: UUID of parent string for hierarchical linking
+        workspace:
+          type: integer
+          readOnly: true
+          description: Workspace this record belongs to
+        workspace_name:
+          type: string
+          nullable: true
+          readOnly: true
+        is_auto_generated:
+          type: boolean
+          description: Whether this string was automatically generated
+        generation_metadata:
+          description: Metadata about how this string was generated
+        dimension_values:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Get dimension values used to generate this string.
+          readOnly: true
+        hierarchy_path:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Get the hierarchy path for this string.
+          readOnly: true
+        can_have_children:
+          type: boolean
+          description: Check if this string can have child strings.
+          readOnly: true
+        suggested_child_field:
+          type: object
+          additionalProperties: {}
+          nullable: true
+          description: Get suggested child field for creating child strings.
+          readOnly: true
+        naming_conflicts:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: Get any naming conflicts for this string.
+          readOnly: true
+      required:
+      - can_have_children
+      - created
+      - created_by
+      - created_by_name
+      - dimension_values
+      - field
+      - field_level
+      - field_name
+      - hierarchy_path
+      - id
+      - last_updated
+      - naming_conflicts
+      - platform
+      - platform_name
+      - platform_slug
+      - rule
+      - rule_name
+      - string_uuid
+      - submission
+      - submission_name
+      - suggested_child_field
+      - value
+      - workspace
+      - workspace_name
+    StringDetail:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        submission_name:
+          type: string
+          nullable: true
+          readOnly: true
+        string:
+          type: integer
+          description: String this detail belongs to
+        dimension:
+          type: integer
+          description: Dimension this value represents
+        dimension_name:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension_type:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension_value:
+          type: integer
+          nullable: true
+          description: Predefined dimension value (for list-type dimensions)
+        dimension_value_display:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension_value_label:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension_value_freetext:
+          type: string
+          nullable: true
+          description: Free-text dimension value (for text-type dimensions)
+          maxLength: 100
+        effective_value:
+          type: string
+          nullable: true
+          description: Get the effective value (either from dimension_value or freetext).
+          readOnly: true
+        workspace:
+          type: integer
+          writeOnly: true
+          nullable: true
+        workspace_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+      required:
+      - created
+      - created_by
+      - created_by_name
+      - dimension
+      - dimension_name
+      - dimension_type
+      - dimension_value_display
+      - dimension_value_label
+      - effective_value
+      - id
+      - last_updated
+      - string
+      - submission_name
+      - workspace_name
+    StringDetailNested:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        dimension:
+          type: integer
+          description: Dimension this value represents
+        dimension_name:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension_order:
+          type: integer
+          nullable: true
+          readOnly: true
+        dimension_type:
+          type: string
+          nullable: true
+          readOnly: true
+        dimension_value:
+          type: integer
+          nullable: true
+        dimension_value_display:
+          type: string
+          nullable: true
+          description: Get the actual value for the dimension value.
+          readOnly: true
+        dimension_value_label:
+          type: string
+          nullable: true
+          description: Get the human-readable label for the dimension value.
+          readOnly: true
+        dimension_value_freetext:
+          type: string
+          nullable: true
+        prefix:
+          type: string
+          nullable: true
+          readOnly: true
+        suffix:
+          type: string
+          nullable: true
+          readOnly: true
+        value:
+          type: string
+        dimension_values:
+          nullable: true
+        delimiter:
+          type: string
+          nullable: true
+      required:
+      - dimension
+      - dimension_name
+      - dimension_order
+      - dimension_type
+      - dimension_value_display
+      - dimension_value_label
+      - id
+      - prefix
+      - suffix
+    StringDetailNestedCreate:
+      type: object
+      description: Serializer for creating string details in nested submissions (POST
+        requests only)
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        dimension:
+          type: integer
+          description: Dimension this value represents
+        dimension_value:
+          type: integer
+          nullable: true
+        dimension_value_freetext:
+          type: string
+          nullable: true
+      required:
+      - dimension
+      - id
+    StringNested:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        field:
+          type: integer
+          description: Field this string belongs to
+        field_name:
+          type: string
+          nullable: true
+          readOnly: true
+        field_level:
+          type: integer
+          nullable: true
+          readOnly: true
+        string_uuid:
+          type: string
+          format: uuid
+          description: Unique identifier for this string (unique per workspace)
+        string_value:
+          type: string
+        parent_uuid:
+          type: string
+          format: uuid
+          nullable: true
+          description: UUID of parent string for hierarchical linking
+        block_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StringDetailNested'
+        next_field_name:
+          type: string
+        next_field_code:
+          type: string
+      required:
+      - field
+      - field_level
+      - field_name
+      - id
+      - string_value
+    StringNestedCreate:
+      type: object
+      description: Serializer for creating strings in nested submissions (POST requests
+        only)
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        field:
+          type: integer
+          description: Field this string belongs to
+        field_name:
+          type: string
+          nullable: true
+          readOnly: true
+        field_level:
+          type: integer
+          nullable: true
+          readOnly: true
+        string_uuid:
+          type: string
+          format: uuid
+          description: Unique identifier for this string (unique per workspace)
+        string_value:
+          type: string
+        parent_uuid:
+          type: string
+          format: uuid
+          nullable: true
+          description: UUID of parent string for hierarchical linking
+        block_items:
+          type: array
+          items:
+            $ref: '#/components/schemas/StringDetailNestedCreate'
+      required:
+      - field
+      - field_level
+      - field_name
+      - id
+      - string_value
+    Submission:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Name for this submission
+          maxLength: 30
+        slug:
+          type: string
+          description: URL-friendly version of the name (auto-generated)
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          nullable: true
+          description: Optional description of this submission
+          maxLength: 500
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status941Enum'
+          description: |-
+            Current status of this submission
+
+            * `submitted` - Submitted
+            * `draft` - Draft
+            * `approved` - Approved
+            * `rejected` - Rejected
+        rule:
+          type: integer
+          description: The naming rule to apply for this submission
+        rule_name:
+          type: string
+          nullable: true
+          readOnly: true
+        platform:
+          type: integer
+          nullable: true
+          readOnly: true
+        platform_name:
+          type: string
+          nullable: true
+          readOnly: true
+        selected_parent_string:
+          type: integer
+          nullable: true
+          description: Parent string to base this submission on (if any)
+        starting_field:
+          type: integer
+          description: The field to start the naming sequence from
+        workspace:
+          type: integer
+          description: Workspace this record belongs to
+        workspace_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+      required:
+      - created
+      - created_by
+      - created_by_name
+      - id
+      - last_updated
+      - name
+      - platform
+      - platform_name
+      - rule
+      - rule_name
+      - starting_field
+      - workspace
+      - workspace_name
+    SubmissionNested:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Name for this submission
+          maxLength: 30
+        selected_parent:
+          type: integer
+          nullable: true
+        starting_field:
+          type: integer
+          description: The field to start the naming sequence from
+        description:
+          type: string
+          nullable: true
+          description: Optional description of this submission
+          maxLength: 500
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status941Enum'
+          description: |-
+            Current status of this submission
+
+            * `submitted` - Submitted
+            * `draft` - Draft
+            * `approved` - Approved
+            * `rejected` - Rejected
+        rule:
+          type: integer
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/StringNested'
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          nullable: true
+          readOnly: true
+        workspace:
+          type: integer
+          writeOnly: true
+          nullable: true
+      required:
+      - created_by
+      - created_by_name
+      - id
+      - name
+      - rule
+      - starting_field
+    SubmissionNestedCreate:
+      type: object
+      description: Serializer for creating nested submissions (POST requests only)
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Name for this submission
+          maxLength: 30
+        selected_parent:
+          type: integer
+          nullable: true
+        starting_field:
+          type: integer
+          description: The field to start the naming sequence from
+        description:
+          type: string
+          nullable: true
+          description: Optional description of this submission
+          maxLength: 500
+        status:
+          allOf:
+          - $ref: '#/components/schemas/Status941Enum'
+          description: |-
+            Current status of this submission
+
+            * `submitted` - Submitted
+            * `draft` - Draft
+            * `approved` - Approved
+            * `rejected` - Rejected
+        rule:
+          type: integer
+        blocks:
+          type: array
+          items:
+            $ref: '#/components/schemas/StringNestedCreate'
+        workspace:
+          type: integer
+          writeOnly: true
+          nullable: true
+      required:
+      - id
+      - name
+      - rule
+      - starting_field
+    TokenObtainPair:
+      type: object
+      properties:
+        email:
+          type: string
+          writeOnly: true
+        password:
+          type: string
+          writeOnly: true
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          readOnly: true
+      required:
+      - access
+      - email
+      - password
+      - refresh
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+          writeOnly: true
+      required:
+      - access
+      - refresh
+    TokenVerify:
+      type: object
+      properties:
+        token:
+          type: string
+          writeOnly: true
+      required:
+      - token
+    TypeEnum:
+      enum:
+      - list
+      - text
+      type: string
+      description: |-
+        * `list` - List
+        * `text` - Free Text
+    User:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 255
+        last_name:
+          type: string
+          maxLength: 255
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+      required:
+      - email
+      - first_name
+      - id
+      - last_name
+    UserCreatePasswordRetype:
+      type: object
+      properties:
+        first_name:
+          type: string
+          maxLength: 255
+        last_name:
+          type: string
+          maxLength: 255
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        id:
+          type: integer
+          readOnly: true
+        password:
+          type: string
+          writeOnly: true
+        re_password:
+          type: string
+      required:
+      - email
+      - first_name
+      - id
+      - last_name
+      - password
+      - re_password
+    UserDetail:
+      type: object
+      description: Detailed user serializer with workspace information
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        email:
+          type: string
+          format: email
+          maxLength: 255
+        first_name:
+          type: string
+          maxLength: 255
+        last_name:
+          type: string
+          maxLength: 255
+        full_name:
+          type: string
+          readOnly: true
+        is_active:
+          type: boolean
+        is_staff:
+          type: boolean
+        is_superuser:
+          type: boolean
+        last_login:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        workspace_assignments:
+          type: array
+          items:
+            $ref: '#/components/schemas/WorkspaceUser'
+          readOnly: true
+        accessible_workspaces_count:
+          type: string
+          readOnly: true
+      required:
+      - accessible_workspaces_count
+      - email
+      - first_name
+      - full_name
+      - id
+      - last_login
+      - last_name
+      - workspace_assignments
+    UserUpdate:
+      type: object
+      description: Serializer for updating users
+      properties:
+        first_name:
+          type: string
+          maxLength: 255
+        last_name:
+          type: string
+          maxLength: 255
+        is_active:
+          type: boolean
+        is_staff:
+          type: boolean
+        is_superuser:
+          type: boolean
+      required:
+      - first_name
+      - last_name
+    UsernameResetConfirm:
+      type: object
+      properties:
+        new_email:
+          type: string
+          format: email
+          title: Email
+          maxLength: 255
+      required:
+      - new_email
+    Workspace:
+      type: object
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        name:
+          type: string
+          description: Unique name for this workspace
+          maxLength: 30
+        slug:
+          type: string
+          description: URL-friendly version of the name (auto-generated)
+          maxLength: 50
+          pattern: ^[-a-zA-Z0-9_]+$
+        logo:
+          type: string
+          format: uri
+          nullable: true
+          description: Logo image for this workspace
+        status:
+          allOf:
+          - $ref: '#/components/schemas/StatusA3eEnum'
+          description: |-
+            Current status of this workspace
+
+            * `active` - Active
+            * `inactive` - Inactive
+        created_by:
+          type: integer
+          readOnly: true
+          nullable: true
+          description: User who created this record
+        created_by_name:
+          type: string
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+      required:
+      - created
+      - created_by
+      - created_by_name
+      - id
+      - last_updated
+      - name
+    WorkspaceUser:
+      type: object
+      description: Serializer for WorkspaceUser relationships
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+        user_email:
+          type: string
+          readOnly: true
+        user_name:
+          type: string
+          readOnly: true
+        workspace:
+          type: integer
+        workspace_name:
+          type: string
+          readOnly: true
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          description: |-
+            User's role in this workspace
+
+            * `admin` - Admin
+            * `user` - User
+            * `viewer` - Viewer
+        is_active:
+          type: boolean
+          description: Whether this workspace assignment is active
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+        updated:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - created
+      - id
+      - updated
+      - user
+      - user_email
+      - user_name
+      - workspace
+      - workspace_name
+    WorkspaceUserCreate:
+      type: object
+      description: Serializer for creating WorkspaceUser relationships
+      properties:
+        user:
+          type: integer
+        workspace:
+          type: integer
+        role:
+          allOf:
+          - $ref: '#/components/schemas/RoleEnum'
+          description: |-
+            User's role in this workspace
+
+            * `admin` - Admin
+            * `user` - User
+            * `viewer` - Viewer
+        is_active:
+          type: boolean
+          description: Whether this workspace assignment is active
+      required:
+      - user
+      - workspace
+  securitySchemes:
+    basicAuth:
+      type: http
+      scheme: basic
+    cookieAuth:
+      type: apiKey
+      in: cookie
+      name: sessionid
+    jwtAuth:
+      type: apiKey
+      in: header
+      name: Authorization
+      description: Token-based authentication with required prefix "JWT"

@@ -13,7 +13,7 @@ from drf_spectacular.openapi import AutoSchema
 from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from .. import models
-from ..serializers.nested_submission import SubmissionNestedSerializer
+from ..serializers.nested_submission import SubmissionNestedSerializer, SubmissionNestedCreateSerializer
 from ..permissions import IsAuthenticatedOrDebugReadOnly
 
 logger = logging.getLogger(__name__)
@@ -39,6 +39,15 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = SubmissionNestedFilter
+
+    def get_serializer_class(self):
+        """
+        Return different serializers for different HTTP methods.
+        Use simplified serializer for POST requests (without next_field_name/next_field_code).
+        """
+        if self.action == 'create':
+            return SubmissionNestedCreateSerializer
+        return SubmissionNestedSerializer
 
     def get_queryset(self):
         """

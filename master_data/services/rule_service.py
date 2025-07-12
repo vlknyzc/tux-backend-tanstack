@@ -316,3 +316,183 @@ class RuleService:
             logger.error(traceback.format_exc())
             raise Exception(
                 f"Error building fast lookup rule data for rule {rule_id}: {str(e)}")
+
+    def get_rule_configuration_data(self, rule_id: int) -> Dict:
+        """
+        Get rule configuration data that matches the structure of rule_configuration.json.
+        """
+        try:
+            # Get rule with related data
+            rule = Rule.objects.select_related(
+                'platform', 'workspace', 'created_by'
+            ).get(id=rule_id)
+
+            # Get all rule details with related data in a single query
+            rule_details = rule.rule_details.select_related(
+                'field', 'dimension', 'dimension__parent'
+            ).prefetch_related(
+                'dimension__dimension_values'
+            ).order_by('field__field_level', 'dimension_order')
+
+            # Pre-build inheritance lookup to avoid N+1 queries
+            inheritance_lookup = self._build_inheritance_lookup(rule_details)
+
+            # Build fields as an array instead of object
+            fields = []
+
+            # Group rule details by field
+            fields_data = {}
+            for detail in rule_details:
+                field = detail.field
+                if field.id not in fields_data:
+                    fields_data[field.id] = {
+                        'field': field,
+                        'field_items': []
+                    }
+                fields_data[field.id]['field_items'].append(detail)
+
+            # Build fields structure as array
+            for field_id, field_data in fields_data.items():
+                field = field_data['field']
+                field_obj = {
+                    'id': field.id,
+                    'name': field.name,
+                    'level': field.field_level,
+                    'next_field_id': field.next_field.id if field.next_field else None,
+                    'next_field_name': field.next_field.name if field.next_field else None,
+                    'field_items': []
+                }
+
+                # Add field items (rule details)
+                for detail in field_data['field_items']:
+                    # Use pre-built inheritance lookup
+                    inheritance_info = inheritance_lookup.get(detail.id, {
+                        'is_inherited': False,
+                        'inherits_from_field_item': None
+                    })
+
+                    field_obj['field_items'].append({
+                        'id': detail.id,
+                        'dimension_id': detail.dimension.id,
+                        'order': detail.dimension_order,
+                        'is_required': getattr(detail, 'is_required', True),
+                        'is_inherited': inheritance_info['is_inherited'],
+                        'inherits_from_field_item': inheritance_info['inherits_from_field_item'],
+                        'prefix': detail.prefix,
+                        'suffix': detail.suffix,
+                        'delimiter': detail.delimiter
+                    })
+
+                fields.append(field_obj)
+
+            # Sort fields by level to maintain order
+            fields.sort(key=lambda x: x['level'])
+
+            # Build dimensions and dimension values
+            dimensions, dimension_values = self._build_dimensions_and_values(
+                rule_details)
+
+            # Build the result
+            result = {
+                'id': rule.id,
+                'name': rule.name,
+                'slug': rule.slug,
+                'platform': {
+                    'id': rule.platform.id,
+                    'name': rule.platform.name,
+                    'slug': rule.platform.slug
+                },
+                'workspace': {
+                    'id': rule.workspace.id,
+                    'name': rule.workspace.name
+                },
+                'fields': fields,
+                'dimensions': dimensions,
+                'dimension_values': dimension_values,
+                'generated_at': timezone.now().isoformat(),
+                'created_by': {
+                    'id': rule.created_by.id if rule.created_by else None,
+                    'name': f"{rule.created_by.first_name} {rule.created_by.last_name}".strip() if rule.created_by else None
+                }
+            }
+
+            return result
+
+        except Rule.DoesNotExist:
+            raise ValueError(f"Rule with id {rule_id} not found")
+
+    def _build_inheritance_lookup(self, rule_details) -> Dict:
+        """Build inheritance lookup to avoid N+1 queries"""
+        inheritance_lookup = {}
+
+        # Group by dimension and field level for efficient lookup
+        dimension_field_map = {}
+        for detail in rule_details:
+            dimension_id = detail.dimension.id
+            field_level = detail.field.field_level
+
+            if dimension_id not in dimension_field_map:
+                dimension_field_map[dimension_id] = {}
+
+            dimension_field_map[dimension_id][field_level] = detail.id
+
+        # Build inheritance lookup
+        for detail in rule_details:
+            dimension_id = detail.dimension.id
+            current_field_level = detail.field.field_level
+
+            # Check if this dimension exists in previous field levels
+            is_inherited = False
+            inherits_from_field_item = None
+
+            if current_field_level > 1:
+                for level in range(current_field_level - 1, 0, -1):
+                    if level in dimension_field_map.get(dimension_id, {}):
+                        is_inherited = True
+                        inherits_from_field_item = dimension_field_map[dimension_id][level]
+                        break
+
+            inheritance_lookup[detail.id] = {
+                'is_inherited': is_inherited,
+                'inherits_from_field_item': inherits_from_field_item
+            }
+
+        return inheritance_lookup
+
+    def _build_dimensions_and_values(self, rule_details) -> tuple:
+        """Build dimensions and dimension values from rule details"""
+        dimensions = {}
+        dimension_values = {}
+
+        # Get all unique dimensions used in this rule
+        unique_dimensions = set()
+        for detail in rule_details:
+            unique_dimensions.add(detail.dimension)
+
+        for dimension in unique_dimensions:
+            dimensions[str(dimension.id)] = {
+                'id': dimension.id,
+                'name': dimension.name,
+                'type': dimension.type,
+                'description': dimension.description or ''
+            }
+
+            # Build dimension values
+            values = []
+            for value in dimension.dimension_values.all():
+                values.append({
+                    'id': value.id,
+                    'dimension_id': dimension.id,
+                    'value': value.value,
+                    'label': value.label or value.value,
+                    'utm': getattr(value, 'utm', value.value),
+                    'description': value.description or '',
+                    'parent': value.parent.id if value.parent else None,
+                    'has_parent': bool(value.parent),
+                    'parent_dimension': value.parent_dimension.id if getattr(value, 'parent_dimension', None) else None
+                })
+
+            if values:
+                dimension_values[str(dimension.id)] = values
+
+        return dimensions, dimension_values
