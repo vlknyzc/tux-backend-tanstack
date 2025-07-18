@@ -481,26 +481,28 @@ class CompleteRuleSerializer(serializers.Serializer):
 
 
 class RuleConfigurationSerializer(serializers.Serializer):
-    """Serializer that matches the structure of rule_configuration.json"""
+    """Serializer that matches the exact structure shown in the redocs documentation"""
     id = serializers.IntegerField()
     name = serializers.CharField()
     slug = serializers.CharField()
 
-    # Platform object
-    platform = serializers.DictField()
+    # Platform object - exactly as shown in redocs
+    platform = serializers.DictField(child=serializers.CharField())
 
-    # Workspace object
-    workspace = serializers.DictField()
+    # Workspace object - exactly as shown in redocs
+    workspace = serializers.DictField(child=serializers.CharField())
 
-    # Fields as array instead of object
-    fields = serializers.ListField()
+    # Fields as array - exactly as shown in redocs
+    fields = serializers.ListField(child=serializers.DictField())
 
-    # Dimensions object keyed by dimension ID
-    dimensions = serializers.DictField()
+    # Dimensions object keyed by dimension ID - exactly as shown in redocs
+    dimensions = serializers.DictField(child=serializers.DictField())
 
-    # Dimension values object keyed by dimension ID
-    dimension_values = serializers.DictField()
+    # Dimension values object keyed by dimension ID - exactly as shown in redocs
+    dimension_values = serializers.DictField(
+        child=serializers.ListField(child=serializers.DictField()))
 
-    # Metadata
+    # Metadata - exactly as shown in redocs
     generated_at = serializers.CharField()
-    created_by = serializers.DictField()
+    created_by = serializers.DictField(
+        child=serializers.CharField(allow_null=True))

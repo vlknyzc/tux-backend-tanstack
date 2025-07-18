@@ -532,6 +532,10 @@ class RuleConfigurationView(APIView):
             if not serializer.is_valid():
                 logger.error(
                     f"RuleConfigurationSerializer validation failed for rule {rule_id}: {serializer.errors}")
+
+                # Clear cache if there's a serialization error
+                self.rule_service.clear_rule_configuration_cache(rule_id)
+
                 return Response(
                     {'error': 'Serialization error', 'details': serializer.errors},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -548,6 +552,13 @@ class RuleConfigurationView(APIView):
         except Exception as e:
             logger.error(
                 f"Unexpected error in rule configuration endpoint: {str(e)}")
+
+            # Clear cache on unexpected errors
+            try:
+                self.rule_service.clear_rule_configuration_cache(rule_id)
+            except:
+                pass  # Don't let cache clearing errors affect the main error response
+
             return Response(
                 {'error': 'Internal server error'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
@@ -575,3 +586,12 @@ class RuleConfigurationView(APIView):
                 raise PermissionDenied("Rule not found in current workspace")
 
         return rule
+
+    def force_clear_cache(self, rule_id: int):
+        """Force clear cache for testing purposes"""
+        try:
+            self.rule_service.clear_rule_configuration_cache(rule_id)
+            return True
+        except Exception as e:
+            logger.error(f"Failed to clear cache for rule {rule_id}: {str(e)}")
+            return False

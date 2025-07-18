@@ -230,10 +230,25 @@ class RuleService:
         cache_key = f"complete_rule_data:{rule.id}"
         cache.delete(cache_key)
 
+        # Clear Django's page cache for rule configuration endpoint
+        from django.core.cache import cache
+        cache_key = f"views.decorators.cache.cache_page.{rule.id}.GET"
+        cache.delete(cache_key)
+
     def bulk_invalidate_caches(self, rules: List[Rule]):
         """Invalidate caches for multiple rules"""
         for rule in rules:
             self.invalidate_all_caches(rule)
+
+    def clear_rule_configuration_cache(self, rule_id: int):
+        """Clear cache specifically for rule configuration endpoint"""
+        from django.core.cache import cache
+
+        # Clear Django's page cache for rule configuration endpoint
+        cache_key = f"views.decorators.cache.cache_page.{rule_id}.GET"
+        cache.delete(cache_key)
+
+        logger.info(f"Cleared rule configuration cache for rule {rule_id}")
 
     def get_complete_rule_data(self, rule: Rule) -> Dict:
         """
@@ -320,6 +335,7 @@ class RuleService:
     def get_rule_configuration_data(self, rule_id: int) -> Dict:
         """
         Get rule configuration data that matches the structure of rule_configuration.json.
+        This method returns the exact structure shown in the redocs documentation.
         """
         try:
             # Get rule with related data
@@ -351,7 +367,7 @@ class RuleService:
                     }
                 fields_data[field.id]['field_items'].append(detail)
 
-            # Build fields structure as array
+            # Build fields structure as array - exactly matching redocs format
             for field_id, field_data in fields_data.items():
                 field = field_data['field']
                 field_obj = {
@@ -363,7 +379,7 @@ class RuleService:
                     'field_items': []
                 }
 
-                # Add field items (rule details)
+                # Add field items (rule details) - exactly matching redocs format
                 for detail in field_data['field_items']:
                     # Use pre-built inheritance lookup
                     inheritance_info = inheritance_lookup.get(detail.id, {
@@ -388,11 +404,11 @@ class RuleService:
             # Sort fields by level to maintain order
             fields.sort(key=lambda x: x['level'])
 
-            # Build dimensions and dimension values
-            dimensions, dimension_values = self._build_dimensions_and_values(
+            # Build dimensions and dimension values - exactly matching redocs format
+            dimensions, dimension_values = self._build_dimensions_and_values_for_configuration(
                 rule_details)
 
-            # Build the result
+            # Build the result - exactly matching redocs structure
             result = {
                 'id': rule.id,
                 'name': rule.name,
@@ -478,6 +494,48 @@ class RuleService:
             }
 
             # Build dimension values
+            values = []
+            for value in dimension.dimension_values.all():
+                values.append({
+                    'id': value.id,
+                    'dimension_id': dimension.id,
+                    'value': value.value,
+                    'label': value.label or value.value,
+                    'utm': getattr(value, 'utm', value.value),
+                    'description': value.description or '',
+                    'parent': value.parent.id if value.parent else None,
+                    'has_parent': bool(value.parent),
+                    'parent_dimension': value.parent_dimension.id if getattr(value, 'parent_dimension', None) else None
+                })
+
+            if values:
+                dimension_values[str(dimension.id)] = values
+
+        return dimensions, dimension_values
+
+    def _build_dimensions_and_values_for_configuration(self, rule_details) -> tuple:
+        """
+        Build dimensions and dimension values specifically for rule configuration format.
+        This matches the exact structure shown in the redocs.
+        """
+        dimensions = {}
+        dimension_values = {}
+
+        # Get all unique dimensions used in this rule
+        unique_dimensions = set()
+        for detail in rule_details:
+            unique_dimensions.add(detail.dimension)
+
+        for dimension in unique_dimensions:
+            # Build dimension structure - exactly matching redocs format
+            dimensions[str(dimension.id)] = {
+                'id': dimension.id,
+                'name': dimension.name,
+                'type': dimension.type,
+                'description': dimension.description or ''
+            }
+
+            # Build dimension values - exactly matching redocs format
             values = []
             for value in dimension.dimension_values.all():
                 values.append({
