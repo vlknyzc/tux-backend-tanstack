@@ -20,7 +20,11 @@ paths:
       - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VersionDemoResponse'
+          description: ''
   /api/v1/dimension-values/:
     get:
       operationId: v1_dimension_values_list
@@ -661,7 +665,11 @@ paths:
       - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIHealthResponse'
+          description: ''
   /api/v1/jwt/create/:
     post:
       operationId: v1_jwt_create_create
@@ -754,6 +762,17 @@ paths:
       operationId: v1_logout_create
       tags:
       - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutResponse'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/LogoutResponse'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LogoutResponse'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -761,7 +780,11 @@ paths:
       - BearerAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LogoutResponse'
+          description: ''
   /api/v1/nested-submissions/:
     get:
       operationId: v1_nested_submissions_list
@@ -1994,7 +2017,11 @@ paths:
       - BearerAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FieldSpecificData'
+          description: ''
   /api/v1/rules/{rule_id}/lightweight/:
     get:
       operationId: v1_rules_lightweight_retrieve
@@ -2014,7 +2041,11 @@ paths:
       - BearerAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LightweightRule'
+          description: ''
   /api/v1/rules/{rule_id}/metrics/:
     get:
       operationId: v1_rules_metrics_retrieve
@@ -2034,7 +2065,11 @@ paths:
       - BearerAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerformanceMetrics'
+          description: ''
     post:
       operationId: v1_rules_metrics_create
       description: Invalidate cache for specified rules
@@ -2046,6 +2081,17 @@ paths:
         required: true
       tags:
       - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PerformanceMetrics'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PerformanceMetrics'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PerformanceMetrics'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2053,7 +2099,11 @@ paths:
       - BearerAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerformanceMetrics'
+          description: ''
   /api/v1/rules/{rule_id}/validation/:
     get:
       operationId: v1_rules_validation_retrieve
@@ -2073,7 +2123,11 @@ paths:
       - BearerAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ValidationSummary'
+          description: ''
   /api/v1/rules/active/:
     get:
       operationId: v1_rules_active_retrieve
@@ -2105,12 +2159,27 @@ paths:
       - BearerAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerformanceMetrics'
+          description: ''
     post:
       operationId: v1_rules_cache_invalidate_create
       description: Invalidate cache for specified rules
       tags:
       - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PerformanceMetrics'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PerformanceMetrics'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PerformanceMetrics'
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2118,7 +2187,11 @@ paths:
       - BearerAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PerformanceMetrics'
+          description: ''
   /api/v1/rules/defaults/:
     get:
       operationId: v1_rules_defaults_retrieve
@@ -2143,6 +2216,18 @@ paths:
       description: Generate string preview based on rule and sample values
       tags:
       - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/GenerationPreview'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/GenerationPreview'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/GenerationPreview'
+        required: true
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2150,7 +2235,11 @@ paths:
       - BearerAuth: []
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/GenerationPreview'
+          description: ''
   /api/v1/string-details/:
     get:
       operationId: v1_string_details_list
@@ -3485,7 +3574,11 @@ paths:
       - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/APIVersionResponse'
+          description: ''
   /api/v1/workspace-users/:
     get:
       operationId: v1_workspace_users_list
@@ -4009,6 +4102,60 @@ paths:
           description: No response body
 components:
   schemas:
+    APIHealthResponse:
+      type: object
+      description: Serializer for API health check responses
+      properties:
+        status:
+          type: string
+        version:
+          type: string
+        timestamp:
+          type: string
+        database:
+          type: string
+        cache:
+          type: string
+        workspace_detection:
+          type: string
+        debug_info:
+          type: object
+          additionalProperties: {}
+      required:
+      - cache
+      - database
+      - debug_info
+      - status
+      - timestamp
+      - version
+      - workspace_detection
+    APIVersionResponse:
+      type: object
+      description: Serializer for API version responses
+      properties:
+        version:
+          type: string
+        message:
+          type: string
+        features:
+          type: array
+          items:
+            type: string
+        deprecated_features:
+          type: array
+          items:
+            type: string
+        breaking_changes:
+          type: array
+          items:
+            type: string
+        debug_info:
+          type: object
+          additionalProperties: {}
+      required:
+      - features
+      - message
+      - version
     Activation:
       type: object
       properties:
@@ -4259,6 +4406,307 @@ components:
       - next_field_name
       - platform
       - platform_name
+    FieldDimension:
+      type: object
+      description: Serializer for dimension information within a field template
+      properties:
+        rule_detail:
+          type: integer
+        dimension:
+          type: integer
+        dimension_name:
+          type: string
+        dimension_type:
+          type: string
+        dimension_description:
+          type: string
+        dimension_order:
+          type: integer
+        is_required:
+          type: boolean
+        prefix:
+          type: string
+        suffix:
+          type: string
+        delimiter:
+          type: string
+        effective_delimiter:
+          type: string
+        parent_dimension:
+          type: integer
+          nullable: true
+        parent_dimension_name:
+          type: string
+          nullable: true
+        inheritance:
+          $ref: '#/components/schemas/InheritanceInfo'
+        dimension_values:
+          type: array
+          items:
+            $ref: '#/components/schemas/DimensionValue'
+        dimension_value_count:
+          type: integer
+        active_value_count:
+          type: integer
+        allows_freetext:
+          type: boolean
+        is_dropdown:
+          type: boolean
+        has_constraints:
+          type: boolean
+      required:
+      - active_value_count
+      - allows_freetext
+      - delimiter
+      - dimension
+      - dimension_description
+      - dimension_name
+      - dimension_order
+      - dimension_type
+      - dimension_value_count
+      - dimension_values
+      - effective_delimiter
+      - has_constraints
+      - inheritance
+      - is_dropdown
+      - is_required
+      - parent_dimension
+      - parent_dimension_name
+      - prefix
+      - rule_detail
+      - suffix
+    FieldSpecificData:
+      type: object
+      description: Serializer for field-specific rule data
+      properties:
+        field_template:
+          $ref: '#/components/schemas/FieldTemplate'
+        dimension_inheritance:
+          type: object
+          additionalProperties: {}
+        field_summary:
+          $ref: '#/components/schemas/FieldSummary'
+      required:
+      - dimension_inheritance
+      - field_summary
+      - field_template
+    FieldSummary:
+      type: object
+      description: Serializer for field summary information
+      properties:
+        can_generate:
+          type: boolean
+        completeness_score:
+          type: number
+          format: double
+        total_dimensions:
+          type: integer
+        inherited_dimensions:
+          type: integer
+      required:
+      - can_generate
+      - completeness_score
+      - inherited_dimensions
+      - total_dimensions
+    FieldTemplate:
+      type: object
+      description: Serializer for field templates
+      properties:
+        field:
+          type: integer
+        field_name:
+          type: string
+        field_level:
+          type: integer
+        next_field:
+          type: integer
+          nullable: true
+        next_field_name:
+          type: string
+          nullable: true
+        can_generate:
+          type: boolean
+        dimensions:
+          type: array
+          items:
+            $ref: '#/components/schemas/FieldDimension'
+        dimension_count:
+          type: integer
+        required_dimension_count:
+          type: integer
+        inherited_dimension_count:
+          type: integer
+        field_rule_preview:
+          type: string
+        validation_rules:
+          type: array
+          items:
+            $ref: '#/components/schemas/ValidationRule'
+        generation_metadata:
+          $ref: '#/components/schemas/GenerationMetadata'
+        completeness_score:
+          type: number
+          format: double
+      required:
+      - can_generate
+      - completeness_score
+      - dimension_count
+      - dimensions
+      - field
+      - field_level
+      - field_name
+      - field_rule_preview
+      - generation_metadata
+      - inherited_dimension_count
+      - next_field
+      - next_field_name
+      - required_dimension_count
+      - validation_rules
+    GenerationMetadata:
+      type: object
+      description: Serializer for generation metadata
+      properties:
+        can_generate:
+          type: boolean
+        generation_order:
+          type: array
+          items:
+            type: string
+        required_for_generation:
+          type: array
+          items:
+            type: string
+        optional_for_generation:
+          type: array
+          items:
+            type: string
+        total_possible_combinations:
+          type: integer
+      required:
+      - can_generate
+      - generation_order
+      - optional_for_generation
+      - required_for_generation
+      - total_possible_combinations
+    GenerationPreview:
+      type: object
+      description: Serializer for generation preview responses
+      properties:
+        success:
+          type: boolean
+        preview:
+          type: string
+          nullable: true
+        missing_required:
+          type: array
+          items:
+            type: string
+        used_dimensions:
+          type: array
+          items:
+            type: string
+        template_used:
+          type: string
+        error:
+          type: string
+      required:
+      - missing_required
+      - preview
+      - success
+      - template_used
+      - used_dimensions
+    InheritanceInfo:
+      type: object
+      description: Serializer for dimension inheritance information
+      properties:
+        is_inherited:
+          type: boolean
+        parent_rule_detail:
+          type: integer
+          nullable: true
+        parent_field_level:
+          type: integer
+          nullable: true
+        parent_field_name:
+          type: string
+          nullable: true
+        inherits_formatting:
+          type: boolean
+      required:
+      - inherits_formatting
+      - is_inherited
+      - parent_field_level
+      - parent_field_name
+      - parent_rule_detail
+    LightweightRule:
+      type: object
+      description: Lightweight rule serializer for list views
+      properties:
+        id:
+          type: integer
+        name:
+          type: string
+        slug:
+          type: string
+        description:
+          type: string
+        status:
+          type: string
+        is_default:
+          type: boolean
+        platform:
+          type: integer
+        platform_name:
+          type: string
+        platform_slug:
+          type: string
+        created_by_name:
+          type: string
+          nullable: true
+        created:
+          type: string
+        last_updated:
+          type: string
+        total_fields:
+          type: integer
+        fields_with_rules:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+        can_generate_count:
+          type: integer
+        configuration_errors:
+          type: array
+          items:
+            type: string
+      required:
+      - can_generate_count
+      - configuration_errors
+      - created
+      - created_by_name
+      - description
+      - fields_with_rules
+      - id
+      - is_default
+      - last_updated
+      - name
+      - platform
+      - platform_name
+      - platform_slug
+      - slug
+      - status
+      - total_fields
+    LogoutResponse:
+      type: object
+      description: Serializer for logout response
+      properties:
+        message:
+          type: string
+          default: Successfully logged out
+        status:
+          type: string
+          default: success
     PasswordResetConfirm:
       type: object
       properties:
@@ -5182,6 +5630,25 @@ components:
           type: string
           format: date-time
           readOnly: true
+    PerformanceMetrics:
+      type: object
+      description: Serializer for performance metrics
+      properties:
+        rule:
+          type: integer
+        cache_status:
+          type: object
+          additionalProperties: {}
+        services_initialized:
+          type: object
+          additionalProperties: {}
+        generation_time_ms:
+          type: number
+          format: double
+        workspace:
+          type: integer
+        timestamp:
+          type: string
     Platform:
       type: object
       properties:
@@ -5348,7 +5815,8 @@ components:
       - workspace_name
     RuleConfiguration:
       type: object
-      description: Serializer that matches the structure of rule_configuration.json
+      description: Serializer that matches the exact structure shown in the redocs
+        documentation
       properties:
         id:
           type: integer
@@ -5358,24 +5826,36 @@ components:
           type: string
         platform:
           type: object
-          additionalProperties: {}
+          additionalProperties:
+            type: string
         workspace:
           type: object
-          additionalProperties: {}
+          additionalProperties:
+            type: string
         fields:
           type: array
-          items: {}
+          items:
+            type: object
+            additionalProperties: {}
         dimensions:
           type: object
-          additionalProperties: {}
+          additionalProperties:
+            type: object
+            additionalProperties: {}
         dimension_values:
           type: object
-          additionalProperties: {}
+          additionalProperties:
+            type: array
+            items:
+              type: object
+              additionalProperties: {}
         generated_at:
           type: string
         created_by:
           type: object
-          additionalProperties: {}
+          additionalProperties:
+            type: string
+            nullable: true
       required:
       - created_by
       - dimension_values
@@ -6341,7 +6821,7 @@ components:
       - re_password
     UserDetail:
       type: object
-      description: Detailed user serializer with workspace information
+      description: Detailed user serializer with workspace relationships
       properties:
         id:
           type: integer
@@ -6356,37 +6836,27 @@ components:
         last_name:
           type: string
           maxLength: 255
-        full_name:
-          type: string
-          readOnly: true
         is_active:
-          type: boolean
-        is_staff:
           type: boolean
         is_superuser:
           type: boolean
-        last_login:
+        accessible_workspaces:
           type: string
-          format: date-time
-          readOnly: true
-          nullable: true
-        workspace_assignments:
-          type: array
-          items:
-            $ref: '#/components/schemas/WorkspaceUser'
           readOnly: true
         accessible_workspaces_count:
           type: string
           readOnly: true
+        current_workspace:
+          type: string
+          readOnly: true
       required:
+      - accessible_workspaces
       - accessible_workspaces_count
+      - current_workspace
       - email
       - first_name
-      - full_name
       - id
-      - last_login
       - last_name
-      - workspace_assignments
     UserUpdate:
       type: object
       description: Serializer for updating users
@@ -6416,6 +6886,92 @@ components:
           maxLength: 255
       required:
       - new_email
+    ValidationRule:
+      type: object
+      description: Serializer for field validation rules
+      properties:
+        type:
+          type: string
+        message:
+          type: string
+        dimensions:
+          type: array
+          items:
+            type: string
+        dimension:
+          type: string
+        parent_dimension:
+          type: string
+      required:
+      - message
+      - type
+    ValidationSummary:
+      type: object
+      description: Serializer for rule validation summary
+      properties:
+        rule:
+          type: integer
+        rule_name:
+          type: string
+        is_valid:
+          type: boolean
+        validation_issues:
+          type: array
+          items:
+            type: string
+        warnings:
+          type: array
+          items:
+            type: string
+        field_summary:
+          type: object
+          additionalProperties: {}
+        inheritance_summary:
+          type: object
+          additionalProperties: {}
+        overall_score:
+          type: number
+          format: double
+      required:
+      - field_summary
+      - inheritance_summary
+      - is_valid
+      - overall_score
+      - rule
+      - rule_name
+      - validation_issues
+      - warnings
+    VersionDemoResponse:
+      type: object
+      description: Serializer for version demo responses
+      properties:
+        message:
+          type: string
+        timestamp:
+          type: string
+        version:
+          type: string
+        data:
+          type: object
+          additionalProperties: {}
+        debug_info:
+          type: object
+          additionalProperties: {}
+        links:
+          type: object
+          additionalProperties: {}
+        metadata:
+          type: object
+          additionalProperties: {}
+        performance_metrics:
+          type: object
+          additionalProperties: {}
+      required:
+      - data
+      - debug_info
+      - message
+      - timestamp
+      - version
     Workspace:
       type: object
       properties:

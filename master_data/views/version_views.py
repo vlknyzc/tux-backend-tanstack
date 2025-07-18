@@ -4,6 +4,12 @@ from rest_framework import status, permissions
 from rest_framework.versioning import URLPathVersioning
 from datetime import datetime
 import logging
+from master_data.serializers.rule_serializers import (
+    APIVersionResponseSerializer,
+    APIHealthResponseSerializer,
+    VersionDemoResponseSerializer,
+    ErrorResponseSerializer
+)
 
 logger = logging.getLogger(__name__)
 
@@ -14,6 +20,7 @@ class APIVersionView(APIView):
     Returns different responses based on the API version.
     """
     permission_classes = [permissions.AllowAny]
+    serializer_class = APIVersionResponseSerializer
 
     def get(self, request, version=None, format=None):
         detected_version = request.version
@@ -85,6 +92,7 @@ class APIHealthView(APIView):
     Health check endpoint that includes version information.
     """
     permission_classes = [permissions.AllowAny]
+    serializer_class = APIHealthResponseSerializer
 
     def get(self, request, version=None, format=None):
         return Response({
@@ -108,6 +116,7 @@ class VersionDemoView(APIView):
     This shows how existing endpoints can be enhanced for v2 while maintaining v1 compatibility.
     """
     permission_classes = [permissions.AllowAny]
+    serializer_class = VersionDemoResponseSerializer
 
     def get(self, request, version=None, format=None):
         detected_version = request.version

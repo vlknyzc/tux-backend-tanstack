@@ -39,6 +39,7 @@ logger = logging.getLogger(__name__)
 class LightweightRuleView(APIView):
     """Lightweight endpoint for rule list views and basic operations"""
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = LightweightRuleSerializer
 
     def __init__(self):
         super().__init__()
@@ -102,6 +103,7 @@ class LightweightRuleView(APIView):
 class FieldSpecificRuleView(APIView):
     """Endpoint for field-specific rule data"""
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = FieldSpecificDataSerializer
 
     def __init__(self):
         super().__init__()
@@ -162,6 +164,7 @@ class FieldSpecificRuleView(APIView):
 class RuleValidationView(APIView):
     """Endpoint for rule validation summary"""
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = ValidationSummarySerializer
 
     def __init__(self):
         super().__init__()
@@ -222,6 +225,7 @@ class RuleValidationView(APIView):
 class GenerationPreviewView(APIView):
     """Endpoint for string generation preview"""
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = GenerationPreviewSerializer
 
     def __init__(self):
         super().__init__()
@@ -295,6 +299,7 @@ class GenerationPreviewView(APIView):
 class CacheManagementView(APIView):
     """Endpoint for cache management operations"""
     permission_classes = [permissions.IsAuthenticated]
+    serializer_class = PerformanceMetricsSerializer
 
     def __init__(self):
         super().__init__()
@@ -389,6 +394,7 @@ class CacheManagementView(APIView):
 class RuleConfigurationView(APIView):
     """Complete rule configuration endpoint with all data"""
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
+    serializer_class = RuleConfigurationSerializer
 
     def __init__(self):
         super().__init__()

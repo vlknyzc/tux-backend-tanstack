@@ -9,6 +9,7 @@ from rest_framework_simplejwt.views import (
     TokenVerifyView,
 
 )
+from .serializers import LogoutResponseSerializer
 
 
 class CustomTokenObtainPairView(TokenObtainPairView):
@@ -78,6 +79,8 @@ class CustomTokenVerifyView(TokenVerifyView):
 
 
 class LogoutView(APIView):
+    serializer_class = LogoutResponseSerializer
+
     def post(self, request, *args, **kwargs):
         response = Response(status=status.HTTP_204_NO_CONTENT)
         response.delete_cookie('access')

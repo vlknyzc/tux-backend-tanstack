@@ -1,59 +1,17 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from master_data.models import Workspace
 from .models import WorkspaceUser
 
 User = get_user_model()
 
 
-class WorkspaceUserSerializer(serializers.ModelSerializer):
-    """Serializer for WorkspaceUser relationships"""
-    workspace_name = serializers.CharField(
-        source='workspace.name', read_only=True)
-    user_email = serializers.CharField(source='user.email', read_only=True)
-    user_name = serializers.CharField(
-        source='user.get_full_name', read_only=True)
-
-    class Meta:
-        model = WorkspaceUser
-        fields = [
-            'id', 'user', 'user_email', 'user_name',
-            'workspace', 'workspace_name',
-            'role', 'is_active', 'created', 'updated'
-        ]
-        read_only_fields = ['id', 'created', 'updated']
-
-
-class WorkspaceUserCreateSerializer(serializers.ModelSerializer):
-    """Serializer for creating WorkspaceUser relationships"""
-
-    class Meta:
-        model = WorkspaceUser
-        fields = ['user', 'workspace', 'role', 'is_active']
-
-
-class UserDetailSerializer(serializers.ModelSerializer):
-    """Detailed user serializer with workspace information"""
-    workspace_assignments = WorkspaceUserSerializer(
-        source='workspaceuser_set', many=True, read_only=True
-    )
-    accessible_workspaces_count = serializers.SerializerMethodField()
-    full_name = serializers.CharField(source='get_full_name', read_only=True)
-
+class UserSerializer(serializers.ModelSerializer):
+    """Basic user serializer"""
     class Meta:
         model = User
-        fields = [
-            'id', 'email', 'first_name', 'last_name', 'full_name',
-            'is_active', 'is_staff', 'is_superuser', 'last_login',
-            'workspace_assignments', 'accessible_workspaces_count'
-        ]
-        read_only_fields = ['id', 'last_login']
-
-    def get_accessible_workspaces_count(self, obj):
-        """Get count of accessible workspaces"""
-        if obj.is_superuser:
-            from master_data.models import Workspace
-            return Workspace.objects.count()
-        return obj.workspaces.filter(workspaceuser__is_active=True).count()
+        fields = ['id', 'email', 'first_name', 'last_name', 'is_active']
+        read_only_fields = ['id']
 
 
 class UserListSerializer(serializers.ModelSerializer):
@@ -73,7 +31,6 @@ class UserListSerializer(serializers.ModelSerializer):
     def get_workspace_count(self, obj):
         """Get count of active workspace assignments"""
         if obj.is_superuser:
-            from master_data.models import Workspace
             return Workspace.objects.count()
         return obj.workspaces.filter(workspaceuser__is_active=True).count()
 
@@ -130,6 +87,88 @@ class UserUpdateSerializer(serializers.ModelSerializer):
         ]
 
 
+class UserDetailSerializer(serializers.ModelSerializer):
+    """Detailed user serializer with workspace relationships"""
+    accessible_workspaces = serializers.SerializerMethodField()
+    accessible_workspaces_count = serializers.SerializerMethodField()
+    current_workspace = serializers.SerializerMethodField()
+
+    class Meta:
+        model = User
+        fields = [
+            'id', 'email', 'first_name', 'last_name',
+            'is_active', 'is_superuser',
+            'accessible_workspaces', 'accessible_workspaces_count',
+            'current_workspace'
+        ]
+        read_only_fields = ['id']
+
+    def get_accessible_workspaces(self, obj):
+        """Get list of workspaces the user has access to"""
+        try:
+            if hasattr(obj, 'get_accessible_workspaces'):
+                workspaces = obj.get_accessible_workspaces()
+                return [
+                    {
+                        'id': ws.id,
+                        'name': ws.name,
+                        'slug': ws.slug
+                    }
+                    for ws in workspaces
+                ]
+            return []
+        except Exception:
+            return []
+
+    def get_accessible_workspaces_count(self, obj):
+        """Get count of accessible workspaces"""
+        try:
+            if hasattr(obj, 'get_accessible_workspaces'):
+                return len(obj.get_accessible_workspaces())
+            return 0
+        except Exception:
+            return 0
+
+    def get_current_workspace(self, obj):
+        """Get current workspace context if available"""
+        request = self.context.get('request')
+        if request and hasattr(request, 'workspace'):
+            workspace = request.workspace
+            if workspace:
+                return {
+                    'id': workspace.id,
+                    'name': workspace.name,
+                    'slug': workspace.slug
+                }
+        return None
+
+
+class WorkspaceUserSerializer(serializers.ModelSerializer):
+    """Serializer for WorkspaceUser relationships"""
+    workspace_name = serializers.CharField(
+        source='workspace.name', read_only=True)
+    user_email = serializers.CharField(source='user.email', read_only=True)
+    user_name = serializers.CharField(
+        source='user.get_full_name', read_only=True)
+
+    class Meta:
+        model = WorkspaceUser
+        fields = [
+            'id', 'user', 'user_email', 'user_name',
+            'workspace', 'workspace_name',
+            'role', 'is_active', 'created', 'updated'
+        ]
+        read_only_fields = ['id', 'created', 'updated']
+
+
+class WorkspaceUserCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating WorkspaceUser relationships"""
+
+    class Meta:
+        model = WorkspaceUser
+        fields = ['user', 'workspace', 'role', 'is_active']
+
+
 class UserAuthorizationSummarySerializer(serializers.Serializer):
     """Serializer for user authorization summary"""
     user_id = serializers.IntegerField()
@@ -142,3 +181,9 @@ class UserAuthorizationSummarySerializer(serializers.Serializer):
     )
     total_workspaces = serializers.IntegerField()
     active_assignments = serializers.IntegerField()
+
+
+class LogoutResponseSerializer(serializers.Serializer):
+    """Serializer for logout response"""
+    message = serializers.CharField(default="Successfully logged out")
+    status = serializers.CharField(default="success")
