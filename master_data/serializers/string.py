@@ -518,6 +518,147 @@ class StringConflictCheckSerializer(serializers.Serializer):
         return attrs
 
 
+class StringExpandedSerializer(serializers.ModelSerializer):
+    field_name = serializers.SerializerMethodField()
+    field_level = serializers.SerializerMethodField()
+    platform = serializers.SerializerMethodField()
+    platform_name = serializers.SerializerMethodField()
+    platform_slug = serializers.SerializerMethodField()
+    submission_name = serializers.SerializerMethodField()
+    rule_name = serializers.SerializerMethodField()
+    created_by = serializers.SerializerMethodField()
+    created_by_name = serializers.SerializerMethodField()
+    workspace_name = serializers.SerializerMethodField()
+    
+    dimension_values = serializers.SerializerMethodField()
+    hierarchy_path = serializers.SerializerMethodField()
+    can_have_children = serializers.SerializerMethodField()
+    suggested_child_field = serializers.SerializerMethodField()
+    naming_conflicts = serializers.SerializerMethodField()
+    details = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.String
+        fields = [
+            "id",
+            "submission",
+            "submission_name",
+            "rule",
+            "rule_name",
+            "created_by",
+            "created_by_name",
+            "created",
+            "last_updated",
+            "field",
+            "field_name",
+            "field_level",
+            "platform",
+            "platform_name",
+            "platform_slug",
+            "string_uuid",
+            "value",
+            "parent",
+            "parent_uuid",
+            "workspace",
+            "workspace_name",
+            "is_auto_generated",
+            "generation_metadata",
+            "dimension_values",
+            "hierarchy_path",
+            "can_have_children",
+            "suggested_child_field",
+            "naming_conflicts",
+            "details",
+        ]
+        read_only_fields = ["string_uuid", "rule", "created", "last_updated", "workspace_name", "workspace"]
+
+    def get_field_name(self, obj) -> str:
+        return obj.field.name
+
+    def get_submission_name(self, obj) -> Optional[str]:
+        return obj.submission.name if obj.submission else None
+
+    def get_platform_name(self, obj) -> Optional[str]:
+        return obj.field.platform.name if obj.field and obj.field.platform else None
+
+    def get_field_level(self, obj) -> int:
+        return obj.field.field_level
+
+    def get_platform_slug(self, obj) -> Optional[str]:
+        return obj.field.platform.slug if obj.field and obj.field.platform else None
+
+    def get_rule_name(self, obj) -> Optional[str]:
+        return obj.submission.rule.name if obj.submission and obj.submission.rule else None
+
+    def get_created_by(self, obj) -> Optional[int]:
+        return obj.submission.created_by.id if obj.submission and obj.submission.created_by else None
+
+    def get_created_by_name(self, obj) -> Optional[str]:
+        if obj.submission and obj.submission.created_by:
+            return f"{obj.submission.created_by.first_name} {obj.submission.created_by.last_name}".strip()
+        return None
+
+    def get_platform(self, obj) -> Optional[int]:
+        return obj.field.platform.id if obj.field and obj.field.platform else None
+
+    def get_workspace_name(self, obj) -> Optional[str]:
+        return obj.workspace.name if obj.workspace else None
+
+    def get_dimension_values(self, obj) -> Dict[str, Any]:
+        return obj.get_dimension_values()
+
+    def get_hierarchy_path(self, obj) -> List[Dict[str, Any]]:
+        path = obj.get_hierarchy_path()
+        return [{"id": s.id, "value": s.value, "field_level": s.field.field_level} for s in path]
+
+    def get_can_have_children(self, obj) -> bool:
+        return obj.can_have_children()
+
+    def get_suggested_child_field(self, obj) -> Optional[Dict[str, Any]]:
+        child_field = obj.suggest_child_field()
+        if child_field:
+            return {"id": child_field.id, "name": child_field.name, "field_level": child_field.field_level}
+        return None
+
+    def get_naming_conflicts(self, obj) -> List[Dict[str, Any]]:
+        return obj.check_naming_conflicts()
+
+    def get_details(self, obj) -> List[Dict[str, Any]]:
+        details = []
+        for detail in obj.string_details.all():
+            # Find the corresponding rule detail
+            rule_detail_id = None
+            if obj.submission and obj.submission.rule:
+                try:
+                    rule_detail = models.RuleDetail.objects.filter(
+                        rule=obj.submission.rule,
+                        field=obj.field,
+                        dimension=detail.dimension
+                    ).first()
+                    if rule_detail:
+                        rule_detail_id = rule_detail.id
+                except:
+                    pass  # If there's any error, just leave rule_detail_id as None
+            
+            details.append({
+                "id": detail.id,
+                "dimension": detail.dimension.id,
+                "dimension_name": detail.dimension.name,
+                "dimension_type": detail.dimension.type,
+                "dimension_value": detail.dimension_value.id if detail.dimension_value else None,
+                "dimension_value_display": detail.dimension_value.value if detail.dimension_value else None,
+                "dimension_value_label": detail.dimension_value.label if detail.dimension_value else None,
+                "dimension_value_freetext": detail.dimension_value_freetext,
+                "effective_value": detail.get_effective_value(),
+                "created_by": detail.created_by.id if detail.created_by else None,
+                "created_by_name": f"{detail.created_by.first_name} {detail.created_by.last_name}".strip() if detail.created_by else None,
+                "created": detail.created,
+                "last_updated": detail.last_updated,
+                "rule_detail_id": rule_detail_id,
+            })
+        return details
+
+
 class StringBulkGenerationRequestSerializer(serializers.Serializer):
     """Serializer for bulk string generation."""
     submission = serializers.IntegerField()

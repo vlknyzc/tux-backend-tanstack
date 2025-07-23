@@ -36,6 +36,7 @@ from .platform import PlatformSerializer, FieldSerializer, PlatformTemplateSeria
 from .string import (
     StringSerializer,
     StringDetailSerializer,
+    StringExpandedSerializer,
     StringGenerationRequestSerializer,
     StringRegenerationSerializer,
     StringConflictCheckSerializer,
@@ -78,6 +79,7 @@ __all__ = [
     'PlatformTemplateSerializer',
     'StringSerializer',
     'StringDetailSerializer',
+    'StringExpandedSerializer',
     'StringGenerationRequestSerializer',
     'StringRegenerationSerializer',
     'StringConflictCheckSerializer',

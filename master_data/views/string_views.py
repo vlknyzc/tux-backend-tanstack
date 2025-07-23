@@ -323,6 +323,13 @@ class StringViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(conflicts, many=True)
         return Response(serializer.data)
 
+    @action(detail=True, methods=['get'])
+    def expanded(self, request, pk=None, **kwargs):
+        """Get expanded string data combining string and string-details."""
+        string = self.get_object()
+        serializer = serializers.StringExpandedSerializer(string, context={'request': request})
+        return Response(serializer.data)
+
 
 class StringDetailFilter(filters.FilterSet):
     string = filters.NumberFilter(method='filter_string_id')
