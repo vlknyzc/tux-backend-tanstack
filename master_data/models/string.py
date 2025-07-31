@@ -120,6 +120,10 @@ class String(TimeStampModel, WorkspaceMixin):
         blank=True,
         help_text="Metadata about how this string was generated"
     )
+    version = models.IntegerField(
+        default=1,
+        help_text="Current version number for tracking modifications"
+    )
 
     # Custom manager
     objects = StringManager()
@@ -443,3 +447,114 @@ def log_string_generation(sender, instance, created, **kwargs):
             f"(Rule: {instance.rule.name}, Field: {instance.field.name}, "
             f"Workspace: {instance.workspace.name})"
         )
+
+
+@receiver(post_save, sender=StringDetail)
+def auto_regenerate_string_on_detail_update(sender, instance, created, **kwargs):
+    """
+    Automatically regenerate parent string when StringDetail is updated.
+    Only triggers on updates, not creation.
+    """
+    if created:
+        return  # Skip for new StringDetail records
+
+    # Import here to avoid circular imports
+    from django.conf import settings
+    from django.db import transaction
+    import logging
+
+    logger = logging.getLogger('master_data.string_regeneration')
+
+    # Check if auto-regeneration is enabled globally
+    config = getattr(settings, 'MASTER_DATA_CONFIG', {})
+    if not config.get('AUTO_REGENERATE_STRINGS', True):
+        logger.debug(
+            f"Auto-regeneration disabled globally, skipping StringDetail {instance.id}")
+        return
+
+    # Prevent infinite recursion
+    if getattr(instance, '_regenerating', False):
+        logger.debug(
+            f"Recursion guard active for StringDetail {instance.id}, skipping")
+        return
+
+    try:
+        # Mark to prevent recursion
+        instance._regenerating = True
+
+        # Get the parent string
+        string_obj = instance.string
+        original_value = string_obj.value
+
+        logger.info(
+            f"Auto-regenerating string {string_obj.id} due to StringDetail {instance.id} update")
+
+        with transaction.atomic():
+            # Store original value for metadata
+            old_value = string_obj.value
+
+            # Regenerate the string value using existing method
+            string_obj.regenerate_value()
+
+            # Log the change
+            logger.info(
+                f"String {string_obj.id} auto-regenerated: '{old_value}' -> '{string_obj.value}' "
+                f"(triggered by StringDetail {instance.id})"
+            )
+
+            # Handle inheritance propagation if enabled
+            if config.get('ENABLE_INHERITANCE_PROPAGATION', True):
+                _propagate_to_child_strings(string_obj, config, logger)
+
+    except Exception as e:
+        logger.error(
+            f"Auto-regeneration failed for StringDetail {instance.id}: {str(e)}")
+
+        # Re-raise exception if strict mode is enabled
+        if config.get('STRICT_AUTO_REGENERATION', False):
+            raise
+    finally:
+        # Clean up recursion guard
+        if hasattr(instance, '_regenerating'):
+            delattr(instance, '_regenerating')
+
+
+def _propagate_to_child_strings(parent_string, config, logger, current_depth=0):
+    """
+    Propagate string regeneration to child strings in the hierarchy.
+    """
+    max_depth = config.get('MAX_INHERITANCE_DEPTH', 5)
+
+    if current_depth >= max_depth:
+        logger.warning(
+            f"Maximum inheritance depth ({max_depth}) reached for string {parent_string.id}")
+        return
+
+    # Get direct child strings
+    child_strings = parent_string.child_strings.all()
+
+    if not child_strings.exists():
+        return
+
+    logger.info(
+        f"Propagating regeneration to {child_strings.count()} child strings of {parent_string.id}")
+
+    for child in child_strings:
+        try:
+            # Regenerate child string
+            old_value = child.value
+            child.regenerate_value()
+
+            logger.info(
+                f"Child string {child.id} regenerated: '{old_value}' -> '{child.value}' "
+                f"(inherited from parent {parent_string.id})"
+            )
+
+            # Recursively propagate to grandchildren
+            _propagate_to_child_strings(
+                child, config, logger, current_depth + 1)
+
+        except Exception as e:
+            logger.error(
+                f"Failed to regenerate child string {child.id}: {str(e)}")
+            # Continue with other children even if one fails

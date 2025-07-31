@@ -4,6 +4,7 @@ from rest_framework import status, permissions
 from rest_framework.versioning import URLPathVersioning
 from datetime import datetime
 import logging
+from drf_spectacular.utils import extend_schema
 from master_data.serializers.rule_serializers import (
     APIVersionResponseSerializer,
     APIHealthResponseSerializer,
@@ -22,6 +23,7 @@ class APIVersionView(APIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = APIVersionResponseSerializer
 
+    @extend_schema(tags=["System"])
     def get(self, request, version=None, format=None):
         detected_version = request.version
 
@@ -94,6 +96,7 @@ class APIHealthView(APIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = APIHealthResponseSerializer
 
+    @extend_schema(tags=["System"])
     def get(self, request, version=None, format=None):
         return Response({
             'status': 'healthy',
@@ -118,6 +121,7 @@ class VersionDemoView(APIView):
     permission_classes = [permissions.AllowAny]
     serializer_class = VersionDemoResponseSerializer
 
+    @extend_schema(tags=["System"])
     def get(self, request, version=None, format=None):
         detected_version = request.version
 

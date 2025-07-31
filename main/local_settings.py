@@ -300,3 +300,14 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 
 # Custom user model
 AUTH_USER_MODEL = 'users.UserAccount'
+
+
+# Master Data Configuration
+MASTER_DATA_CONFIG = {
+    # String regeneration settings
+    'AUTO_REGENERATE_STRINGS': True,  # Enable/disable automatic string regeneration
+    # Fail silently (False) vs raise exceptions (True)
+    'STRICT_AUTO_REGENERATION': False,
+    'ENABLE_INHERITANCE_PROPAGATION': True,  # Propagate changes to child strings
+    'MAX_INHERITANCE_DEPTH': 5,  # Maximum depth for inheritance propagation
+}

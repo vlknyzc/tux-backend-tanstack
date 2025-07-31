@@ -320,3 +320,15 @@ LOGGING = {
         },
     },
 }
+
+
+# ────────────────────────────────────────────────────────────────
+# Master Data Configuration
+# ────────────────────────────────────────────────────────────────
+MASTER_DATA_CONFIG = {
+    # String regeneration settings
+    'AUTO_REGENERATE_STRINGS': os.getenv('AUTO_REGENERATE_STRINGS', 'True').lower() == 'true',
+    'STRICT_AUTO_REGENERATION': os.getenv('STRICT_AUTO_REGENERATION', 'False').lower() == 'true',
+    'ENABLE_INHERITANCE_PROPAGATION': os.getenv('ENABLE_INHERITANCE_PROPAGATION', 'True').lower() == 'true',
+    'MAX_INHERITANCE_DEPTH': int(os.getenv('MAX_INHERITANCE_DEPTH', '5')),
+}

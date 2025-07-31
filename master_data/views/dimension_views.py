@@ -86,6 +86,30 @@ class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     filterset_class = DimensionFilter
     # filterset_fields = ['id', 'type', 'status', 'workspace__id']
 
+    @extend_schema(tags=["Dimensions"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["Dimensions"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["Dimensions"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["Dimensions"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Dimensions"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Dimensions"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
     def get_queryset(self):
         wid = self.get_workspace_id()
         if wid:
@@ -121,6 +145,7 @@ class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
 
         serializer.save(**kwargs)
 
+    @extend_schema(tags=["Dimensions"])
     @action(detail=False, methods=['post'])
     def bulk_create(self, request, version=None):
         """
@@ -250,6 +275,30 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     filterset_class = DimensionValueFilter
     # filterset_fields = ['id', 'dimension__id', 'workspace__id']
 
+    @extend_schema(tags=["Dimensions"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["Dimensions"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["Dimensions"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["Dimensions"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Dimensions"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Dimensions"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
     def get_queryset(self):
         wid = self.get_workspace_id()
         if wid:
@@ -281,6 +330,7 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
             kwargs['created_by'] = user
         serializer.save(**kwargs)
 
+    @extend_schema(tags=["Dimensions"])
     @action(detail=False, methods=['post'])
     def bulk_create(self, request, version=None):
         """

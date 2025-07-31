@@ -44,6 +44,18 @@ from .string import (
 )
 from .workspace import WorkspaceSerializer
 from .submission import SubmissionSerializer
+from .batch_operations import (
+    StringBatchUpdateRequestSerializer,
+    StringBatchUpdateResponseSerializer,
+    InheritanceImpactRequestSerializer,
+    InheritanceImpactResponseSerializer,
+    StringHistoryResponseSerializer,
+    RollbackRequestSerializer,
+    RollbackResponseSerializer,
+    StringModificationSerializer,
+    StringUpdateBatchSerializer,
+    StringInheritanceUpdateSerializer,
+)
 
 
 __all__ = [
@@ -86,4 +98,15 @@ __all__ = [
     'StringBulkGenerationRequestSerializer',
     'WorkspaceSerializer',
     'SubmissionSerializer',
+    # Batch operations serializers
+    'StringBatchUpdateRequestSerializer',
+    'StringBatchUpdateResponseSerializer',
+    'InheritanceImpactRequestSerializer',
+    'InheritanceImpactResponseSerializer',
+    'StringHistoryResponseSerializer',
+    'RollbackRequestSerializer',
+    'RollbackResponseSerializer',
+    'StringModificationSerializer',
+    'StringUpdateBatchSerializer',
+    'StringInheritanceUpdateSerializer',
 ]

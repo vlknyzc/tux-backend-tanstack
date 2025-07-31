@@ -13,6 +13,9 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .. import serializers
 from .. import models
 from ..services import StringGenerationService, NamingConventionError
+from ..services.batch_update_service import BatchUpdateService, BatchUpdateError
+from ..services.inheritance_service import InheritanceService, InheritanceError
+from ..services.conflict_resolution_service import ConflictResolutionService, ConflictResolutionError
 from ..permissions import IsAuthenticatedOrDebugReadOnly
 
 
@@ -53,6 +56,30 @@ class StringViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = StringFilter
+
+    @extend_schema(tags=["Strings"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["Strings"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["Strings"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["Strings"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Strings"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Strings"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
         """Get strings filtered by workspace context"""
@@ -109,6 +136,7 @@ class StringViewSet(viewsets.ModelViewSet):
         # Workspace is auto-set by WorkspaceMixin.save()
         serializer.save(**kwargs)
 
+    @extend_schema(tags=["Strings"])
     @action(detail=False, methods=['post'])
     def generate(self, request):
         """Generate a new string using business logic."""
@@ -159,6 +187,7 @@ class StringViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(tags=["Strings"])
     @action(detail=True, methods=['post'])
     def regenerate(self, request, pk=None):
         """Regenerate an existing string with new dimension values."""
@@ -187,6 +216,7 @@ class StringViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(tags=["Strings"])
     @action(detail=False, methods=['post'])
     def check_conflicts(self, request):
         """Check for naming conflicts before string creation."""
@@ -226,6 +256,7 @@ class StringViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(tags=["Strings"])
     @action(detail=False, methods=['post'])
     def bulk_generate(self, request):
         """Generate multiple strings in a single request."""
@@ -291,6 +322,7 @@ class StringViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(tags=["Strings"])
     @action(detail=True, methods=['get'])
     def hierarchy(self, request, pk=None):
         """Get the complete hierarchy for a string (parents and children)."""
@@ -316,6 +348,7 @@ class StringViewSet(viewsets.ModelViewSet):
             'has_children': bool(children)
         })
 
+    @extend_schema(tags=["Strings"])
     @action(detail=False, methods=['get'])
     def conflicts(self, request):
         """Get all strings that have naming conflicts in current workspace."""
@@ -323,12 +356,178 @@ class StringViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(conflicts, many=True)
         return Response(serializer.data)
 
+    @extend_schema(tags=["Strings"])
     @action(detail=True, methods=['get'])
     def expanded(self, request, pk=None, **kwargs):
         """Get expanded string data combining string and string-details."""
         string = self.get_object()
-        serializer = serializers.StringExpandedSerializer(string, context={'request': request})
+        serializer = serializers.StringExpandedSerializer(
+            string, context={'request': request})
         return Response(serializer.data)
+
+    # Phase 4 endpoints
+    @extend_schema(tags=["Strings"])
+    @action(detail=False, methods=['put'])
+    @extend_schema(
+        request=serializers.StringBatchUpdateRequestSerializer,
+        responses={200: serializers.StringBatchUpdateResponseSerializer}
+    )
+    def batch_update(self, request, **kwargs):
+        """Batch update multiple strings with inheritance management."""
+        workspace = getattr(request, 'workspace', None)
+        if not workspace:
+            raise PermissionDenied("No workspace context available")
+
+        serializer = serializers.StringBatchUpdateRequestSerializer(
+            data=request.data, context={'request': request}
+        )
+
+        if serializer.is_valid():
+            try:
+                updates = serializer.validated_data['updates']
+                options = serializer.validated_data.get('options', {})
+
+                result = BatchUpdateService.batch_update_strings(
+                    workspace, updates, request.user, options
+                )
+
+                response_serializer = serializers.StringBatchUpdateResponseSerializer(
+                    data=result)
+                response_serializer.is_valid(raise_exception=True)
+
+                return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+            except BatchUpdateError as e:
+                return Response(
+                    {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            except Exception as e:
+                return Response(
+                    {'error': f'Batch update failed: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(tags=["Strings"])
+    @action(detail=False, methods=['post'])
+    @extend_schema(
+        request=serializers.InheritanceImpactRequestSerializer,
+        responses={200: serializers.InheritanceImpactResponseSerializer}
+    )
+    def analyze_impact(self, request, **kwargs):
+        """Analyze inheritance impact of proposed string updates."""
+        workspace = getattr(request, 'workspace', None)
+        if not workspace:
+            raise PermissionDenied("No workspace context available")
+
+        serializer = serializers.InheritanceImpactRequestSerializer(
+            data=request.data, context={'request': request}
+        )
+
+        if serializer.is_valid():
+            try:
+                updates = serializer.validated_data['updates']
+                depth = serializer.validated_data.get('depth', 10)
+
+                result = BatchUpdateService.analyze_impact(
+                    workspace, updates, depth)
+
+                response_serializer = serializers.InheritanceImpactResponseSerializer(
+                    data=result)
+                response_serializer.is_valid(raise_exception=True)
+
+                return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+            except (BatchUpdateError, InheritanceError) as e:
+                return Response(
+                    {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            except Exception as e:
+                return Response(
+                    {'error': f'Impact analysis failed: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+    @extend_schema(tags=["Strings"])
+    @action(detail=True, methods=['get'])
+    @extend_schema(
+        responses={200: serializers.StringHistoryResponseSerializer}
+    )
+    def history(self, request, pk=None, **kwargs):
+        """Get modification history for a string."""
+        workspace = getattr(request, 'workspace', None)
+        if not workspace:
+            raise PermissionDenied("No workspace context available")
+
+        try:
+            result = BatchUpdateService.get_string_history(int(pk), workspace)
+
+            response_serializer = serializers.StringHistoryResponseSerializer(
+                data=result)
+            response_serializer.is_valid(raise_exception=True)
+
+            return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+        except BatchUpdateError as e:
+            return Response(
+                {'error': str(e)},
+                status=status.HTTP_404_NOT_FOUND
+            )
+        except Exception as e:
+            return Response(
+                {'error': f'History retrieval failed: {str(e)}'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )
+
+    @extend_schema(tags=["Strings"])
+    @action(detail=False, methods=['post'])
+    @extend_schema(
+        request=serializers.RollbackRequestSerializer,
+        responses={200: serializers.RollbackResponseSerializer}
+    )
+    def rollback(self, request, **kwargs):
+        """Rollback strings to previous versions."""
+        workspace = getattr(request, 'workspace', None)
+        if not workspace:
+            raise PermissionDenied("No workspace context available")
+
+        serializer = serializers.RollbackRequestSerializer(
+            data=request.data, context={'request': request}
+        )
+
+        if serializer.is_valid():
+            try:
+                rollback_type = serializer.validated_data['rollback_type']
+                target = serializer.validated_data['target']
+                options = serializer.validated_data.get('options', {})
+
+                result = BatchUpdateService.rollback_changes(
+                    workspace, rollback_type, target, request.user, options
+                )
+
+                response_serializer = serializers.RollbackResponseSerializer(
+                    data=result)
+                response_serializer.is_valid(raise_exception=True)
+
+                return Response(response_serializer.data, status=status.HTTP_200_OK)
+
+            except BatchUpdateError as e:
+                return Response(
+                    {'error': str(e)},
+                    status=status.HTTP_400_BAD_REQUEST
+                )
+            except Exception as e:
+                return Response(
+                    {'error': f'Rollback failed: {str(e)}'},
+                    status=status.HTTP_500_INTERNAL_SERVER_ERROR
+                )
+
+        return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
 class StringDetailFilter(filters.FilterSet):
@@ -357,6 +556,30 @@ class StringDetailViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = StringDetailFilter
+
+    @extend_schema(tags=["Strings"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["Strings"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["Strings"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["Strings"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Strings"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Strings"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
         """Get string details filtered by workspace context"""
@@ -412,3 +635,15 @@ class StringDetailViewSet(viewsets.ModelViewSet):
 
         # Workspace is auto-set by WorkspaceMixin.save()
         serializer.save(**kwargs)
+
+    def perform_update(self, serializer):
+        """Ensure workspace is preserved during updates"""
+        # Get the existing instance to preserve its workspace
+        instance = self.get_object()
+
+        # Validate user has access to this workspace
+        if not self.request.user.is_superuser and not self.request.user.has_workspace_access(instance.workspace):
+            raise PermissionDenied("Access denied to this workspace")
+
+        # Ensure workspace is preserved during update
+        serializer.save(workspace=instance.workspace)

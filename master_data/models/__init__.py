@@ -7,6 +7,7 @@ from .dimension import Dimension, DimensionValue
 from .rule import Rule, RuleDetail
 from .string import String, StringDetail
 from .submission import Submission
+from .audit import StringModification, StringInheritanceUpdate, StringUpdateBatch
 
 # Import constants for external use
 from ..constants import (
@@ -33,6 +34,9 @@ __all__ = [
     'Submission',
     'String',
     'StringDetail',
+    'StringModification',
+    'StringInheritanceUpdate',
+    'StringUpdateBatch',
 
     # Constants
     'StatusChoices',

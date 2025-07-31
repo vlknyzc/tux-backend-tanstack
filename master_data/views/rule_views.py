@@ -47,6 +47,30 @@ class RuleViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter
 
+    @extend_schema(tags=["Rules"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
+
     def get_queryset(self):
         """Get rules filtered by workspace context"""
         # Check if workspace_id is explicitly provided in query params
@@ -107,6 +131,7 @@ class RuleViewSet(viewsets.ModelViewSet):
         # Workspace is auto-set by WorkspaceMixin.save()
         serializer.save(**kwargs)
 
+    @extend_schema(tags=["Rules"])
     @action(detail=True, methods=['post'])
     def preview(self, request, pk=None):
         """Generate a preview of string generation for this rule."""
@@ -145,6 +170,7 @@ class RuleViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
+    @extend_schema(tags=["Rules"])
     @action(detail=True, methods=['get'])
     def validate_configuration(self, request, pk=None):
         """Validate the rule configuration."""
@@ -152,6 +178,7 @@ class RuleViewSet(viewsets.ModelViewSet):
         serializer = serializers.RuleValidationSerializer(rule)
         return Response(serializer.data)
 
+    @extend_schema(tags=["Rules"])
     @action(detail=True, methods=['post'])
     def set_default(self, request, pk=None):
         """Set this rule as the default for its platform within the workspace."""
@@ -183,6 +210,7 @@ class RuleViewSet(viewsets.ModelViewSet):
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
+    @extend_schema(tags=["Rules"])
     @action(detail=False, methods=['get'])
     def defaults(self, request):
         """Get all default rules by platform in current workspace."""
@@ -191,6 +219,7 @@ class RuleViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(default_rules, many=True)
         return Response(serializer.data)
 
+    @extend_schema(tags=["Rules"])
     @action(detail=True, methods=['get'])
     def required_dimensions(self, request, pk=None):
         """Get required dimensions for all fields in this rule."""
@@ -219,6 +248,7 @@ class RuleViewSet(viewsets.ModelViewSet):
             'fields': result
         })
 
+    @extend_schema(tags=["Rules"])
     @action(detail=False, methods=['get'])
     def active(self, request):
         """Get all active rules in current workspace."""
@@ -255,6 +285,30 @@ class RuleDetailViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleDetailFilter
+
+    @extend_schema(tags=["Rules"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
         """Get rule details filtered by workspace context"""
@@ -320,6 +374,7 @@ class RuleDetailViewSet(viewsets.ModelViewSet):
         # Workspace is auto-set by WorkspaceMixin.save()
         serializer.save(**kwargs)
 
+    @extend_schema(tags=["Rules"])
     @action(detail=False, methods=['post'])
     def validate_order(self, request):
         """Validate dimension order for a rule and field."""
@@ -355,6 +410,30 @@ class RuleNestedViewSet(viewsets.ModelViewSet):
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter
+
+    @extend_schema(tags=["Rules"])
+    def list(self, request, *args, **kwargs):
+        return super().list(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def create(self, request, *args, **kwargs):
+        return super().create(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def retrieve(self, request, *args, **kwargs):
+        return super().retrieve(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def update(self, request, *args, **kwargs):
+        return super().update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def partial_update(self, request, *args, **kwargs):
+        return super().partial_update(request, *args, **kwargs)
+
+    @extend_schema(tags=["Rules"])
+    def destroy(self, request, *args, **kwargs):
+        return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
         """Get rules with nested details filtered by workspace context"""
@@ -413,6 +492,7 @@ class RuleNestedViewSet(viewsets.ModelViewSet):
         # Let the serializer handle workspace validation and creation
         serializer.save(**kwargs)
 
+    @extend_schema(tags=["Rules"])
     @action(detail=True, methods=['post'])
     def clone(self, request, pk=None):
         """Clone a rule with all its details within the same workspace."""

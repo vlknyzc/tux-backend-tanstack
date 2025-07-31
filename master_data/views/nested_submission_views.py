@@ -105,6 +105,7 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
             'submission_strings__string_details__dimension_value'
         )
 
+    @extend_schema(tags=["Submissions"])
     def list(self, request, *args, **kwargs):
         """
         Override list to optimize rule detail lookups for all submissions
@@ -148,6 +149,7 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(queryset, many=True)
         return response.Response(serializer.data)
 
+    @extend_schema(tags=["Submissions"])
     def retrieve(self, request, *args, **kwargs):
         """
         Override retrieve to optimize rule detail lookups
@@ -175,6 +177,7 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
         serializer = self.get_serializer(instance)
         return response.Response(serializer.data)
 
+    @extend_schema(tags=["Submissions"])
     @transaction.atomic
     def create(self, request, *args, **kwargs):
         """Create a submission with nested strings and string details atomically"""
@@ -274,16 +277,19 @@ class SubmissionNestedViewSet(viewsets.ModelViewSet):
         # Workspace is auto-set by WorkspaceMixin.save()
         serializer.save(**kwargs)
 
+    @extend_schema(tags=["Submissions"])
     @transaction.atomic
     def update(self, request, *args, **kwargs):
         """Update a submission with nested strings and string details atomically"""
         return super().update(request, *args, **kwargs)
 
+    @extend_schema(tags=["Submissions"])
     @transaction.atomic
     def partial_update(self, request, *args, **kwargs):
         """Partially update a submission with nested strings and string details atomically"""
         return super().partial_update(request, *args, **kwargs)
 
+    @extend_schema(tags=["Submissions"])
     @transaction.atomic
     def destroy(self, request, *args, **kwargs):
         """Delete a submission with its related strings and string details atomically"""
