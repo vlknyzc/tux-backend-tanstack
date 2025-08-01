@@ -449,74 +449,18 @@ def log_string_generation(sender, instance, created, **kwargs):
         )
 
 
-@receiver(post_save, sender=StringDetail)
-def auto_regenerate_string_on_detail_update(sender, instance, created, **kwargs):
+# Legacy signal handler - disabled in favor of enhanced version in signals/string_propagation.py
+# @receiver(post_save, sender=StringDetail)
+def auto_regenerate_string_on_detail_update_legacy(sender, instance, created, **kwargs):
     """
-    Automatically regenerate parent string when StringDetail is updated.
+    LEGACY: Automatically regenerate parent string when StringDetail is updated.
+    
+    This handler has been replaced by the enhanced version in 
+    master_data.signals.string_propagation.enhanced_auto_regenerate_string_on_detail_update
+    
     Only triggers on updates, not creation.
     """
-    if created:
-        return  # Skip for new StringDetail records
-
-    # Import here to avoid circular imports
-    from django.conf import settings
-    from django.db import transaction
-    import logging
-
-    logger = logging.getLogger('master_data.string_regeneration')
-
-    # Check if auto-regeneration is enabled globally
-    config = getattr(settings, 'MASTER_DATA_CONFIG', {})
-    if not config.get('AUTO_REGENERATE_STRINGS', True):
-        logger.debug(
-            f"Auto-regeneration disabled globally, skipping StringDetail {instance.id}")
-        return
-
-    # Prevent infinite recursion
-    if getattr(instance, '_regenerating', False):
-        logger.debug(
-            f"Recursion guard active for StringDetail {instance.id}, skipping")
-        return
-
-    try:
-        # Mark to prevent recursion
-        instance._regenerating = True
-
-        # Get the parent string
-        string_obj = instance.string
-        original_value = string_obj.value
-
-        logger.info(
-            f"Auto-regenerating string {string_obj.id} due to StringDetail {instance.id} update")
-
-        with transaction.atomic():
-            # Store original value for metadata
-            old_value = string_obj.value
-
-            # Regenerate the string value using existing method
-            string_obj.regenerate_value()
-
-            # Log the change
-            logger.info(
-                f"String {string_obj.id} auto-regenerated: '{old_value}' -> '{string_obj.value}' "
-                f"(triggered by StringDetail {instance.id})"
-            )
-
-            # Handle inheritance propagation if enabled
-            if config.get('ENABLE_INHERITANCE_PROPAGATION', True):
-                _propagate_to_child_strings(string_obj, config, logger)
-
-    except Exception as e:
-        logger.error(
-            f"Auto-regeneration failed for StringDetail {instance.id}: {str(e)}")
-
-        # Re-raise exception if strict mode is enabled
-        if config.get('STRICT_AUTO_REGENERATION', False):
-            raise
-    finally:
-        # Clean up recursion guard
-        if hasattr(instance, '_regenerating'):
-            delattr(instance, '_regenerating')
+    pass  # Disabled - using enhanced handler instead
 
 
 def _propagate_to_child_strings(parent_string, config, logger, current_depth=0):

@@ -56,6 +56,16 @@ from .batch_operations import (
     StringUpdateBatchSerializer,
     StringInheritanceUpdateSerializer,
 )
+from .propagation import (
+    PropagationImpactRequestSerializer,
+    PropagationImpactResponseSerializer,
+    StringDetailUpdateWithPropagationSerializer,
+    PropagationJobSerializer,
+    PropagationErrorSerializer,
+    StringDetailBatchUpdateRequestSerializer,
+    StringDetailBatchUpdateResponseSerializer,
+    PropagationSettingsSerializer,
+)
 
 
 __all__ = [
@@ -109,4 +119,13 @@ __all__ = [
     'StringModificationSerializer',
     'StringUpdateBatchSerializer',
     'StringInheritanceUpdateSerializer',
+    # Propagation serializers
+    'PropagationImpactRequestSerializer',
+    'PropagationImpactResponseSerializer',
+    'StringDetailUpdateWithPropagationSerializer',
+    'PropagationJobSerializer',
+    'PropagationErrorSerializer',
+    'StringDetailBatchUpdateRequestSerializer',
+    'StringDetailBatchUpdateResponseSerializer',
+    'PropagationSettingsSerializer',
 ]

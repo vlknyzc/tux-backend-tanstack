@@ -25,6 +25,11 @@ from .views import (
     APIVersionView,
     APIHealthView,
     VersionDemoView,
+    # Propagation views
+    PropagationJobViewSet,
+    PropagationErrorViewSet,
+    EnhancedStringDetailViewSet,
+    PropagationSettingsViewSet,
 )
 
 router = routers.DefaultRouter()
@@ -43,6 +48,12 @@ router.register("strings", StringViewSet, basename="string")
 router.register("string-details", StringDetailViewSet, basename="stringdetail")
 router.register("nested-submissions", SubmissionNestedViewSet,
                 basename="nested-submissions")
+
+# Propagation endpoints
+router.register("propagation-jobs", PropagationJobViewSet, basename="propagation-job")
+router.register("propagation-errors", PropagationErrorViewSet, basename="propagation-error")
+router.register("enhanced-string-details", EnhancedStringDetailViewSet, basename="enhanced-stringdetail")
+router.register("propagation-settings", PropagationSettingsViewSet, basename="propagation-settings")
 
 urlpatterns = [
     path("", include(router.urls)),

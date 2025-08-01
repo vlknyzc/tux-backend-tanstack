@@ -8,6 +8,7 @@ from .rule import Rule, RuleDetail
 from .string import String, StringDetail
 from .submission import Submission
 from .audit import StringModification, StringInheritanceUpdate, StringUpdateBatch
+from .propagation import PropagationJob, PropagationError, PropagationSettings
 
 # Import constants for external use
 from ..constants import (
@@ -37,6 +38,9 @@ __all__ = [
     'StringModification',
     'StringInheritanceUpdate',
     'StringUpdateBatch',
+    'PropagationJob',
+    'PropagationError',
+    'PropagationSettings',
 
     # Constants
     'StatusChoices',

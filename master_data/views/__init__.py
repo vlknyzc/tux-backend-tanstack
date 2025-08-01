@@ -14,6 +14,12 @@ from .rule_configuration_views import (
     RuleConfigurationView,
 )
 from .version_views import APIVersionView, APIHealthView, VersionDemoView
+from .propagation_views import (
+    PropagationJobViewSet,
+    PropagationErrorViewSet,
+    EnhancedStringDetailViewSet,
+    PropagationSettingsViewSet,
+)
 
 __all__ = [
     'DimensionViewSet',
@@ -39,4 +45,9 @@ __all__ = [
     'APIVersionView',
     'APIHealthView',
     'VersionDemoView',
+    # Propagation views
+    'PropagationJobViewSet',
+    'PropagationErrorViewSet',
+    'EnhancedStringDetailViewSet',
+    'PropagationSettingsViewSet',
 ]
