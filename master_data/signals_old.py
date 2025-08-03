@@ -38,6 +38,8 @@ class CacheInvalidationHelper:
             f"complete_rule_data:{rule_id}",
             f"field_templates:{rule_id}",
             f"inheritance_matrix:{rule_id}",
+            # Django page cache key for rule configuration endpoint
+            f"views.decorators.cache.cache_page.{rule_id}.GET",
         ]
 
     @staticmethod
@@ -80,6 +82,10 @@ class CacheInvalidationHelper:
             cache_keys_to_delete.extend(
                 CacheInvalidationHelper.get_cache_keys_for_rule(rule_id)
             )
+
+        # Debug logging
+        print(f"🔥 DEBUG: Invalidating {len(cache_keys_to_delete)} cache keys for rules {list(rule_ids)}")
+        print(f"🔥 DEBUG: Cache keys to delete: {cache_keys_to_delete}")
 
         # Delete all cache keys
         cache.delete_many(cache_keys_to_delete)
@@ -183,11 +189,14 @@ def invalidate_caches_on_rule_delete(sender, instance, **kwargs):
 @receiver(post_save, sender=RuleDetail)
 def invalidate_caches_on_rule_detail_save(sender, instance, created, **kwargs):
     """Invalidate caches when a rule detail is created or updated"""
+    print(f"🔥 DEBUG: RuleDetail post_save signal triggered for {instance.id}")
+    
     rule_ids = [instance.rule.id]
 
     action = "created" if created else "updated"
     reason = f"RuleDetail {action}: {instance.rule.name} - {instance.dimension.name} (workspace: {instance.workspace.name})"
 
+    print(f"🔥 DEBUG: Calling invalidate_rule_caches for rule {rule_ids[0]}")
     CacheInvalidationHelper.invalidate_rule_caches(rule_ids, reason)
 
 

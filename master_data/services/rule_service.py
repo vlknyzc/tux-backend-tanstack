@@ -242,12 +242,11 @@ class RuleService:
 
     def clear_rule_configuration_cache(self, rule_id: int):
         """Clear cache specifically for rule configuration endpoint"""
-        from django.core.cache import cache
-
-        # Clear Django's page cache for rule configuration endpoint
-        cache_key = f"views.decorators.cache.cache_page.{rule_id}.GET"
-        cache.delete(cache_key)
-
+        from ..signals.cache_invalidation import CacheInvalidationHelper
+        
+        # Use the centralized cache invalidation helper
+        CacheInvalidationHelper.invalidate_rule_caches([rule_id], "Manual cache clear")
+        
         logger.info(f"Cleared rule configuration cache for rule {rule_id}")
 
     def get_complete_rule_data(self, rule: Rule) -> Dict:

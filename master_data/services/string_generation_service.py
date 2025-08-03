@@ -50,6 +50,15 @@ class StringGenerationService:
                 raise NamingConventionError(
                     f"No rule details found for rule '{rule.name}' and field '{field.name}'"
                 )
+            
+            # Validate dimension order sequence to ensure data integrity
+            orders = [detail.dimension_order for detail in rule_details]
+            expected_orders = list(range(1, len(orders) + 1))
+            if sorted(orders) != expected_orders:
+                raise NamingConventionError(
+                    f"Invalid dimension order sequence for rule '{rule.name}' field '{field.name}': "
+                    f"expected {expected_orders}, got {sorted(orders)}"
+                )
 
             parts = []
 

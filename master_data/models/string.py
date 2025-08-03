@@ -201,11 +201,11 @@ class String(TimeStampModel, WorkspaceMixin):
             self.rule, self.field, dimension_values
         )
 
-        # Update metadata
+        # Update metadata (convert OrderedDict to dict to preserve order in JSON)
         self.generation_metadata.update({
             'last_regenerated': timezone.now().isoformat(),
             'regenerated_from': self.value,
-            'dimension_values_used': dimension_values
+            'dimension_values_used': dict(dimension_values)
         })
 
         self.value = new_value
@@ -215,15 +215,42 @@ class String(TimeStampModel, WorkspaceMixin):
         return new_value
 
     def get_dimension_values(self):
-        """Get current dimension values as a dictionary."""
-        values = {}
-
+        """Get current dimension values as a dictionary ordered by rule configuration."""
+        from collections import OrderedDict
+        from .rule import RuleDetail
+        
+        # Get rule details to determine the correct order
+        rule_details = RuleDetail.objects.filter(
+            rule=self.rule,
+            field=self.field
+        ).select_related('dimension').order_by('dimension_order')
+        
+        # Create ordered dictionary following rule order
+        values = OrderedDict()
+        
+        # First pass: add values in rule order
+        for rule_detail in rule_details:
+            dimension_name = rule_detail.dimension.name
+            
+            # Find the corresponding string detail
+            try:
+                string_detail = self.string_details.get(dimension=rule_detail.dimension)
+                if string_detail.dimension_value:
+                    values[dimension_name] = string_detail.dimension_value.value
+                else:
+                    values[dimension_name] = string_detail.dimension_value_freetext
+            except self.string_details.model.DoesNotExist:
+                # If string detail doesn't exist, skip this dimension
+                continue
+        
+        # Second pass: add any remaining dimensions not in rule (shouldn't happen in normal cases)
         for detail in self.string_details.select_related('dimension', 'dimension_value'):
-            if detail.dimension_value:
-                values[detail.dimension.name] = detail.dimension_value.value
-            else:
-                values[detail.dimension.name] = detail.dimension_value_freetext
-
+            if detail.dimension.name not in values:
+                if detail.dimension_value:
+                    values[detail.dimension.name] = detail.dimension_value.value
+                else:
+                    values[detail.dimension.name] = detail.dimension_value_freetext
+        
         return values
 
     def check_naming_conflicts(self, exclude_self=True):

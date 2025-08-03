@@ -409,6 +409,8 @@ class StringNestedSerializer(serializers.ModelSerializer):
                     # Handle dimension_value properly based on dimension type
                     dimension_value_id = detail_data.pop(
                         'dimension_value', None)
+                    dimension_value_freetext = detail_data.pop(
+                        'dimension_value_freetext', None)
                     dimension_id = detail_data.get('dimension')
 
                     # Reset dimension_value and dimension_value_freetext
@@ -450,6 +452,10 @@ class StringNestedSerializer(serializers.ModelSerializer):
                         except models.Dimension.DoesNotExist:
                             logger.warning(
                                 f"Dimension {dimension_id} not found")
+
+                    # Case 3: dimension_value_freetext is provided directly (from frontend)
+                    elif dimension_value_freetext is not None:
+                        detail_data['dimension_value_freetext'] = dimension_value_freetext
 
                     models.StringDetail.objects.create(
                         string=string,
@@ -619,6 +625,8 @@ class SubmissionNestedCreateSerializer(serializers.ModelSerializer):
                             # Handle dimension_value properly based on dimension type
                             dimension_value_id = detail_data.pop(
                                 'dimension_value', None)
+                            dimension_value_freetext = detail_data.pop(
+                                'dimension_value_freetext', None)
                             dimension_id = detail_data.get('dimension')
 
                             # Reset dimension_value and dimension_value_freetext
@@ -660,6 +668,10 @@ class SubmissionNestedCreateSerializer(serializers.ModelSerializer):
                                 except models.Dimension.DoesNotExist:
                                     logger.warning(
                                         f"Dimension {dimension_id} not found")
+
+                            # Case 3: dimension_value_freetext is provided directly (from frontend)
+                            elif dimension_value_freetext is not None:
+                                detail_data['dimension_value_freetext'] = dimension_value_freetext
 
                             # Validate required fields for string detail
                             if not detail_data.get('dimension'):
@@ -1006,6 +1018,8 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                     # Handle dimension_value properly based on dimension type
                     dimension_value_id = detail_data.pop(
                         'dimension_value', None)
+                    dimension_value_freetext = detail_data.pop(
+                        'dimension_value_freetext', None)
                     dimension_id = detail_data.get('dimension')
 
                     # Reset dimension_value and dimension_value_freetext
@@ -1047,6 +1061,10 @@ class SubmissionNestedSerializer(serializers.ModelSerializer):
                         except models.Dimension.DoesNotExist:
                             logger.warning(
                                 f"Dimension {dimension_id} not found")
+
+                    # Case 3: dimension_value_freetext is provided directly (from frontend)
+                    elif dimension_value_freetext is not None:
+                        detail_data['dimension_value_freetext'] = dimension_value_freetext
 
                     models.StringDetail.objects.create(
                         string=string,
