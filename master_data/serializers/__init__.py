@@ -125,6 +125,7 @@ __all__ = [
     'StringDetailUpdateWithPropagationSerializer',
     'PropagationJobSerializer',
     'PropagationErrorSerializer',
+    'StringDetailUpdateItemSerializer',
     'StringDetailBatchUpdateRequestSerializer',
     'StringDetailBatchUpdateResponseSerializer',
     'PropagationSettingsSerializer',

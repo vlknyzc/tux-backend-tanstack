@@ -11,7 +11,7 @@ from .. import models
 
 class PropagationImpactRequestSerializer(serializers.Serializer):
     """Serializer for propagation impact analysis requests."""
-    
+
     string_detail_updates = serializers.ListField(
         child=serializers.DictField(),
         help_text="List of StringDetail updates to analyze"
@@ -22,19 +22,20 @@ class PropagationImpactRequestSerializer(serializers.Serializer):
         max_value=50,
         help_text="Maximum propagation depth to analyze"
     )
-    
+
     def validate_string_detail_updates(self, value):
         """Validate the list of string detail updates."""
         if not value:
-            raise serializers.ValidationError("At least one update must be provided")
-        
+            raise serializers.ValidationError(
+                "At least one update must be provided")
+
         for i, update in enumerate(value):
             # Validate required fields
             if 'string_detail_id' not in update:
                 raise serializers.ValidationError(
                     f"Update {i}: string_detail_id is required"
                 )
-            
+
             # Validate string_detail_id is integer
             try:
                 int(update['string_detail_id'])
@@ -42,20 +43,21 @@ class PropagationImpactRequestSerializer(serializers.Serializer):
                 raise serializers.ValidationError(
                     f"Update {i}: string_detail_id must be an integer"
                 )
-            
+
             # Validate at least one field to update is provided
-            update_fields = [k for k in update.keys() if k != 'string_detail_id']
+            update_fields = [k for k in update.keys() if k !=
+                             'string_detail_id']
             if not update_fields:
                 raise serializers.ValidationError(
                     f"Update {i}: At least one field to update must be provided"
                 )
-        
+
         return value
 
 
 class PropagationImpactResponseSerializer(serializers.Serializer):
     """Serializer for propagation impact analysis responses."""
-    
+
     affected_strings = serializers.ListField(
         child=serializers.DictField(),
         help_text="List of strings that would be affected"
@@ -75,7 +77,7 @@ class PropagationImpactResponseSerializer(serializers.Serializer):
 
 class StringDetailUpdateWithPropagationSerializer(serializers.ModelSerializer):
     """Enhanced StringDetail serializer with propagation control."""
-    
+
     # Propagation control fields
     propagate = serializers.BooleanField(
         default=True,
@@ -94,13 +96,13 @@ class StringDetailUpdateWithPropagationSerializer(serializers.ModelSerializer):
         write_only=True,
         help_text="Preview changes without applying them"
     )
-    
+
     # Response fields
     propagation_summary = serializers.DictField(
         read_only=True,
         help_text="Summary of propagation results"
     )
-    
+
     class Meta:
         model = models.StringDetail
         fields = [
@@ -112,41 +114,41 @@ class StringDetailUpdateWithPropagationSerializer(serializers.ModelSerializer):
             'propagation_summary'
         ]
         read_only_fields = ['created', 'last_updated']
-    
+
     def validate(self, attrs):
         """Enhanced validation with propagation awareness."""
         attrs = super().validate(attrs)
-        
+
         # If dry_run is True, we don't need to validate as strictly
         if attrs.get('dry_run', False):
             return attrs
-        
+
         # Standard StringDetail validation
         dimension_value = attrs.get('dimension_value')
         dimension_value_freetext = attrs.get('dimension_value_freetext')
-        
+
         if not dimension_value and not dimension_value_freetext:
             raise serializers.ValidationError(
                 "Either dimension_value or dimension_value_freetext must be provided"
             )
-        
+
         if dimension_value and dimension_value_freetext:
             raise serializers.ValidationError(
                 "Cannot specify both dimension_value and dimension_value_freetext"
             )
-        
+
         return attrs
 
 
 class PropagationJobSerializer(serializers.ModelSerializer):
     """Serializer for PropagationJob model."""
-    
+
     triggered_by_name = serializers.SerializerMethodField()
     workspace_name = serializers.SerializerMethodField()
     duration = serializers.SerializerMethodField()
     progress_percentage = serializers.SerializerMethodField()
     success_rate = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = models.PropagationJob
         fields = [
@@ -159,15 +161,15 @@ class PropagationJobSerializer(serializers.ModelSerializer):
             'error_message', 'created', 'last_updated'
         ]
         read_only_fields = ['batch_id', 'created', 'last_updated']
-    
+
     def get_triggered_by_name(self, obj) -> str:
         if obj.triggered_by:
             return f"{obj.triggered_by.first_name} {obj.triggered_by.last_name}".strip()
         return "System"
-    
+
     def get_workspace_name(self, obj) -> str:
         return obj.workspace.name if obj.workspace else ""
-    
+
     def get_duration(self, obj) -> str:
         if obj.duration:
             total_seconds = int(obj.duration.total_seconds())
@@ -178,21 +180,21 @@ class PropagationJobSerializer(serializers.ModelSerializer):
                 seconds = total_seconds % 60
                 return f"{minutes}m {seconds}s"
         return None
-    
+
     def get_progress_percentage(self, obj) -> float:
         return obj.progress_percentage
-    
+
     def get_success_rate(self, obj) -> float:
         return obj.success_rate
 
 
 class PropagationErrorSerializer(serializers.ModelSerializer):
     """Serializer for PropagationError model."""
-    
+
     job_batch_id = serializers.SerializerMethodField()
     string_value = serializers.SerializerMethodField()
     resolved_by_name = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = models.PropagationError
         fields = [
@@ -203,54 +205,92 @@ class PropagationErrorSerializer(serializers.ModelSerializer):
             'created', 'last_updated'
         ]
         read_only_fields = ['created', 'last_updated']
-    
+
     def get_job_batch_id(self, obj) -> str:
         return str(obj.job.batch_id) if obj.job else ""
-    
+
     def get_string_value(self, obj) -> str:
         return obj.string.value if obj.string else ""
-    
+
     def get_resolved_by_name(self, obj) -> str:
         if obj.resolved_by:
             return f"{obj.resolved_by.first_name} {obj.resolved_by.last_name}".strip()
         return ""
 
 
+class StringDetailUpdateItemSerializer(serializers.Serializer):
+    """Serializer for individual StringDetail updates within a batch."""
+
+    string_detail_id = serializers.IntegerField(
+        help_text="ID of the StringDetail to update"
+    )
+    dimension_value = serializers.IntegerField(
+        required=False,
+        allow_null=True,
+        help_text="ID of the dimension value to set"
+    )
+    dimension_value_freetext = serializers.CharField(
+        required=False,
+        allow_null=True,
+        allow_blank=True,
+        help_text="Free text value for the dimension"
+    )
+
+    def validate(self, attrs):
+        """Validate that either dimension_value or dimension_value_freetext is provided."""
+        dimension_value = attrs.get('dimension_value')
+        dimension_value_freetext = attrs.get('dimension_value_freetext')
+
+        if dimension_value is None and dimension_value_freetext is None:
+            raise serializers.ValidationError(
+                "Either dimension_value or dimension_value_freetext must be provided"
+            )
+
+        if dimension_value is not None and dimension_value_freetext is not None:
+            raise serializers.ValidationError(
+                "Cannot specify both dimension_value and dimension_value_freetext"
+            )
+
+        return attrs
+
+
 class StringDetailBatchUpdateRequestSerializer(serializers.Serializer):
     """Serializer for batch StringDetail updates."""
-    
+
     updates = serializers.ListField(
-        child=serializers.DictField(),
+        child=StringDetailUpdateItemSerializer(),
         help_text="List of StringDetail updates to apply"
     )
     options = serializers.DictField(
         default=dict,
         help_text="Batch update options"
     )
-    
+
     def validate_updates(self, value):
         """Validate the batch updates."""
         if not value:
-            raise serializers.ValidationError("At least one update must be provided")
-        
+            raise serializers.ValidationError(
+                "At least one update must be provided")
+
         if len(value) > 100:  # Reasonable limit
-            raise serializers.ValidationError("Too many updates in single batch (max 100)")
-        
+            raise serializers.ValidationError(
+                "Too many updates in single batch (max 100)")
+
         for i, update in enumerate(value):
             if 'string_detail_id' not in update:
                 raise serializers.ValidationError(
                     f"Update {i}: string_detail_id is required"
                 )
-            
+
             try:
                 int(update['string_detail_id'])
             except (ValueError, TypeError):
                 raise serializers.ValidationError(
                     f"Update {i}: string_detail_id must be an integer"
                 )
-        
+
         return value
-    
+
     def validate_options(self, value):
         """Validate batch update options."""
         # Validate known options
@@ -258,13 +298,13 @@ class StringDetailBatchUpdateRequestSerializer(serializers.Serializer):
             'propagate', 'max_depth', 'parallel_processing',
             'error_handling', 'dry_run'
         }
-        
+
         invalid_options = set(value.keys()) - valid_options
         if invalid_options:
             raise serializers.ValidationError(
                 f"Invalid options: {', '.join(invalid_options)}"
             )
-        
+
         # Validate option values
         if 'max_depth' in value:
             try:
@@ -274,21 +314,22 @@ class StringDetailBatchUpdateRequestSerializer(serializers.Serializer):
                         "max_depth must be between 1 and 50"
                     )
             except (ValueError, TypeError):
-                raise serializers.ValidationError("max_depth must be an integer")
-        
+                raise serializers.ValidationError(
+                    "max_depth must be an integer")
+
         if 'error_handling' in value:
             valid_strategies = ['continue', 'stop', 'rollback']
             if value['error_handling'] not in valid_strategies:
                 raise serializers.ValidationError(
                     f"error_handling must be one of: {', '.join(valid_strategies)}"
                 )
-        
+
         return value
 
 
 class StringDetailBatchUpdateResponseSerializer(serializers.Serializer):
     """Serializer for batch StringDetail update responses."""
-    
+
     job_id = serializers.CharField(help_text="Batch job identifier")
     successful_updates = serializers.ListField(
         child=serializers.DictField(),
@@ -311,10 +352,10 @@ class StringDetailBatchUpdateResponseSerializer(serializers.Serializer):
 
 class PropagationSettingsSerializer(serializers.ModelSerializer):
     """Serializer for PropagationSettings model."""
-    
+
     user_name = serializers.SerializerMethodField()
     workspace_name = serializers.SerializerMethodField()
-    
+
     class Meta:
         model = models.PropagationSettings
         fields = [
@@ -322,20 +363,20 @@ class PropagationSettingsSerializer(serializers.ModelSerializer):
             'settings', 'created', 'last_updated'
         ]
         read_only_fields = ['user', 'workspace', 'created', 'last_updated']
-    
+
     def get_user_name(self, obj) -> str:
         if obj.user:
             return f"{obj.user.first_name} {obj.user.last_name}".strip()
         return ""
-    
+
     def get_workspace_name(self, obj) -> str:
         return obj.workspace.name if obj.workspace else ""
-    
+
     def validate_settings(self, value):
         """Validate the settings dictionary."""
         if not isinstance(value, dict):
             raise serializers.ValidationError("Settings must be a dictionary")
-        
+
         # Validate known settings
         valid_settings = {
             'default_propagation_enabled',
@@ -344,12 +385,12 @@ class PropagationSettingsSerializer(serializers.ModelSerializer):
             'notification_preferences',
             'auto_preview_enabled'
         }
-        
+
         for key in value.keys():
             if key not in valid_settings:
                 # Allow unknown settings but log a warning
                 pass
-        
+
         # Validate specific setting values
         if 'default_propagation_depth' in value:
             try:
@@ -362,11 +403,11 @@ class PropagationSettingsSerializer(serializers.ModelSerializer):
                 raise serializers.ValidationError(
                     "default_propagation_depth must be an integer"
                 )
-        
+
         if 'field_propagation_rules' in value:
             if not isinstance(value['field_propagation_rules'], dict):
                 raise serializers.ValidationError(
                     "field_propagation_rules must be a dictionary"
                 )
-        
+
         return value

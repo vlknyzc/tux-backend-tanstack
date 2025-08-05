@@ -503,6 +503,12 @@ class PropagationService:
             job.save()
             
             results['processing_time'] = processing_time
+            results['summary'] = {
+                'total_updates': len(string_detail_updates),
+                'successful_count': len(results['successful_updates']),
+                'failed_count': len(results['failed_updates']),
+                'status': 'completed' if not results['failed_updates'] else 'partial_failure'
+            }
             
             return results
             
@@ -537,7 +543,11 @@ class PropagationService:
         # Update the StringDetail
         for field, value in update.items():
             if field != 'string_detail_id' and hasattr(string_detail, field):
-                setattr(string_detail, field, value)
+                # Handle foreign key fields by using the _id suffix
+                if field == 'dimension_value' and value is not None:
+                    setattr(string_detail, 'dimension_value_id', value)
+                else:
+                    setattr(string_detail, field, value)
         
         string_detail.save()
         

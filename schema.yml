@@ -11,7 +11,7 @@ paths:
         Demonstration view showing how to implement version-specific behavior.
         This shows how existing endpoints can be enhanced for v2 while maintaining v1 compatibility.
       tags:
-      - v1
+      - System
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -47,7 +47,7 @@ paths:
         schema:
           type: integer
       tags:
-      - v1
+      - Dimensions
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -66,7 +66,7 @@ paths:
       operationId: v1_dimension_values_create
       description: CRUD + bulk_create for DimensionValue, scoped per-workspace.
       tags:
-      - v1
+      - Dimensions
       requestBody:
         content:
           application/json:
@@ -103,7 +103,7 @@ paths:
         description: A unique integer value identifying this Dimension Value.
         required: true
       tags:
-      - v1
+      - Dimensions
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -127,7 +127,7 @@ paths:
         description: A unique integer value identifying this Dimension Value.
         required: true
       tags:
-      - v1
+      - Dimensions
       requestBody:
         content:
           application/json:
@@ -163,7 +163,7 @@ paths:
         description: A unique integer value identifying this Dimension Value.
         required: true
       tags:
-      - v1
+      - Dimensions
       requestBody:
         content:
           application/json:
@@ -198,7 +198,7 @@ paths:
         description: A unique integer value identifying this Dimension Value.
         required: true
       tags:
-      - v1
+      - Dimensions
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -217,7 +217,7 @@ paths:
         Workspace can be provided either as a query parameter (?workspace=<id>)
         or in the request body ("workspace": <id>).
       tags:
-      - v1
+      - Dimensions
       requestBody:
         content:
           application/json:
@@ -284,7 +284,7 @@ paths:
         schema:
           type: integer
       tags:
-      - v1
+      - Dimensions
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -303,7 +303,7 @@ paths:
       operationId: v1_dimensions_create
       description: CRUD + bulk_create for Dimension, scoped per-workspace.
       tags:
-      - v1
+      - Dimensions
       requestBody:
         content:
           application/json:
@@ -340,7 +340,7 @@ paths:
         description: A unique integer value identifying this Dimension.
         required: true
       tags:
-      - v1
+      - Dimensions
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -364,7 +364,7 @@ paths:
         description: A unique integer value identifying this Dimension.
         required: true
       tags:
-      - v1
+      - Dimensions
       requestBody:
         content:
           application/json:
@@ -400,7 +400,7 @@ paths:
         description: A unique integer value identifying this Dimension.
         required: true
       tags:
-      - v1
+      - Dimensions
       requestBody:
         content:
           application/json:
@@ -435,7 +435,7 @@ paths:
         description: A unique integer value identifying this Dimension.
         required: true
       tags:
-      - v1
+      - Dimensions
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -454,7 +454,7 @@ paths:
         Workspace can be provided either as a query parameter (?workspace=<id>)
         or in the request body ("workspace": <id>).
       tags:
-      - v1
+      - Dimensions
       requestBody:
         content:
           application/json:
@@ -479,6 +479,256 @@ paths:
               schema:
                 $ref: '#/components/schemas/Dimension'
           description: ''
+  /api/v1/enhanced-string-details/:
+    get:
+      operationId: v1_enhanced_string_details_list
+      description: |-
+        Enhanced StringDetail ViewSet with propagation control.
+        Extends the existing StringDetailViewSet functionality.
+      parameters:
+      - in: query
+        name: dimension
+        schema:
+          type: integer
+      - in: query
+        name: dimension_value
+        schema:
+          type: integer
+      - in: query
+        name: string
+        schema:
+          type: integer
+      tags:
+      - String Details
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/StringDetailUpdateWithPropagation'
+          description: ''
+    post:
+      operationId: v1_enhanced_string_details_create
+      description: |-
+        Enhanced StringDetail ViewSet with propagation control.
+        Extends the existing StringDetailViewSet functionality.
+      tags:
+      - String Details
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StringDetailUpdateWithPropagation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StringDetailUpdateWithPropagation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StringDetailUpdateWithPropagation'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringDetailUpdateWithPropagation'
+          description: ''
+  /api/v1/enhanced-string-details/{id}/:
+    get:
+      operationId: v1_enhanced_string_details_retrieve
+      description: |-
+        Enhanced StringDetail ViewSet with propagation control.
+        Extends the existing StringDetailViewSet functionality.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String Detail.
+        required: true
+      tags:
+      - String Details
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringDetailUpdateWithPropagation'
+          description: ''
+    put:
+      operationId: v1_enhanced_string_details_update
+      description: |-
+        Enhanced StringDetail ViewSet with propagation control.
+        Extends the existing StringDetailViewSet functionality.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String Detail.
+        required: true
+      tags:
+      - String Details
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StringDetailUpdateWithPropagation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StringDetailUpdateWithPropagation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StringDetailUpdateWithPropagation'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringDetailUpdateWithPropagation'
+          description: ''
+    patch:
+      operationId: v1_enhanced_string_details_partial_update
+      description: |-
+        Enhanced StringDetail ViewSet with propagation control.
+        Extends the existing StringDetailViewSet functionality.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String Detail.
+        required: true
+      tags:
+      - String Details
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedStringDetailUpdateWithPropagation'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedStringDetailUpdateWithPropagation'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedStringDetailUpdateWithPropagation'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringDetailUpdateWithPropagation'
+          description: ''
+    delete:
+      operationId: v1_enhanced_string_details_destroy
+      description: |-
+        Enhanced StringDetail ViewSet with propagation control.
+        Extends the existing StringDetailViewSet functionality.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String Detail.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/enhanced-string-details/analyze_impact/:
+    post:
+      operationId: v1_enhanced_string_details_analyze_impact_create
+      description: Analyze propagation impact without making changes.
+      tags:
+      - String Details
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropagationImpactRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PropagationImpactRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PropagationImpactRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationImpactRequest'
+          description: ''
+  /api/v1/enhanced-string-details/batch_update/:
+    put:
+      operationId: v1_enhanced_string_details_batch_update_update
+      description: Perform batch updates on multiple StringDetails.
+      tags:
+      - String Details
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StringDetailBatchUpdateRequest'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/StringDetailBatchUpdateRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StringDetailBatchUpdateRequest'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StringDetailBatchUpdateRequest'
+          description: ''
   /api/v1/fields/:
     get:
       operationId: v1_fields_list
@@ -496,7 +746,7 @@ paths:
         schema:
           type: integer
       tags:
-      - v1
+      - Fields
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -514,7 +764,7 @@ paths:
     post:
       operationId: v1_fields_create
       tags:
-      - v1
+      - Fields
       requestBody:
         content:
           application/json:
@@ -550,7 +800,7 @@ paths:
         description: A unique integer value identifying this Field.
         required: true
       tags:
-      - v1
+      - Fields
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -573,7 +823,7 @@ paths:
         description: A unique integer value identifying this Field.
         required: true
       tags:
-      - v1
+      - Fields
       requestBody:
         content:
           application/json:
@@ -608,7 +858,7 @@ paths:
         description: A unique integer value identifying this Field.
         required: true
       tags:
-      - v1
+      - Fields
       requestBody:
         content:
           application/json:
@@ -642,7 +892,7 @@ paths:
         description: A unique integer value identifying this Field.
         required: true
       tags:
-      - v1
+      - Fields
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -656,7 +906,7 @@ paths:
       operationId: v1_health_retrieve
       description: Health check endpoint that includes version information.
       tags:
-      - v1
+      - System
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -677,7 +927,7 @@ paths:
         Takes a set of user credentials and returns an access and refresh JSON web
         token pair to prove the authentication of those credentials.
       tags:
-      - v1
+      - Authentication
       requestBody:
         content:
           application/json:
@@ -706,7 +956,7 @@ paths:
         Takes a refresh type JSON web token and returns an access type JSON web
         token if the refresh token is valid.
       tags:
-      - v1
+      - Authentication
       requestBody:
         content:
           application/json:
@@ -735,7 +985,7 @@ paths:
         Takes a token and indicates if it is valid.  This view provides no
         information about a token's fitness for a particular use.
       tags:
-      - v1
+      - Authentication
       requestBody:
         content:
           application/json:
@@ -761,7 +1011,7 @@ paths:
     post:
       operationId: v1_logout_create
       tags:
-      - v1
+      - Authentication
       requestBody:
         content:
           application/json:
@@ -807,7 +1057,7 @@ paths:
         schema:
           type: integer
       tags:
-      - v1
+      - Submissions
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -826,7 +1076,7 @@ paths:
       operationId: v1_nested_submissions_create
       description: Create a submission with nested strings and string details atomically
       tags:
-      - v1
+      - Submissions
       requestBody:
         content:
           application/json:
@@ -863,7 +1113,7 @@ paths:
         description: A unique integer value identifying this Submission.
         required: true
       tags:
-      - v1
+      - Submissions
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -887,7 +1137,7 @@ paths:
         description: A unique integer value identifying this Submission.
         required: true
       tags:
-      - v1
+      - Submissions
       requestBody:
         content:
           application/json:
@@ -924,7 +1174,7 @@ paths:
         description: A unique integer value identifying this Submission.
         required: true
       tags:
-      - v1
+      - Submissions
       requestBody:
         content:
           application/json:
@@ -960,7 +1210,7 @@ paths:
         description: A unique integer value identifying this Submission.
         required: true
       tags:
-      - v1
+      - Submissions
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -973,7 +1223,7 @@ paths:
     get:
       operationId: v1_platforms_list
       tags:
-      - v1
+      - Platforms
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -992,7 +1242,7 @@ paths:
     post:
       operationId: v1_platforms_create
       tags:
-      - v1
+      - Platforms
       requestBody:
         content:
           application/json:
@@ -1029,7 +1279,7 @@ paths:
         description: A unique integer value identifying this Platform.
         required: true
       tags:
-      - v1
+      - Platforms
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1053,7 +1303,7 @@ paths:
         description: A unique integer value identifying this Platform.
         required: true
       tags:
-      - v1
+      - Platforms
       requestBody:
         content:
           application/json:
@@ -1089,7 +1339,7 @@ paths:
         description: A unique integer value identifying this Platform.
         required: true
       tags:
-      - v1
+      - Platforms
       requestBody:
         content:
           application/json:
@@ -1124,7 +1374,7 @@ paths:
         description: A unique integer value identifying this Platform.
         required: true
       tags:
-      - v1
+      - Platforms
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1134,6 +1384,602 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/propagation-errors/:
+    get:
+      operationId: v1_propagation_errors_list
+      description: |-
+        ViewSet for managing propagation errors.
+        Allows marking errors as resolved.
+      parameters:
+      - in: query
+        name: error_type
+        schema:
+          type: string
+          enum:
+          - circular_dependency
+          - conflict_error
+          - database_error
+          - permission_error
+          - string_generation_error
+          - timeout_error
+          - unknown_error
+          - validation_error
+        description: |-
+          Type of error that occurred
+
+          * `string_generation_error` - String Generation Error
+          * `database_error` - Database Error
+          * `validation_error` - Validation Error
+          * `circular_dependency` - Circular Dependency
+          * `conflict_error` - Conflict Error
+          * `permission_error` - Permission Error
+          * `timeout_error` - Timeout Error
+          * `unknown_error` - Unknown Error
+      - in: query
+        name: is_retryable
+        schema:
+          type: boolean
+      - in: query
+        name: resolved
+        schema:
+          type: boolean
+      tags:
+      - String Propagation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PropagationError'
+          description: ''
+    post:
+      operationId: v1_propagation_errors_create
+      description: |-
+        ViewSet for managing propagation errors.
+        Allows marking errors as resolved.
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropagationError'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PropagationError'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PropagationError'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationError'
+          description: ''
+  /api/v1/propagation-errors/{id}/:
+    get:
+      operationId: v1_propagation_errors_retrieve
+      description: |-
+        ViewSet for managing propagation errors.
+        Allows marking errors as resolved.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Propagation Error.
+        required: true
+      tags:
+      - String Propagation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationError'
+          description: ''
+    put:
+      operationId: v1_propagation_errors_update
+      description: |-
+        ViewSet for managing propagation errors.
+        Allows marking errors as resolved.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Propagation Error.
+        required: true
+      tags:
+      - v1
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropagationError'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PropagationError'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PropagationError'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationError'
+          description: ''
+    patch:
+      operationId: v1_propagation_errors_partial_update
+      description: |-
+        ViewSet for managing propagation errors.
+        Allows marking errors as resolved.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Propagation Error.
+        required: true
+      tags:
+      - String Propagation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPropagationError'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPropagationError'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPropagationError'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationError'
+          description: ''
+    delete:
+      operationId: v1_propagation_errors_destroy
+      description: |-
+        ViewSet for managing propagation errors.
+        Allows marking errors as resolved.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Propagation Error.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/propagation-errors/{id}/mark_resolved/:
+    post:
+      operationId: v1_propagation_errors_mark_resolved_create
+      description: Mark an error as resolved.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Propagation Error.
+        required: true
+      tags:
+      - String Propagation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropagationError'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PropagationError'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PropagationError'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationError'
+          description: ''
+  /api/v1/propagation-errors/{id}/retry/:
+    post:
+      operationId: v1_propagation_errors_retry_create
+      description: Retry a failed operation.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Propagation Error.
+        required: true
+      tags:
+      - String Propagation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropagationError'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PropagationError'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PropagationError'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationError'
+          description: ''
+  /api/v1/propagation-jobs/:
+    get:
+      operationId: v1_propagation_jobs_list
+      description: |-
+        ViewSet for viewing propagation jobs.
+        Read-only to maintain audit trail integrity.
+      parameters:
+      - in: query
+        name: processing_method
+        schema:
+          type: string
+          enum:
+          - background
+          - chunked
+          - synchronous
+        description: |-
+          Processing method used for this job
+
+          * `synchronous` - Synchronous
+          * `background` - Background
+          * `chunked` - Chunked Processing
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - cancelled
+          - completed
+          - failed
+          - partial_failure
+          - pending
+          - running
+        description: |-
+          Current status of the propagation job
+
+          * `pending` - Pending
+          * `running` - Running
+          * `completed` - Completed
+          * `failed` - Failed
+          * `cancelled` - Cancelled
+          * `partial_failure` - Partial Failure
+      - in: query
+        name: triggered_by
+        schema:
+          type: integer
+      tags:
+      - String Propagation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PropagationJob'
+          description: ''
+  /api/v1/propagation-jobs/{id}/:
+    get:
+      operationId: v1_propagation_jobs_retrieve
+      description: |-
+        ViewSet for viewing propagation jobs.
+        Read-only to maintain audit trail integrity.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Propagation Job.
+        required: true
+      tags:
+      - String Propagation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationJob'
+          description: ''
+  /api/v1/propagation-jobs/{id}/errors/:
+    get:
+      operationId: v1_propagation_jobs_errors_retrieve
+      description: Get errors for a specific propagation job.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Propagation Job.
+        required: true
+      tags:
+      - String Propagation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationJob'
+          description: ''
+  /api/v1/propagation-jobs/summary/:
+    get:
+      operationId: v1_propagation_jobs_summary_retrieve
+      description: Get summary statistics for propagation jobs.
+      tags:
+      - String Propagation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationJob'
+          description: ''
+  /api/v1/propagation-settings/:
+    get:
+      operationId: v1_propagation_settings_list
+      description: ViewSet for managing user propagation settings.
+      tags:
+      - String Propagation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/PropagationSettings'
+          description: ''
+    post:
+      operationId: v1_propagation_settings_create
+      description: ViewSet for managing user propagation settings.
+      tags:
+      - String Propagation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropagationSettings'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PropagationSettings'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PropagationSettings'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationSettings'
+          description: ''
+  /api/v1/propagation-settings/{id}/:
+    get:
+      operationId: v1_propagation_settings_retrieve
+      description: ViewSet for managing user propagation settings.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Propagation Settings.
+        required: true
+      tags:
+      - String Propagation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationSettings'
+          description: ''
+    put:
+      operationId: v1_propagation_settings_update
+      description: ViewSet for managing user propagation settings.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Propagation Settings.
+        required: true
+      tags:
+      - String Propagation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PropagationSettings'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PropagationSettings'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PropagationSettings'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationSettings'
+          description: ''
+    patch:
+      operationId: v1_propagation_settings_partial_update
+      description: ViewSet for managing user propagation settings.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Propagation Settings.
+        required: true
+      tags:
+      - String Propagation
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedPropagationSettings'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/PatchedPropagationSettings'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedPropagationSettings'
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationSettings'
+          description: ''
+    delete:
+      operationId: v1_propagation_settings_destroy
+      description: ViewSet for managing user propagation settings.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this Propagation Settings.
+        required: true
+      tags:
+      - v1
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/propagation-settings/current/:
+    get:
+      operationId: v1_propagation_settings_current_retrieve
+      description: Get current user's settings for current workspace.
+      tags:
+      - String Propagation
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PropagationSettings'
+          description: ''
   /api/v1/rule-details/:
     get:
       operationId: v1_rule_details_list
@@ -1167,7 +2013,7 @@ paths:
         schema:
           type: integer
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1185,7 +2031,7 @@ paths:
     post:
       operationId: v1_rule_details_create
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1221,7 +2067,7 @@ paths:
         description: A unique integer value identifying this Rule Detail.
         required: true
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1244,7 +2090,7 @@ paths:
         description: A unique integer value identifying this Rule Detail.
         required: true
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1279,7 +2125,7 @@ paths:
         description: A unique integer value identifying this Rule Detail.
         required: true
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1313,7 +2159,7 @@ paths:
         description: A unique integer value identifying this Rule Detail.
         required: true
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1327,7 +2173,7 @@ paths:
       operationId: v1_rule_details_validate_order_create
       description: Validate dimension order for a rule and field.
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1381,7 +2227,7 @@ paths:
         schema:
           type: integer
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1399,7 +2245,7 @@ paths:
     post:
       operationId: v1_rule_nested_create
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1435,7 +2281,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1458,7 +2304,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1493,7 +2339,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1527,7 +2373,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1548,7 +2394,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1602,7 +2448,7 @@ paths:
         schema:
           type: integer
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1620,7 +2466,7 @@ paths:
     post:
       operationId: v1_rules_create
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1656,7 +2502,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1679,7 +2525,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1714,7 +2560,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1748,7 +2594,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1769,7 +2615,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1806,7 +2652,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -1831,7 +2677,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       requestBody:
         content:
           application/json:
@@ -1868,7 +2714,7 @@ paths:
         description: A unique integer value identifying this Rule.
         required: true
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2133,7 +2979,7 @@ paths:
       operationId: v1_rules_active_retrieve
       description: Get all active rules in current workspace.
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2197,7 +3043,7 @@ paths:
       operationId: v1_rules_defaults_retrieve
       description: Get all default rules by platform in current workspace.
       tags:
-      - v1
+      - Rules
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2273,7 +3119,7 @@ paths:
         schema:
           type: integer
       tags:
-      - v1
+      - Strings
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2291,7 +3137,7 @@ paths:
     post:
       operationId: v1_string_details_create
       tags:
-      - v1
+      - Strings
       requestBody:
         content:
           application/json:
@@ -2327,7 +3173,7 @@ paths:
         description: A unique integer value identifying this String Detail.
         required: true
       tags:
-      - v1
+      - Strings
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2350,7 +3196,7 @@ paths:
         description: A unique integer value identifying this String Detail.
         required: true
       tags:
-      - v1
+      - Strings
       requestBody:
         content:
           application/json:
@@ -2385,7 +3231,7 @@ paths:
         description: A unique integer value identifying this String Detail.
         required: true
       tags:
-      - v1
+      - Strings
       requestBody:
         content:
           application/json:
@@ -2419,7 +3265,7 @@ paths:
         description: A unique integer value identifying this String Detail.
         required: true
       tags:
-      - v1
+      - Strings
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2469,7 +3315,7 @@ paths:
         schema:
           type: integer
       tags:
-      - v1
+      - Strings
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2487,7 +3333,7 @@ paths:
     post:
       operationId: v1_strings_create
       tags:
-      - v1
+      - Strings
       requestBody:
         content:
           application/json:
@@ -2523,7 +3369,7 @@ paths:
         description: A unique integer value identifying this String.
         required: true
       tags:
-      - v1
+      - Strings
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2546,7 +3392,7 @@ paths:
         description: A unique integer value identifying this String.
         required: true
       tags:
-      - v1
+      - Strings
       requestBody:
         content:
           application/json:
@@ -2581,7 +3427,7 @@ paths:
         description: A unique integer value identifying this String.
         required: true
       tags:
-      - v1
+      - Strings
       requestBody:
         content:
           application/json:
@@ -2615,7 +3461,7 @@ paths:
         description: A unique integer value identifying this String.
         required: true
       tags:
-      - v1
+      - Strings
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2624,6 +3470,31 @@ paths:
       responses:
         '204':
           description: No response body
+  /api/v1/strings/{id}/expanded/:
+    get:
+      operationId: v1_strings_expanded_retrieve
+      description: Get expanded string data combining string and string-details.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String.
+        required: true
+      tags:
+      - Strings
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
   /api/v1/strings/{id}/hierarchy/:
     get:
       operationId: v1_strings_hierarchy_retrieve
@@ -2636,7 +3507,32 @@ paths:
         description: A unique integer value identifying this String.
         required: true
       tags:
-      - v1
+      - Strings
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+  /api/v1/strings/{id}/history/:
+    get:
+      operationId: v1_strings_history_retrieve
+      description: Get modification history for a string.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: integer
+        description: A unique integer value identifying this String.
+        required: true
+      tags:
+      - Strings
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2661,7 +3557,67 @@ paths:
         description: A unique integer value identifying this String.
         required: true
       tags:
-      - v1
+      - Strings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/String'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/String'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/String'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+  /api/v1/strings/analyze_impact/:
+    post:
+      operationId: v1_strings_analyze_impact_create
+      description: Analyze inheritance impact of proposed string updates.
+      tags:
+      - Strings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/String'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/String'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/String'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+  /api/v1/strings/batch_update/:
+    put:
+      operationId: v1_strings_batch_update_update
+      description: Batch update multiple strings with inheritance management.
+      tags:
+      - Strings
       requestBody:
         content:
           application/json:
@@ -2691,7 +3647,7 @@ paths:
       operationId: v1_strings_bulk_generate_create
       description: Generate multiple strings in a single request.
       tags:
-      - v1
+      - Strings
       requestBody:
         content:
           application/json:
@@ -2721,7 +3677,7 @@ paths:
       operationId: v1_strings_check_conflicts_create
       description: Check for naming conflicts before string creation.
       tags:
-      - v1
+      - Strings
       requestBody:
         content:
           application/json:
@@ -2751,7 +3707,7 @@ paths:
       operationId: v1_strings_conflicts_retrieve
       description: Get all strings that have naming conflicts in current workspace.
       tags:
-      - v1
+      - Strings
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2769,7 +3725,37 @@ paths:
       operationId: v1_strings_generate_create
       description: Generate a new string using business logic.
       tags:
-      - v1
+      - Strings
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/String'
+          application/x-www-form-urlencoded:
+            schema:
+              $ref: '#/components/schemas/String'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/String'
+        required: true
+      security:
+      - jwtAuth: []
+      - cookieAuth: []
+      - basicAuth: []
+      - BearerAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/String'
+          description: ''
+  /api/v1/strings/rollback/:
+    post:
+      operationId: v1_strings_rollback_create
+      description: Rollback strings to previous versions.
+      tags:
+      - Strings
       requestBody:
         content:
           application/json:
@@ -2831,7 +3817,7 @@ paths:
         schema:
           type: integer
       tags:
-      - v1
+      - Submissions
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2849,7 +3835,7 @@ paths:
     post:
       operationId: v1_submissions_create
       tags:
-      - v1
+      - Submissions
       requestBody:
         content:
           application/json:
@@ -2885,7 +3871,7 @@ paths:
         description: A unique integer value identifying this Submission.
         required: true
       tags:
-      - v1
+      - Submissions
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -2908,7 +3894,7 @@ paths:
         description: A unique integer value identifying this Submission.
         required: true
       tags:
-      - v1
+      - Submissions
       requestBody:
         content:
           application/json:
@@ -2943,7 +3929,7 @@ paths:
         description: A unique integer value identifying this Submission.
         required: true
       tags:
-      - v1
+      - Submissions
       requestBody:
         content:
           application/json:
@@ -2977,7 +3963,7 @@ paths:
         description: A unique integer value identifying this Submission.
         required: true
       tags:
-      - v1
+      - Submissions
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3565,7 +4551,7 @@ paths:
         Simple view to demonstrate API versioning.
         Returns different responses based on the API version.
       tags:
-      - v1
+      - System
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3949,7 +4935,7 @@ paths:
     get:
       operationId: v1_workspaces_list
       tags:
-      - v1
+      - Workspaces
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -3967,7 +4953,7 @@ paths:
     post:
       operationId: v1_workspaces_create
       tags:
-      - v1
+      - Workspaces
       requestBody:
         content:
           application/json:
@@ -4002,7 +4988,7 @@ paths:
           type: string
         required: true
       tags:
-      - v1
+      - Workspaces
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4024,7 +5010,7 @@ paths:
           type: string
         required: true
       tags:
-      - v1
+      - Workspaces
       requestBody:
         content:
           application/json:
@@ -4058,7 +5044,7 @@ paths:
           type: string
         required: true
       tags:
-      - v1
+      - Workspaces
       requestBody:
         content:
           application/json:
@@ -4091,7 +5077,7 @@ paths:
           type: string
         required: true
       tags:
-      - v1
+      - Workspaces
       security:
       - jwtAuth: []
       - cookieAuth: []
@@ -4349,6 +5335,26 @@ components:
       - value
       - workspace
       - workspace_name
+    ErrorTypeEnum:
+      enum:
+      - string_generation_error
+      - database_error
+      - validation_error
+      - circular_dependency
+      - conflict_error
+      - permission_error
+      - timeout_error
+      - unknown_error
+      type: string
+      description: |-
+        * `string_generation_error` - String Generation Error
+        * `database_error` - Database Error
+        * `validation_error` - Validation Error
+        * `circular_dependency` - Circular Dependency
+        * `conflict_error` - Conflict Error
+        * `permission_error` - Permission Error
+        * `timeout_error` - Timeout Error
+        * `unknown_error` - Unknown Error
     Field:
       type: object
       properties:
@@ -4964,6 +5970,118 @@ components:
           format: date-time
           readOnly: true
           description: When this record was last updated
+    PatchedPropagationError:
+      type: object
+      description: Serializer for PropagationError model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        job:
+          type: integer
+          description: Propagation job this error belongs to
+        job_batch_id:
+          type: string
+          readOnly: true
+        string:
+          type: integer
+          nullable: true
+          description: String that caused the error (if applicable)
+        string_value:
+          type: string
+          readOnly: true
+        string_detail:
+          type: integer
+          nullable: true
+          description: StringDetail that caused the error (if applicable)
+        error_type:
+          allOf:
+          - $ref: '#/components/schemas/ErrorTypeEnum'
+          description: |-
+            Type of error that occurred
+
+            * `string_generation_error` - String Generation Error
+            * `database_error` - Database Error
+            * `validation_error` - Validation Error
+            * `circular_dependency` - Circular Dependency
+            * `conflict_error` - Conflict Error
+            * `permission_error` - Permission Error
+            * `timeout_error` - Timeout Error
+            * `unknown_error` - Unknown Error
+        error_message:
+          type: string
+          description: Human-readable error message
+        error_code:
+          type: string
+          nullable: true
+          description: Machine-readable error code
+          maxLength: 50
+        context_data:
+          description: Additional context data about the error
+        retry_count:
+          type: integer
+          description: Number of times this operation has been retried
+        is_retryable:
+          type: boolean
+          description: Whether this error can be retried
+        resolved:
+          type: boolean
+          description: Whether this error has been resolved
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When this error was resolved
+        resolved_by:
+          type: integer
+          nullable: true
+          description: User who resolved this error
+        resolved_by_name:
+          type: string
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+    PatchedPropagationSettings:
+      type: object
+      description: Serializer for PropagationSettings model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+          description: User these settings belong to
+        user_name:
+          type: string
+          readOnly: true
+        workspace:
+          type: integer
+          readOnly: true
+          description: Workspace this record belongs to
+        workspace_name:
+          type: string
+          readOnly: true
+        settings:
+          description: User-specific propagation settings
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
     PatchedRule:
       type: object
       properties:
@@ -5384,6 +6502,60 @@ components:
           format: date-time
           readOnly: true
           description: When this record was last updated
+    PatchedStringDetailUpdateWithPropagation:
+      type: object
+      description: Enhanced StringDetail serializer with propagation control.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        string:
+          type: integer
+          description: String this detail belongs to
+        dimension:
+          type: integer
+          description: Dimension this value represents
+        dimension_value:
+          type: integer
+          nullable: true
+          description: Predefined dimension value (for list-type dimensions)
+        dimension_value_freetext:
+          type: string
+          nullable: true
+          description: Free-text dimension value (for text-type dimensions)
+          maxLength: 100
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+        propagate:
+          type: boolean
+          writeOnly: true
+          default: true
+          description: Whether to propagate changes to child strings
+        propagation_depth:
+          type: integer
+          maximum: 50
+          minimum: 1
+          writeOnly: true
+          default: 10
+          description: Maximum depth for propagation
+        dry_run:
+          type: boolean
+          writeOnly: true
+          default: false
+          description: Preview changes without applying them
+        propagation_summary:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+          description: Summary of propagation results
     PatchedSubmission:
       type: object
       properties:
@@ -5701,6 +6873,286 @@ components:
       - name
       - platform_type
       - slug
+    ProcessingMethodEnum:
+      enum:
+      - synchronous
+      - background
+      - chunked
+      type: string
+      description: |-
+        * `synchronous` - Synchronous
+        * `background` - Background
+        * `chunked` - Chunked Processing
+    PropagationError:
+      type: object
+      description: Serializer for PropagationError model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        job:
+          type: integer
+          description: Propagation job this error belongs to
+        job_batch_id:
+          type: string
+          readOnly: true
+        string:
+          type: integer
+          nullable: true
+          description: String that caused the error (if applicable)
+        string_value:
+          type: string
+          readOnly: true
+        string_detail:
+          type: integer
+          nullable: true
+          description: StringDetail that caused the error (if applicable)
+        error_type:
+          allOf:
+          - $ref: '#/components/schemas/ErrorTypeEnum'
+          description: |-
+            Type of error that occurred
+
+            * `string_generation_error` - String Generation Error
+            * `database_error` - Database Error
+            * `validation_error` - Validation Error
+            * `circular_dependency` - Circular Dependency
+            * `conflict_error` - Conflict Error
+            * `permission_error` - Permission Error
+            * `timeout_error` - Timeout Error
+            * `unknown_error` - Unknown Error
+        error_message:
+          type: string
+          description: Human-readable error message
+        error_code:
+          type: string
+          nullable: true
+          description: Machine-readable error code
+          maxLength: 50
+        context_data:
+          description: Additional context data about the error
+        retry_count:
+          type: integer
+          description: Number of times this operation has been retried
+        is_retryable:
+          type: boolean
+          description: Whether this error can be retried
+        resolved:
+          type: boolean
+          description: Whether this error has been resolved
+        resolved_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When this error was resolved
+        resolved_by:
+          type: integer
+          nullable: true
+          description: User who resolved this error
+        resolved_by_name:
+          type: string
+          readOnly: true
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+      required:
+      - created
+      - error_message
+      - error_type
+      - id
+      - job
+      - job_batch_id
+      - last_updated
+      - resolved_by_name
+      - string_value
+    PropagationImpactRequest:
+      type: object
+      description: Serializer for propagation impact analysis requests.
+      properties:
+        string_detail_updates:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: List of StringDetail updates to analyze
+        max_depth:
+          type: integer
+          maximum: 50
+          minimum: 1
+          default: 10
+          description: Maximum propagation depth to analyze
+      required:
+      - string_detail_updates
+    PropagationJob:
+      type: object
+      description: Serializer for PropagationJob model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        batch_id:
+          type: string
+          format: uuid
+          readOnly: true
+          description: Unique identifier for this propagation batch
+        workspace:
+          type: integer
+          description: Workspace this record belongs to
+        workspace_name:
+          type: string
+          readOnly: true
+        triggered_by:
+          type: integer
+          nullable: true
+          description: User who triggered this propagation
+        triggered_by_name:
+          type: string
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/PropagationJobStatusEnum'
+          description: |-
+            Current status of the propagation job
+
+            * `pending` - Pending
+            * `running` - Running
+            * `completed` - Completed
+            * `failed` - Failed
+            * `cancelled` - Cancelled
+            * `partial_failure` - Partial Failure
+        started_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the job actually started processing
+        completed_at:
+          type: string
+          format: date-time
+          nullable: true
+          description: When the job completed or failed
+        duration:
+          type: string
+          readOnly: true
+        total_strings:
+          type: integer
+          description: Total number of strings to be processed
+        processed_strings:
+          type: integer
+          description: Number of strings successfully processed
+        failed_strings:
+          type: integer
+          description: Number of strings that failed processing
+        progress_percentage:
+          type: number
+          format: double
+          readOnly: true
+        success_rate:
+          type: number
+          format: double
+          readOnly: true
+        max_depth:
+          type: integer
+          description: Maximum propagation depth configured for this job
+        processing_method:
+          allOf:
+          - $ref: '#/components/schemas/ProcessingMethodEnum'
+          description: |-
+            Processing method used for this job
+
+            * `synchronous` - Synchronous
+            * `background` - Background
+            * `chunked` - Chunked Processing
+        metadata:
+          description: Additional metadata about the job configuration and execution
+        error_message:
+          type: string
+          nullable: true
+          description: Error message if job failed
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+      required:
+      - batch_id
+      - created
+      - duration
+      - id
+      - last_updated
+      - progress_percentage
+      - success_rate
+      - triggered_by_name
+      - workspace
+      - workspace_name
+    PropagationJobStatusEnum:
+      enum:
+      - pending
+      - running
+      - completed
+      - failed
+      - cancelled
+      - partial_failure
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `running` - Running
+        * `completed` - Completed
+        * `failed` - Failed
+        * `cancelled` - Cancelled
+        * `partial_failure` - Partial Failure
+    PropagationSettings:
+      type: object
+      description: Serializer for PropagationSettings model.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        user:
+          type: integer
+          readOnly: true
+          description: User these settings belong to
+        user_name:
+          type: string
+          readOnly: true
+        workspace:
+          type: integer
+          readOnly: true
+          description: Workspace this record belongs to
+        workspace_name:
+          type: string
+          readOnly: true
+        settings:
+          description: User-specific propagation settings
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+      required:
+      - created
+      - id
+      - last_updated
+      - user
+      - user_name
+      - workspace
+      - workspace_name
     RoleEnum:
       enum:
       - admin
@@ -6362,6 +7814,22 @@ components:
       - string
       - submission_name
       - workspace_name
+    StringDetailBatchUpdateRequest:
+      type: object
+      description: Serializer for batch StringDetail updates.
+      properties:
+        updates:
+          type: array
+          items:
+            type: object
+            additionalProperties: {}
+          description: List of StringDetail updates to apply
+        options:
+          type: object
+          additionalProperties: {}
+          description: Batch update options
+      required:
+      - updates
     StringDetailNested:
       type: object
       properties:
@@ -6444,6 +7912,67 @@ components:
       required:
       - dimension
       - id
+    StringDetailUpdateWithPropagation:
+      type: object
+      description: Enhanced StringDetail serializer with propagation control.
+      properties:
+        id:
+          type: integer
+          readOnly: true
+        string:
+          type: integer
+          description: String this detail belongs to
+        dimension:
+          type: integer
+          description: Dimension this value represents
+        dimension_value:
+          type: integer
+          nullable: true
+          description: Predefined dimension value (for list-type dimensions)
+        dimension_value_freetext:
+          type: string
+          nullable: true
+          description: Free-text dimension value (for text-type dimensions)
+          maxLength: 100
+        created:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was created
+        last_updated:
+          type: string
+          format: date-time
+          readOnly: true
+          description: When this record was last updated
+        propagate:
+          type: boolean
+          writeOnly: true
+          default: true
+          description: Whether to propagate changes to child strings
+        propagation_depth:
+          type: integer
+          maximum: 50
+          minimum: 1
+          writeOnly: true
+          default: 10
+          description: Maximum depth for propagation
+        dry_run:
+          type: boolean
+          writeOnly: true
+          default: false
+          description: Preview changes without applying them
+        propagation_summary:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+          description: Summary of propagation results
+      required:
+      - created
+      - dimension
+      - id
+      - last_updated
+      - propagation_summary
+      - string
     StringNested:
       type: object
       properties:
