@@ -24,13 +24,14 @@ class StringFilter(filters.FilterSet):
     field_level = filters.NumberFilter(method='filter_field_level')
     platform = filters.NumberFilter(method='filter_platform')
     rule = filters.NumberFilter(method='filter_rule')
+    submission = filters.NumberFilter(method='filter_submission')
     is_auto_generated = filters.BooleanFilter()
     has_conflicts = filters.BooleanFilter(method='filter_has_conflicts')
     workspace = filters.NumberFilter(field_name='workspace')
 
     class Meta:
         model = models.String
-        fields = ['id', 'field', 'parent',
+        fields = ['id', 'field', 'parent', 'submission',
                   'field_level', 'rule', 'is_auto_generated', 'workspace']
 
     def filter_field(self, queryset, name, value):
@@ -44,6 +45,9 @@ class StringFilter(filters.FilterSet):
 
     def filter_rule(self, queryset, name, value):
         return queryset.filter(rule__id=value)
+
+    def filter_submission(self, queryset, name, value):
+        return queryset.filter(submission__id=value)
 
     def filter_has_conflicts(self, queryset, name, value):
         if value:
