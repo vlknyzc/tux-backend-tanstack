@@ -1308,8 +1308,21 @@ class Migration(migrations.Migration):
         migrations.AlterUniqueTogether(
             name="string", unique_together={("workspace", "rule", "field", "value")},
         ),
-        migrations.AlterUniqueTogether(
-            name="stringdetail", unique_together={("workspace", "string", "dimension")},
+        # Fix: Use RunSQL to handle the unique constraint properly
+        migrations.RunSQL(
+            sql="""
+                -- Create unique index instead of unique constraint to avoid Django constraint issues
+                CREATE UNIQUE INDEX IF NOT EXISTS master_data_stringdetail_workspace_string_dimension_idx 
+                ON master_data_stringdetail (workspace_id, string_id, dimension_id);
+            """,
+            reverse_sql="""
+                DROP INDEX IF EXISTS master_data_stringdetail_workspace_string_dimension_idx;
+            """,
+            state_operations=[
+                migrations.AlterUniqueTogether(
+                    name="stringdetail", unique_together={("workspace", "string", "dimension")},
+                ),
+            ]
         ),
         migrations.AlterUniqueTogether(
             name="submission", unique_together={("workspace", "name")},
