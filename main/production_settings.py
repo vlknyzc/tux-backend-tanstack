@@ -54,13 +54,18 @@ def get_csrf_trusted_origins():
     frontend_subdomain = os.environ.get("FRONTEND_SUBDOMAIN", CLIENT_SUBDOMAIN)
 
     if frontend_subdomain:
-        origins.append(f"https://{frontend_subdomain}.{frontend_domain}")
+        frontend_url = f"https://{frontend_subdomain}.{frontend_domain}"
+        origins.append(frontend_url)
+        # Ensure demo.tuxonomy.com is always included (temporary fix)
+        if "https://demo.tuxonomy.com" not in origins:
+            origins.append("https://demo.tuxonomy.com")
 
     # Add any additional origins from environment
     additional_origins = os.environ.get("ADDITIONAL_CSRF_ORIGINS", "")
     if additional_origins:
-        origins.extend(additional_origins.split(","))
+        origins.extend([origin.strip() for origin in additional_origins.split(",")])
 
+    print(f"DEBUG: CORS/CSRF Origins: {origins}")  # Remove after debugging
     return origins
 
 
