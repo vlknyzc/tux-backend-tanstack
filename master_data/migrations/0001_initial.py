@@ -1117,8 +1117,6 @@ class Migration(migrations.Migration):
         migrations.AlterUniqueTogether(
             name="ruledetail", unique_together=set(),),
         migrations.AlterUniqueTogether(name="string", unique_together=set(),),
-        migrations.AlterUniqueTogether(
-            name="stringdetail", unique_together=set(),),
         migrations.AddField(
             model_name="dimension",
             name="workspace",
