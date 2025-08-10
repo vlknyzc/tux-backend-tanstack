@@ -62,7 +62,6 @@ def get_csrf_trusted_origins():
         origins.extend([origin.strip()
                        for origin in additional_origins.split(",")])
 
-    print(f"DEBUG: CORS/CSRF Origins: {origins}")  # Remove after debugging
     return origins
 
 
