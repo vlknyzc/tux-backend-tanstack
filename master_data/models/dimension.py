@@ -64,7 +64,10 @@ class Dimension(TimeStampModel, WorkspaceMixin):
         verbose_name = "Dimension"
         verbose_name_plural = "Dimensions"
         ordering = ['workspace', 'name']
-        unique_together = [('workspace', 'name')]  # Name unique per workspace
+        unique_together = [
+            ('workspace', 'name'),  # Name unique per workspace
+            ('workspace', 'slug'),  # Slug unique per workspace
+        ]
 
     def save(self, *args, **kwargs):
         """Override save to generate slug automatically."""
