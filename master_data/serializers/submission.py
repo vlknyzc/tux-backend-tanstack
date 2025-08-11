@@ -19,6 +19,9 @@ class SubmissionSerializer(serializers.ModelSerializer):
                   'created', 'last_updated']
         read_only_fields = ['workspace_name',
                             'rule_name', 'platform', 'platform_name']
+        extra_kwargs = {
+            'slug': {'required': False, 'allow_blank': True, 'help_text': 'URL-friendly version of the name (auto-generated)'},
+        }
 
     def get_created_by_name(self, obj) -> Optional[str]:
         if obj.created_by:

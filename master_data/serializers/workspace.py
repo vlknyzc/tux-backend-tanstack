@@ -19,6 +19,9 @@ class WorkspaceSerializer(serializers.ModelSerializer):
             "last_updated",
         ]
         read_only_fields = ["created", "last_updated"]
+        extra_kwargs = {
+            'slug': {'required': False, 'allow_blank': True, 'help_text': 'URL-friendly version of the name (auto-generated)'},
+        }
 
     def get_created_by_name(self, obj):
         if obj.created_by:

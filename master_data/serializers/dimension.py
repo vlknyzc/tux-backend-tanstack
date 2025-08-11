@@ -7,6 +7,8 @@ class DimensionSerializer(serializers.ModelSerializer):
     parent_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     workspace_name = serializers.SerializerMethodField()
+    slug = serializers.SlugField(required=False, read_only=True,
+                                 help_text='URL-friendly version of the name (auto-generated)')
 
     class Meta:
         model = models.Dimension
@@ -30,6 +32,7 @@ class DimensionSerializer(serializers.ModelSerializer):
         extra_kwargs = {
             'type': {'required': True, 'allow_null': False},
             'workspace': {'required': True, 'allow_null': False, "help_text": "ID of the workspace this dimension belongs to"},
+            'slug': {'required': False, 'allow_blank': True, 'help_text': 'URL-friendly version of the name (auto-generated)'},
         }
 
     def get_parent_name(self, obj) -> Optional[str]:

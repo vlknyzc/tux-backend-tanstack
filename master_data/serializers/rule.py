@@ -160,6 +160,7 @@ class RuleSerializer(serializers.ModelSerializer):
 
     extra_kwargs = {
         'workspace': {'required': True, 'allow_null': False, "help_text": "ID of the workspace this rule belongs to"},
+        'slug': {'required': False, 'allow_blank': True, 'help_text': 'URL-friendly version of the name (auto-generated)'},
     }
 
     def get_platform_name(self, obj) -> str:
