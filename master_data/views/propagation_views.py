@@ -377,9 +377,9 @@ class EnhancedStringDetailViewSet(viewsets.ModelViewSet):
                 'error': f'Impact analysis failed: {str(e)}'
             }, status=status.HTTP_400_BAD_REQUEST)
 
-    @extend_schema(tags=["String Details"])
     @action(detail=False, methods=['post'])
     @extend_schema(
+        tags=["String Details"],
         request=serializers.PropagationImpactRequestSerializer,
         responses={200: serializers.PropagationImpactResponseSerializer}
     )
@@ -411,9 +411,9 @@ class EnhancedStringDetailViewSet(viewsets.ModelViewSet):
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
-    @extend_schema(tags=["String Details"])
     @action(detail=False, methods=['put'])
     @extend_schema(
+        tags=["String Details"],
         request=serializers.StringDetailBatchUpdateRequestSerializer,
         responses={200: serializers.StringDetailBatchUpdateResponseSerializer}
     )

@@ -47,6 +47,7 @@ class LightweightRuleView(APIView):
 
     # 15 minutes cache for lightweight data
     @method_decorator(cache_page(15 * 60))
+    @extend_schema(tags=["Rule Configuration"])
     def get(self, request, rule_id, version=None):
         """Get lightweight rule data"""
         start_time = time.time()
@@ -109,6 +110,7 @@ class FieldSpecificRuleView(APIView):
         super().__init__()
         self.rule_service = RuleService()
 
+    @extend_schema(tags=["Rule Configuration"])
     def get(self, request, rule_id, field_id, version=None):
         """Get field-specific rule data"""
         start_time = time.time()
@@ -170,6 +172,7 @@ class RuleValidationView(APIView):
         super().__init__()
         self.rule_service = RuleService()
 
+    @extend_schema(tags=["Rule Configuration"])
     def get(self, request, rule_id, version=None):
         """Get comprehensive rule validation summary"""
         start_time = time.time()
@@ -231,6 +234,7 @@ class GenerationPreviewView(APIView):
         super().__init__()
         self.rule_service = RuleService()
 
+    @extend_schema(tags=["Rule Configuration"])
     def post(self, request):
         """Generate string preview based on rule and sample values"""
         start_time = time.time()
@@ -305,6 +309,7 @@ class CacheManagementView(APIView):
         super().__init__()
         self.rule_service = RuleService()
 
+    @extend_schema(tags=["Rule Configuration"])
     def post(self, request):
         """Invalidate cache for specified rules"""
         workspace = getattr(request, 'workspace', None)
@@ -347,6 +352,7 @@ class CacheManagementView(APIView):
         except Exception as e:
             return Response({'error': f'Cache invalidation failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
+    @extend_schema(tags=["Rule Configuration"])
     def get(self, request, rule_id, version=None):
         """Get performance metrics for a specific rule"""
         workspace = getattr(request, 'workspace', None)

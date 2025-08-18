@@ -26,14 +26,6 @@ class Submission(TimeStampModel, WorkspaceMixin):
         related_name="submissions",
         help_text="The naming rule to apply for this submission"
     )
-    selected_parent_string = models.ForeignKey(
-        "master_data.String",
-        on_delete=models.CASCADE,
-        related_name="selected_parent_string",
-        null=True,
-        blank=True,
-        help_text="Parent string to base this submission on (if any)"
-    )
     starting_field = models.ForeignKey(
         "master_data.Field",
         on_delete=models.CASCADE,

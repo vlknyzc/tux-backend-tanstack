@@ -10,10 +10,6 @@ from .views import (
     RuleViewSet,
     RuleDetailViewSet,
     RuleNestedViewSet,
-    SubmissionViewSet,
-    StringViewSet,
-    StringDetailViewSet,
-    SubmissionNestedViewSet,
     # Rule configuration views
     LightweightRuleView,
     FieldSpecificRuleView,
@@ -43,12 +39,6 @@ router.register("rules", RuleViewSet, basename="rule")
 router.register("rule-details", RuleDetailViewSet, basename="ruledetail")
 router.register("rule-nested", RuleNestedViewSet, basename="rule-nested")
 
-router.register("submissions", SubmissionViewSet, basename="submission")
-router.register("strings", StringViewSet, basename="string")
-router.register("string-details", StringDetailViewSet, basename="stringdetail")
-router.register("nested-submissions", SubmissionNestedViewSet,
-                basename="nested-submissions")
-
 # Propagation endpoints
 router.register("propagation-jobs", PropagationJobViewSet, basename="propagation-job")
 router.register("propagation-errors", PropagationErrorViewSet, basename="propagation-error")
@@ -57,6 +47,9 @@ router.register("propagation-settings", PropagationSettingsViewSet, basename="pr
 
 urlpatterns = [
     path("", include(router.urls)),
+
+    # Main RESTful API endpoints for submissions, strings, and string details
+    path("", include('master_data.urls_main_api')),
 
     # API version and health endpoints
     path("version/", APIVersionView.as_view(), name="api-version"),

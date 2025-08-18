@@ -42,7 +42,6 @@ class RuleFilter(filters.FilterSet):
 
 
 class RuleViewSet(viewsets.ModelViewSet):
-    serializer_class = serializers.RuleSerializer
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter
@@ -70,6 +69,15 @@ class RuleViewSet(viewsets.ModelViewSet):
     @extend_schema(tags=["Rules"])
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
+
+    def get_serializer_class(self):
+        """Use different serializers for read and write operations."""
+        if self.action in ['create', 'update', 'partial_update']:
+            return serializers.RuleCreateUpdateSerializer
+        elif self.action == 'retrieve':
+            return serializers.RuleNestedReadSerializer
+        else:
+            return serializers.RuleReadSerializer
 
     def get_queryset(self):
         """Get rules filtered by workspace context"""
@@ -355,7 +363,7 @@ class RuleDetailViewSet(viewsets.ModelViewSet):
         """Use different serializers for create vs read operations."""
         if self.action == 'create':
             return serializers.RuleDetailCreateSerializer
-        return serializers.RuleDetailSerializer
+        return serializers.RuleDetailReadSerializer
 
     def perform_create(self, serializer):
         """Set created_by and workspace when creating a new rule detail"""
@@ -406,10 +414,16 @@ class RuleDetailViewSet(viewsets.ModelViewSet):
 
 
 class RuleNestedViewSet(viewsets.ModelViewSet):
-    serializer_class = serializers.RuleNestedSerializer
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = RuleFilter
+
+    def get_serializer_class(self):
+        """Use different serializers for read and write operations."""
+        if self.action in ['create', 'update', 'partial_update']:
+            return serializers.RuleNestedSerializer
+        else:
+            return serializers.RuleNestedReadSerializer
 
     @extend_schema(tags=["Rules"])
     def list(self, request, *args, **kwargs):

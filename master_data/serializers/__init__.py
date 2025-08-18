@@ -5,16 +5,17 @@ from .dimension import (
     DimensionValueBulkCreateSerializer
 )
 from .rule import (
-    RuleSerializer,
-    RuleDetailSerializer,
+    # Core serializers
+    RuleReadSerializer,
+    RuleDetailReadSerializer,
     RuleNestedSerializer,
+    RuleNestedReadSerializer,
     RulePreviewRequestSerializer,
     RuleValidationSerializer,
     RuleDetailCreateSerializer,
     DefaultRuleRequestSerializer,
-)
-from .rule_nested import RuleNestedSerializer
-from .rule_serializers import (
+
+    # Extended catalog serializers
     FieldTemplateSerializer,
     FieldSpecificDataSerializer,
     LightweightRuleSerializer,
@@ -31,19 +32,31 @@ from .rule_serializers import (
     PerformanceMetricsSerializer,
     CompleteRuleSerializer,
     RuleConfigurationSerializer,
+
+    # API response serializers
+    APIVersionResponseSerializer,
+    APIHealthResponseSerializer,
+    VersionDemoResponseSerializer,
+    ErrorResponseSerializer,
+    CacheInvalidationResponseSerializer,
+    GenerationPreviewResponseSerializer,
 )
 from .platform import PlatformSerializer, FieldSerializer, PlatformTemplateSerializer
 from .string import (
-    StringSerializer,
-    StringDetailSerializer,
-    StringExpandedSerializer,
-    StringGenerationRequestSerializer,
-    StringRegenerationSerializer,
-    StringConflictCheckSerializer,
-    StringBulkGenerationRequestSerializer,
+    StringDetailNestedSerializer,
+    StringWithDetailsSerializer,
+    StringWithDetailsReadSerializer,
+    StringDetailExpandedSerializer,
+    StringDetailReadSerializer,
+    StringDetailWriteSerializer,
+    WorkspaceValidationMixin,
 )
 from .workspace import WorkspaceSerializer
-from .submission import SubmissionSerializer
+from .submission import (
+    # New main_api serializers
+    SubmissionWithStringsSerializer,
+    SubmissionWithStringsReadSerializer,
+)
 from .batch_operations import (
     StringBatchUpdateRequestSerializer,
     StringBatchUpdateResponseSerializer,
@@ -66,6 +79,14 @@ from .propagation import (
     StringDetailBatchUpdateResponseSerializer,
     PropagationSettingsSerializer,
 )
+from .bulk_operations import (
+    BulkStringCreateSerializer,
+    BulkStringDetailUpdateSerializer,
+    BulkSubmissionCreateSerializer,
+    BulkStringDeleteSerializer,
+    BulkValidationResultSerializer,
+    BulkOperationStatusSerializer,
+)
 
 
 __all__ = [
@@ -73,9 +94,10 @@ __all__ = [
     'DimensionValueSerializer',
     'DimensionBulkCreateSerializer',
     'DimensionValueBulkCreateSerializer',
-    'RuleSerializer',
-    'RuleDetailSerializer',
+    'RuleReadSerializer',
+    'RuleDetailReadSerializer',
     'RuleNestedSerializer',
+    'RuleNestedReadSerializer',
     'RulePreviewRequestSerializer',
     'RuleValidationSerializer',
     'RuleDetailCreateSerializer',
@@ -96,18 +118,24 @@ __all__ = [
     'EnhancedDimensionCatalogSerializer',
     'PerformanceMetricsSerializer',
     'CompleteRuleSerializer',
+    'RuleConfigurationSerializer',
+
+    # API response serializers
+    'APIVersionResponseSerializer',
+    'APIHealthResponseSerializer',
+    'VersionDemoResponseSerializer',
+    'ErrorResponseSerializer',
+    'CacheInvalidationResponseSerializer',
+    'GenerationPreviewResponseSerializer',
     'PlatformSerializer',
     'FieldSerializer',
     'PlatformTemplateSerializer',
-    'StringSerializer',
-    'StringDetailSerializer',
     'StringExpandedSerializer',
     'StringGenerationRequestSerializer',
     'StringRegenerationSerializer',
     'StringConflictCheckSerializer',
     'StringBulkGenerationRequestSerializer',
     'WorkspaceSerializer',
-    'SubmissionSerializer',
     # Batch operations serializers
     'StringBatchUpdateRequestSerializer',
     'StringBatchUpdateResponseSerializer',
@@ -129,4 +157,23 @@ __all__ = [
     'StringDetailBatchUpdateRequestSerializer',
     'StringDetailBatchUpdateResponseSerializer',
     'PropagationSettingsSerializer',
+
+    # New main_api serializers
+    'StringDetailNestedSerializer',
+    'StringWithDetailsSerializer',
+    'StringWithDetailsReadSerializer',
+    'StringDetailExpandedSerializer',
+    'StringDetailReadSerializer',
+    'StringDetailWriteSerializer',
+    'WorkspaceValidationMixin',
+    'SubmissionWithStringsSerializer',
+    'SubmissionWithStringsReadSerializer',
+
+    # Bulk operations
+    'BulkStringCreateSerializer',
+    'BulkStringDetailUpdateSerializer',
+    'BulkSubmissionCreateSerializer',
+    'BulkStringDeleteSerializer',
+    'BulkValidationResultSerializer',
+    'BulkOperationStatusSerializer',
 ]

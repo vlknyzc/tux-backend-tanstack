@@ -5,7 +5,7 @@ from rest_framework.versioning import URLPathVersioning
 from datetime import datetime
 import logging
 from drf_spectacular.utils import extend_schema
-from master_data.serializers.rule_serializers import (
+from master_data.serializers.rule import (
     APIVersionResponseSerializer,
     APIHealthResponseSerializer,
     VersionDemoResponseSerializer,

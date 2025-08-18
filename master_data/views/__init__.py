@@ -1,10 +1,7 @@
 from .dimension_views import DimensionViewSet, DimensionValueViewSet
 from .workspace_views import WorkspaceViewSet, PlatformViewSet
 from .rule_views import RuleViewSet, RuleDetailViewSet, RuleNestedViewSet
-from .string_views import StringViewSet, StringDetailViewSet
 from .field_views import FieldViewSet
-from .submission_views import SubmissionViewSet
-from .nested_submission_views import SubmissionNestedViewSet
 from .rule_configuration_views import (
     LightweightRuleView,
     FieldSpecificRuleView,
@@ -29,11 +26,7 @@ __all__ = [
     'RuleViewSet',
     'RuleDetailViewSet',
     'RuleNestedViewSet',
-    'StringViewSet',
-    'StringDetailViewSet',
     'FieldViewSet',
-    'SubmissionViewSet',
-    'SubmissionNestedViewSet',
     # Rule configuration views
     'LightweightRuleView',
     'FieldSpecificRuleView',
