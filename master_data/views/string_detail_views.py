@@ -132,7 +132,7 @@ class StringDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         request=BulkStringDetailUpdateSerializer,
         summary="Update multiple string details in bulk"
     )
-    @action(detail=False, methods=['patch'], url_path='bulk')
+    @action(detail=False, methods=['patch'], url_path='bulk-update')
     @transaction.atomic
     def bulk_update(self, request, *args, **kwargs):
         """Update multiple string details in bulk."""
@@ -153,7 +153,7 @@ class StringDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         methods=['post'],
         summary="Create multiple string details in bulk"
     )
-    @action(detail=False, methods=['post'], url_path='bulk')
+    @action(detail=False, methods=['post'], url_path='bulk-create')
     @transaction.atomic
     def bulk_create_action(self, request, *args, **kwargs):
         """Create multiple string details in bulk."""
@@ -190,7 +190,7 @@ class StringDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         methods=['delete'],
         summary="Delete multiple string details in bulk"
     )
-    @action(detail=False, methods=['delete'], url_path='bulk')
+    @action(detail=False, methods=['delete'], url_path='bulk-delete')
     @transaction.atomic
     def bulk_delete(self, request, *args, **kwargs):
         """Delete multiple string details in bulk."""

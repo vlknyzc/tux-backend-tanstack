@@ -66,7 +66,7 @@ class BulkStringDetailUpdateSerializer(serializers.Serializer):
         return value
 
     @transaction.atomic
-    def update(self, validated_data):
+    def update(self, instance, validated_data):
         """Update multiple string details atomically."""
         details_data = validated_data['details']
         updated_details = []
