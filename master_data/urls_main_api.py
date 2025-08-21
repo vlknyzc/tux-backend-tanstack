@@ -7,11 +7,13 @@ All endpoints require workspace context for security and isolation.
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views.main_api import (
+from .views.submission_views import (
     SubmissionViewSet,
-    StringViewSet,
+    SubmissionStringViewSet
+)
+from .views.string_views import StringViewSet
+from .views.string_detail_views import (
     StringDetailViewSet,
-    SubmissionStringViewSet,
     StringDetailNestedViewSet
 )
 

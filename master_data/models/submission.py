@@ -8,7 +8,7 @@ from django.conf import settings
 
 from .base import TimeStampModel, WorkspaceMixin
 from ..constants import STANDARD_NAME_LENGTH, DESCRIPTION_LENGTH, SLUG_LENGTH, SubmissionStatusChoices
-from ..utils import generate_unique_slug
+from master_data.utils import generate_unique_slug
 
 
 class Submission(TimeStampModel, WorkspaceMixin):

@@ -10,7 +10,7 @@ from ..constants import (
     STANDARD_NAME_LENGTH, LONG_NAME_LENGTH, DESCRIPTION_LENGTH,
     UTM_LENGTH, SLUG_LENGTH, StatusChoices, DimensionTypeChoices
 )
-from ..utils import generate_unique_slug
+from master_data.utils import generate_unique_slug
 
 
 class Dimension(TimeStampModel, WorkspaceMixin):

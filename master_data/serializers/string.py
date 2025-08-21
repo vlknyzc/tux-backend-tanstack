@@ -24,14 +24,45 @@ class WorkspaceValidationMixin:
 class StringDetailNestedSerializer(serializers.ModelSerializer, WorkspaceValidationMixin):
     """Serializer for string details when nested in string creation/updates."""
 
+    # Add these as SerializerMethodField to access dimension_value properties
+    dimension_value_label = serializers.SerializerMethodField()
+    dimension_value_value = serializers.SerializerMethodField()
+    dimension_value_utm = serializers.SerializerMethodField()
+    dimension_value_description = serializers.SerializerMethodField()
+
     class Meta:
         model = models.StringDetail
         fields = [
-            'id', 'dimension', 'dimension_value', 'dimension_value_freetext'
+            'id', 'dimension', 'dimension_value', 'dimension_value_freetext',
+            'dimension_value_label', 'dimension_value_value', 'dimension_value_utm', 'dimension_value_description'
         ]
         extra_kwargs = {
             'id': {'read_only': True}
         }
+
+    def get_dimension_value_label(self, obj):
+        """Get the label of the dimension value."""
+        if obj.dimension_value:
+            return obj.dimension_value.label
+        return None
+
+    def get_dimension_value_value(self, obj):
+        """Get the value of the dimension value."""
+        if obj.dimension_value:
+            return obj.dimension_value.value
+        return None
+
+    def get_dimension_value_utm(self, obj):
+        """Get the UTM code of the dimension value."""
+        if obj.dimension_value:
+            return obj.dimension_value.utm
+        return None
+
+    def get_dimension_value_description(self, obj):
+        """Get the description of the dimension value."""
+        if obj.dimension_value:
+            return obj.dimension_value.description
+        return None
 
     def validate(self, attrs):
         """Validate that either dimension_value or dimension_value_freetext is provided."""

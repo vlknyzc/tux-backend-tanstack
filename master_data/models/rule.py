@@ -12,7 +12,7 @@ from ..constants import (
     LONG_NAME_LENGTH, DESCRIPTION_LENGTH, PREFIX_SUFFIX_LENGTH,
     DELIMITER_LENGTH, STANDARD_NAME_LENGTH, SLUG_LENGTH, StatusChoices
 )
-from ..utils import generate_unique_slug
+from master_data.utils import generate_unique_slug
 
 
 class RuleQuerySet(models.QuerySet):

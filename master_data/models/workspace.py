@@ -8,7 +8,7 @@ from django.conf import settings
 
 from .base import TimeStampModel, default_workspace_logo
 from ..constants import STANDARD_NAME_LENGTH, SLUG_LENGTH, StatusChoices, WORKSPACE_LOGO_UPLOAD_PATH
-from ..utils import generate_unique_slug
+from master_data.utils import generate_unique_slug
 
 
 class Workspace(TimeStampModel):
