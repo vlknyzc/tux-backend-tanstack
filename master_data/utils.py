@@ -45,3 +45,4 @@ def generate_unique_slug(instance, source_field_name, slug_field_name='slug', ma
 
     return slug
 
+

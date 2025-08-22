@@ -184,6 +184,84 @@ All API endpoints follow the versioned pattern:
 - **PATCH** `/api/{version}/workspaces/{workspace_id}/string-details/bulk/` - Bulk update string details
 - **DELETE** `/api/{version}/workspaces/{workspace_id}/string-details/bulk/` - Bulk delete string details
 
+### Multi-Operation Endpoint (Atomic Transactions)
+
+- **POST** `/api/{version}/workspaces/{workspace_id}/multi-operations/execute/` - Execute multiple operations atomically
+- **POST** `/api/{version}/workspaces/{workspace_id}/multi-operations/validate/` - Validate operations without executing
+
+#### Supported Operation Types
+
+**String Operations:**
+
+- `create_string` - Create new string with details
+- `update_string` - Update existing string
+- `delete_string` - Delete string and related details
+- `update_string_parent` - Update string parent relationship
+
+**String Detail Operations:**
+
+- `create_string_detail` - Create new string detail
+- `update_string_detail` - Update existing string detail
+- `delete_string_detail` - Delete string detail
+
+**Submission Operations:**
+
+- `create_submission` - Create new submission
+- `update_submission` - Update existing submission
+- `delete_submission` - Delete submission and related strings
+
+#### Example Requests
+
+**Individual Operations:**
+
+```json
+POST /api/v1/workspaces/1/multi-operations/execute/
+{
+  "operations": [
+    {
+      "type": "update_string_detail",
+      "data": {"id": 154, "dimension_value": 3}
+    },
+    {
+      "type": "update_string_detail",
+      "data": {"id": 157, "dimension_value_freetext": "2"}
+    },
+    {
+      "type": "update_string_parent",
+      "data": {"string_id": 88, "parent_id": 45}
+    }
+  ]
+}
+```
+
+**Grouped Array Operations (Recommended):**
+
+```json
+POST /api/v1/workspaces/1/multi-operations/execute/
+{
+  "operations": [
+    {
+      "type": "update_string_detail",
+      "data": [
+        {"id": 154, "dimension_value": 3},
+        {"id": 157, "dimension_value_freetext": "2"}
+      ]
+    },
+    {
+      "type": "update_string_parent",
+      "data": {"string_id": 88, "parent_id": 45}
+    }
+  ]
+}
+```
+
+#### Transaction Guarantees
+
+- **Atomicity**: All operations succeed or all fail (rollback)
+- **Consistency**: Database integrity maintained across operations
+- **Isolation**: Operations execute as a single transaction
+- **Durability**: Changes are permanent once committed
+
 ### Submission String Bulk Operations
 
 - **POST** `/api/{version}/workspaces/{workspace_id}/submissions/{submission_id}/strings/bulk/` - Bulk add strings to submission

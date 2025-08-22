@@ -450,6 +450,14 @@ class StringDetail(TimeStampModel, WorkspaceMixin):
 @receiver(post_save, sender=String)
 def update_parent_relationship(sender, instance, created, **kwargs):
     """Update parent-child relationships when string is saved."""
+    # Avoid infinite recursion by checking if we're already in an update
+    if hasattr(instance, '_updating_parent_relationship'):
+        return
+    
+    needs_update = False
+    update_fields = []
+    
+    # Set parent from parent_uuid if parent is missing
     if created and instance.parent_uuid and not instance.parent:
         try:
             parent_string = String.objects.get(
@@ -457,10 +465,32 @@ def update_parent_relationship(sender, instance, created, **kwargs):
                 string_uuid=instance.parent_uuid
             )
             instance.parent = parent_string
-            instance.save(update_fields=['parent'])
+            needs_update = True
+            update_fields.append('parent')
         except String.DoesNotExist:
             # Parent might not exist yet in creation workflow
             pass
+    
+    # Set parent_uuid from parent if parent_uuid is missing or mismatched
+    if instance.parent and (not instance.parent_uuid or instance.parent_uuid != instance.parent.string_uuid):
+        instance.parent_uuid = instance.parent.string_uuid
+        needs_update = True
+        update_fields.append('parent_uuid')
+    
+    # Clear parent_uuid if parent is None
+    if not instance.parent and instance.parent_uuid:
+        instance.parent_uuid = None
+        needs_update = True
+        update_fields.append('parent_uuid')
+    
+    if needs_update:
+        # Mark instance to avoid recursion
+        instance._updating_parent_relationship = True
+        try:
+            instance.save(update_fields=update_fields)
+        finally:
+            # Clean up the flag
+            delattr(instance, '_updating_parent_relationship')
 
 
 @receiver(post_save, sender=String)

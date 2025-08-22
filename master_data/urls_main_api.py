@@ -16,6 +16,7 @@ from .views.string_detail_views import (
     StringDetailViewSet,
     StringDetailNestedViewSet
 )
+from .views.multi_operations_views import MultiOperationsViewSet
 
 # Create the main workspace router
 router = DefaultRouter()
@@ -37,6 +38,13 @@ router.register(
     r'workspaces/(?P<workspace_id>[^/.]+)/string-details',
     StringDetailViewSet,
     basename='string-details'
+)
+
+# Multi-operation endpoint for atomic operations
+router.register(
+    r'workspaces/(?P<workspace_id>[^/.]+)/multi-operations',
+    MultiOperationsViewSet,
+    basename='multi-operations'
 )
 
 # Separate router for nested resources
@@ -87,6 +95,9 @@ Core Resource Endpoints:
 - PATCH  /api/v1/workspaces/{workspace_id}/string-details/{id}/
 - PUT    /api/v1/workspaces/{workspace_id}/string-details/{id}/
 - DELETE /api/v1/workspaces/{workspace_id}/string-details/{id}/
+
+- POST   /api/v1/workspaces/{workspace_id}/multi-operations/execute/
+- POST   /api/v1/workspaces/{workspace_id}/multi-operations/validate/
 
 Nested Resource Endpoints:
 - GET    /api/v1/workspaces/{workspace_id}/submissions/{id}/strings/

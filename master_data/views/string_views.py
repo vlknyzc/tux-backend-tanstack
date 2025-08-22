@@ -32,10 +32,11 @@ class StringWorkspaceFilter(filters.FilterSet):
     submission = filters.NumberFilter(field_name='submission')
     field = filters.NumberFilter(field_name='field')
     field_level = filters.NumberFilter(field_name='field__field_level')
+    platform = filters.NumberFilter(field_name='rule__platform__id')
 
     class Meta:
         model = models.String
-        fields = ['id', 'submission', 'field', 'field_level']
+        fields = ['id', 'submission', 'field', 'field_level', 'platform']
 
 
 class StringViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
