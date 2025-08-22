@@ -80,10 +80,12 @@ class StringGenerationService:
 
                 parts.append(formatted_value)
 
-            # Join parts with delimiter (use first rule detail's delimiter as default)
-            delimiter = rule_details.first().delimiter or '-'
+                # Add delimiter if it exists (including for the last part)
+                if detail.delimiter:
+                    parts.append(detail.delimiter)
 
-            return delimiter.join(parts)
+            # Join all parts (values + delimiters)
+            return ''.join(parts)
 
         except Exception as e:
             raise NamingConventionError(f"String generation failed: {str(e)}")
