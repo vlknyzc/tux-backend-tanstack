@@ -186,27 +186,21 @@ class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
         for d in dimensions_data:
             d['workspace'] = workspace_obj
 
-        try:
-            with transaction.atomic():
-                results, errors = self._create_dimensions_with_dependencies(
-                    dimensions_data,
-                    request.user
-                )
-                return Response({
-                    'success_count': len(results),
-                    'error_count': len(errors),
-                    'results': results,
-                    'errors': errors
-                })
-        except Exception as e:
-            return Response(
-                {'error': f'Bulk creation failed: {str(e)}'},
-                status=status.HTTP_500_INTERNAL_SERVER_ERROR
-            )
+        results, errors = self._create_dimensions_with_dependencies(
+            dimensions_data,
+            request.user
+        )
+        return Response({
+            'success_count': len(results),
+            'error_count': len(errors),
+            'results': results,
+            'errors': errors
+        })
 
     def _create_dimensions_with_dependencies(self, dimensions_data, user):
         """
-        (unchanged) two-pass create for handling parent → child in the same batch.
+        Two-pass create for handling parent → child in the same batch.
+        Each dimension creation is wrapped in its own atomic transaction to allow partial success.
         """
         results = []
         errors = []
@@ -218,11 +212,12 @@ class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
         # 1) create root dims
         for dim in no_parents:
             try:
-                if user.is_authenticated:
-                    dim['created_by'] = user
-                obj = models.Dimension.objects.create(**dim)
-                created[obj.name] = obj
-                results.append(self.get_serializer(obj).data)
+                with transaction.atomic():
+                    if user.is_authenticated:
+                        dim['created_by'] = user
+                    obj = models.Dimension.objects.create(**dim)
+                    created[obj.name] = obj
+                    results.append(self.get_serializer(obj).data)
             except Exception as e:
                 errors.append({
                     'dimension_name': dim.get('name', 'Unknown'),
@@ -232,16 +227,17 @@ class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
         # 2) create children
         for dim in with_parents:
             try:
-                parent_name = dim.pop('_parent_name')
-                if parent_name not in created:
-                    raise ValueError(f"Parent '{parent_name}' not in batch")
-                dim['parent'] = created[parent_name]
+                with transaction.atomic():
+                    parent_name = dim.pop('_parent_name')
+                    if parent_name not in created:
+                        raise ValueError(f"Parent '{parent_name}' not in batch")
+                    dim['parent'] = created[parent_name]
 
-                if user.is_authenticated:
-                    dim['created_by'] = user
-                obj = models.Dimension.objects.create(**dim)
-                created[obj.name] = obj
-                results.append(self.get_serializer(obj).data)
+                    if user.is_authenticated:
+                        dim['created_by'] = user
+                    obj = models.Dimension.objects.create(**dim)
+                    created[obj.name] = obj
+                    results.append(self.get_serializer(obj).data)
             except Exception as e:
                 errors.append({
                     'dimension_name': dim.get('name', 'Unknown'),
