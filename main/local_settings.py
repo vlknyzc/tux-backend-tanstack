@@ -263,13 +263,12 @@ SPECTACULAR_SETTINGS = {
         'BearerAuth': {
             'type': 'http',
             'scheme': 'bearer',
-            'bearerFormat': 'JWT',   # or 'Bearer', but only one
+            'bearerFormat': 'JWT',
         },
     },
     'SECURITY': [
         {'BearerAuth': []},
     ],
-    # OTHER SETTINGS
 }
 
 # DJOSER settings
@@ -280,7 +279,12 @@ DJOSER = {
     'SEND_CONFIRMATION_EMAIL': False,
     'USER_CREATE_PASSWORD_RETYPE': True,
     'PASSWORD_RESET_CONFIRM_RETYPE': False,
-    'TOKEN_MODEL': None
+    'TOKEN_MODEL': None,
+    'SERIALIZERS': {
+        'user_create': 'users.serializers.UserCreateSerializer',
+        'user': 'users.serializers.UserSerializer',
+        'user_delete': 'users.serializers.UserDeleteSerializer',
+    }
 }
 
 AUTH_COOKIE = "access"

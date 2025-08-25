@@ -40,10 +40,10 @@ urlpatterns = [
     re_path(r'^api/(?P<version>(v1|v2))/', include('users.urls')),
 
     # API token authentication (versioned)
-    re_path(r'^api/(?P<version>(v1|v2))/token/$',
-            TokenObtainPairView.as_view(), name="token_obtain_pair"),
-    re_path(r'^api/(?P<version>(v1|v2))/token/refresh/$',
-            TokenRefreshView.as_view(), name="token_refresh"),
+    # re_path(r'^api/(?P<version>(v1|v2))/token/$',
+    #         TokenObtainPairView.as_view(), name="token_obtain_pair"),
+    # re_path(r'^api/(?P<version>(v1|v2))/token/refresh/$',
+    #         TokenRefreshView.as_view(), name="token_refresh"),
 
     # Admin and other endpoints
     path('admin/', admin.site.urls),

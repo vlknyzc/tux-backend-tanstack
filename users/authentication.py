@@ -1,7 +1,8 @@
 from django.conf import settings
 from rest_framework_simplejwt.authentication import JWTAuthentication
+from drf_spectacular.utils import extend_schema
 
-
+@extend_schema(tags=["Authentication"])
 class CustomJWTAuthentication(JWTAuthentication):
     def authenticate(self, request):
         try:

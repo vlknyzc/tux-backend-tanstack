@@ -15,6 +15,7 @@ from ..serializers.batch_operations import MultiOperationSerializer
 from .mixins import WorkspaceValidationMixin
 
 
+@extend_schema(tags=['Multi-Operations'])
 class MultiOperationsViewSet(WorkspaceValidationMixin, viewsets.ViewSet):
     """
     ViewSet for executing multiple operations atomically.

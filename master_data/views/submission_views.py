@@ -44,6 +44,7 @@ class SubmissionWorkspaceFilter(filters.FilterSet):
         fields = ['id', 'rule', 'status']
 
 
+@extend_schema(tags=['Submissions'])
 class SubmissionViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     """
     Workspace-scoped submission viewset with optional initial_strings support.
@@ -136,6 +137,7 @@ class SubmissionViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
 
+@extend_schema(tags=['Submissions'])
 class SubmissionStringViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     """
     Nested viewset for strings within a submission.

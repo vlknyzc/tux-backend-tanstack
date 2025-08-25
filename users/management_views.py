@@ -28,7 +28,7 @@ class WorkspaceUserFilter(FilterSet):
             'is_active': ['exact']
         }
 
-
+@extend_schema(tags=["User Management"])
 class UserManagementViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing users and their basic information.
@@ -38,30 +38,26 @@ class UserManagementViewSet(viewsets.ModelViewSet):
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['is_active', 'is_staff', 'is_superuser']
 
-    @extend_schema(tags=["User Management"])
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    @extend_schema(tags=["User Management"])
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-    @extend_schema(tags=["User Management"])
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
-    @extend_schema(tags=["User Management"])
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
-    @extend_schema(tags=["User Management"])
+    
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
 
-    @extend_schema(tags=["User Management"])
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
 
+    
     def get_permissions(self):
         """
         Different permissions for different actions
@@ -74,6 +70,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
 
         return [permission() for permission in permission_classes]
 
+    
     def get_queryset(self):
         """Get users based on user permissions"""
         user = self.request.user
@@ -138,6 +135,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
 
         raise PermissionDenied("You can only update your own profile")
 
+    
     def perform_destroy(self, instance):
         """Delete user - only superusers can do this"""
         if not self.request.user.is_superuser:
@@ -150,7 +148,7 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         instance.save()
 
     @action(detail=True, methods=['get'])
-    @extend_schema(tags=["User Management"])
+    
     def authorizations(self, request, pk=None):
         """Get detailed authorization information for a user"""
         user = self.get_object()
@@ -206,13 +204,13 @@ class UserManagementViewSet(viewsets.ModelViewSet):
         return Response(serializer.data)
 
     @action(detail=False, methods=['get'])
-    @extend_schema(tags=["User Management"])
     def me(self, request):
         """Get current user's information"""
         serializer = self.get_serializer(request.user)
         return Response(serializer.data)
 
 
+@extend_schema(tags=["Workspace User Management"])
 class WorkspaceUserManagementViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing workspace-user relationships.
@@ -237,29 +235,31 @@ class WorkspaceUserManagementViewSet(viewsets.ModelViewSet):
         Delete the given workspace-user relationship.
     """
 
-    @extend_schema(tags=["Workspace User Management"])
+    
     def list(self, request, *args, **kwargs):
         return super().list(request, *args, **kwargs)
 
-    @extend_schema(tags=["Workspace User Management"])
+    
     def create(self, request, *args, **kwargs):
         return super().create(request, *args, **kwargs)
 
-    @extend_schema(tags=["Workspace User Management"])
+    
     def retrieve(self, request, *args, **kwargs):
         return super().retrieve(request, *args, **kwargs)
 
-    @extend_schema(tags=["Workspace User Management"])
+    
     def update(self, request, *args, **kwargs):
         return super().update(request, *args, **kwargs)
 
-    @extend_schema(tags=["Workspace User Management"])
+    
     def partial_update(self, request, *args, **kwargs):
         return super().partial_update(request, *args, **kwargs)
 
-    @extend_schema(tags=["Workspace User Management"])
+    
     def destroy(self, request, *args, **kwargs):
         return super().destroy(request, *args, **kwargs)
+    
+    
     permission_classes = [permissions.IsAuthenticated]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['workspace', 'user', 'role', 'is_active']
@@ -389,7 +389,6 @@ class WorkspaceUserManagementViewSet(viewsets.ModelViewSet):
         instance.delete()
 
     @action(detail=False, methods=['post'])
-    @extend_schema(tags=["Workspace User Management"])
     def bulk_assign(self, request):
         """
         Bulk assign users to workspaces.
@@ -485,7 +484,6 @@ class WorkspaceUserManagementViewSet(viewsets.ModelViewSet):
         return parameters
 
     @action(detail=False, methods=['get'])
-    @extend_schema(tags=["Workspace User Management"])
     def workspace_summary(self, request):
         """
         Get summary of all workspace assignments.

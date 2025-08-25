@@ -19,6 +19,7 @@ class WorkspaceFilter(filters.FilterSet):
         fields = ['id', 'status']
 
 
+@extend_schema(tags=['Workspaces'])
 class WorkspaceViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.WorkspaceSerializer
     permission_classes = [permissions.IsAuthenticated]
@@ -72,6 +73,7 @@ class WorkspaceViewSet(viewsets.ModelViewSet):
         serializer.save(**kwargs)
 
 
+@extend_schema(tags=['Platforms'])
 class PlatformViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.PlatformSerializer
     permission_classes = [permissions.AllowAny] if settings.DEBUG else [

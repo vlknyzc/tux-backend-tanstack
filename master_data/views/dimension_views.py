@@ -75,6 +75,7 @@ class DimensionFilter(filters.FilterSet):
         fields = ['id', 'type', 'status', 'workspace', 'dimension']
 
 
+@extend_schema(tags=['Dimensions'])
 class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     """
     CRUD + bulk_create for Dimension, scoped per-workspace.
@@ -260,6 +261,7 @@ class DimensionValueFilter(filters.FilterSet):
         fields = ['id', 'dimension', 'workspace', 'value']
 
 
+@extend_schema(tags=['Dimensions'])
 class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     """
     CRUD + bulk_create for DimensionValue, scoped per-workspace.

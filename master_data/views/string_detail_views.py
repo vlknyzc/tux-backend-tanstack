@@ -38,6 +38,7 @@ class StringDetailWorkspaceFilter(filters.FilterSet):
         fields = ['id', 'string', 'dimension']
 
 
+@extend_schema(tags=['Strings'])
 class StringDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     """
     Workspace-scoped string detail viewset.
@@ -229,6 +230,7 @@ class StringDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         return Response(status=status.HTTP_204_NO_CONTENT)
 
 
+@extend_schema(tags=['Strings'])
 class StringDetailNestedViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     """
     Nested viewset for string details within a string.

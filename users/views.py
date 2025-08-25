@@ -12,9 +12,8 @@ from rest_framework_simplejwt.views import (
 from drf_spectacular.utils import extend_schema
 from .serializers import LogoutResponseSerializer
 
-
+@extend_schema(tags=["Authentication"])
 class CustomTokenObtainPairView(TokenObtainPairView):
-    @extend_schema(tags=["Authentication"])
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         if response.status_code == 200:
@@ -44,9 +43,9 @@ class CustomTokenObtainPairView(TokenObtainPairView):
 
         return response
 
-
+@extend_schema(tags=["Authentication"])
 class CustomTokenRefreshView(TokenRefreshView):
-    @extend_schema(tags=["Authentication"])
+    
     def post(self, request, *args, **kwargs):
         refresh_token = request.COOKIES.get('refresh')
 
@@ -70,9 +69,8 @@ class CustomTokenRefreshView(TokenRefreshView):
 
         return response
 
-
+@extend_schema(tags=["Authentication"])
 class CustomTokenVerifyView(TokenVerifyView):
-    @extend_schema(tags=["Authentication"])
     def post(self, request, *args, **kwargs):
         access_token = request.COOKIES.get('access')
 
@@ -82,10 +80,11 @@ class CustomTokenVerifyView(TokenVerifyView):
         return super().post(request, *args, **kwargs)
 
 
+@extend_schema(tags=["Authentication"])
 class LogoutView(APIView):
     serializer_class = LogoutResponseSerializer
 
-    @extend_schema(tags=["Authentication"])
+    
     def post(self, request, *args, **kwargs):
         response = Response(status=status.HTTP_204_NO_CONTENT)
         response.delete_cookie('access')

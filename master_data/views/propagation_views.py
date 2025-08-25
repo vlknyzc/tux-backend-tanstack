@@ -20,6 +20,7 @@ from ..permissions import IsAuthenticatedOrDebugReadOnly
 logger = logging.getLogger(__name__)
 
 
+@extend_schema(tags=['Propagation'])
 class PropagationJobViewSet(viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for viewing propagation jobs.
@@ -106,6 +107,7 @@ class PropagationJobViewSet(viewsets.ReadOnlyModelViewSet):
         })
 
 
+@extend_schema(tags=['Propagation'])
 class PropagationErrorViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing propagation errors.
@@ -199,6 +201,7 @@ class PropagationErrorViewSet(viewsets.ModelViewSet):
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
+@extend_schema(tags=['Propagation'])
 class EnhancedStringDetailViewSet(viewsets.ModelViewSet):
     """
     Enhanced StringDetail ViewSet with propagation control.
@@ -447,6 +450,7 @@ class EnhancedStringDetailViewSet(viewsets.ModelViewSet):
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
 
+@extend_schema(tags=['Propagation'])
 class PropagationSettingsViewSet(viewsets.ModelViewSet):
     """
     ViewSet for managing user propagation settings.

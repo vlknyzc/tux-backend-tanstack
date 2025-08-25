@@ -39,6 +39,7 @@ class StringWorkspaceFilter(filters.FilterSet):
         fields = ['id', 'submission', 'field', 'field_level', 'platform']
 
 
+@extend_schema(tags=['Strings'])
 class StringViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     """
     Workspace-scoped string viewset with embedded details.

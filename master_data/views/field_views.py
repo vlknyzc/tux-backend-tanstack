@@ -23,6 +23,7 @@ class FieldFilter(filters.FilterSet):
         fields = ['platform', 'id', 'field_level']
 
 
+@extend_schema(tags=['Fields'])
 class FieldViewSet(viewsets.ModelViewSet):
     serializer_class = serializers.FieldSerializer
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
