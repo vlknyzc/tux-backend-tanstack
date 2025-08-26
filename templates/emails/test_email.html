@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>TUX Backend Test Email</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            line-height: 1.6;
+            color: #333;
+            max-width: 600px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+        .header {
+            background-color: #007bff;
+            color: white;
+            padding: 20px;
+            text-align: center;
+            border-radius: 8px 8px 0 0;
+        }
+        .content {
+            background-color: #f8f9fa;
+            padding: 30px;
+            border-radius: 0 0 8px 8px;
+            border: 1px solid #dee2e6;
+        }
+        .config-table {
+            background-color: white;
+            border-radius: 4px;
+            padding: 15px;
+            margin: 20px 0;
+            border: 1px solid #dee2e6;
+        }
+        .config-table table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .config-table td {
+            padding: 8px 12px;
+            border-bottom: 1px solid #eee;
+        }
+        .config-table td:first-child {
+            font-weight: bold;
+            color: #495057;
+        }
+        .success-badge {
+            background-color: #28a745;
+            color: white;
+            padding: 8px 16px;
+            border-radius: 20px;
+            display: inline-block;
+            margin: 15px 0;
+            font-weight: bold;
+        }
+        .footer {
+            text-align: center;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #dee2e6;
+            color: #6c757d;
+            font-size: 14px;
+        }
+    </style>
+</head>
+<body>
+    <div class="header">
+        <h1>🚀 TUX Backend</h1>
+        <p>SES Email Service Test</p>
+    </div>
+    
+    <div class="content">
+        <div class="success-badge">✅ Email Service Working!</div>
+        
+        <p>Congratulations! This test email was successfully sent from the TUX Backend application using Amazon SES.</p>
+        
+        <div class="config-table">
+            <h3>📋 Configuration Details</h3>
+            <table>
+                <tr>
+                    <td>Email Service</td>
+                    <td>Amazon SES</td>
+                </tr>
+                <tr>
+                    <td>Client Library</td>
+                    <td>boto3</td>
+                </tr>
+                <tr>
+                    <td>Region</td>
+                    <td>{{ region|default:"us-east-1" }}</td>
+                </tr>
+                <tr>
+                    <td>From Email</td>
+                    <td>{{ from_email|default:"Not configured" }}</td>
+                </tr>
+                <tr>
+                    <td>Timestamp</td>
+                    <td>{{ timestamp|default:"Now" }}</td>
+                </tr>
+            </table>
+        </div>
+        
+        <p><strong>What this means:</strong></p>
+        <ul>
+            <li>✅ Your AWS credentials are correctly configured</li>
+            <li>✅ Your SES service is active and accessible</li>
+            <li>✅ Email templates are rendering properly</li>
+            <li>✅ The TUX Backend email service is ready for production use</li>
+        </ul>
+        
+        <p>You can now use the email service for:</p>
+        <ul>
+            <li>User invitation emails</li>
+            <li>Password reset notifications</li>
+            <li>System alerts and notifications</li>
+            <li>Workspace-related communications</li>
+        </ul>
+    </div>
+    
+    <div class="footer">
+        <p>Sent from <strong>TUX Backend Email Service</strong></p>
+        <p>This is an automated test email.</p>
+    </div>
+</body>
+</html>

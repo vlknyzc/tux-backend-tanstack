@@ -43,7 +43,8 @@ class StringModification(TimeStampModel, WorkspaceMixin):
     # Tracking information
     modified_by = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
         help_text="User who made this modification"
     )
     modified_at = models.DateTimeField(
@@ -188,7 +189,8 @@ class StringUpdateBatch(TimeStampModel, WorkspaceMixin):
     # Execution tracking
     initiated_by = models.ForeignKey(
         User,
-        on_delete=models.CASCADE,
+        on_delete=models.SET_NULL,
+        null=True,
         help_text="User who initiated this batch operation"
     )
     initiated_at = models.DateTimeField(

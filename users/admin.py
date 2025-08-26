@@ -1,7 +1,8 @@
 from django.contrib import admin
 from django.contrib.auth.admin import UserAdmin as BaseUserAdmin
 from django.utils.html import format_html
-from .models import UserAccount, WorkspaceUser
+from django.utils import timezone
+from .models import UserAccount, WorkspaceUser, Invitation
 
 
 class WorkspaceUserInline(admin.TabularInline):
@@ -180,6 +181,113 @@ class WorkspaceUserAdmin(admin.ModelAdmin):
     def get_queryset(self, request):
         """Optimize queryset with select_related"""
         return super().get_queryset(request).select_related('user', 'workspace')
+
+
+@admin.register(Invitation)
+class InvitationAdmin(admin.ModelAdmin):
+    """Admin configuration for Invitation model"""
+
+    # Display settings
+    list_display = [
+        'email', 'invitor_email', 'workspace_name', 'role', 'status',
+        'is_valid_status', 'created_at', 'expires_at'
+    ]
+    list_filter = [
+        'status', 'role', 'workspace', 'created_at', 'expires_at',
+        'invitor__is_staff'
+    ]
+    search_fields = [
+        'email', 'invitor__email', 'invitor__first_name', 'invitor__last_name',
+        'workspace__name', 'token'
+    ]
+    ordering = ['-created_at']
+
+    # Form settings
+    fields = (
+        'email', 'invitor', 'workspace', 'role', 'status',
+        'expires_at', 'token', 'created_at', 'updated_at',
+        'used_at', 'used_by'
+    )
+    readonly_fields = [
+        'token', 'created_at', 'updated_at', 'used_at'
+    ]
+    autocomplete_fields = ['invitor', 'workspace', 'used_by']
+
+    # Custom methods for list display
+    def invitor_email(self, obj):
+        """Display invitor's email with link to user admin"""
+        return format_html(
+            '<a href="/admin/users/useraccount/{}/change/">{}</a>',
+            obj.invitor.id, obj.invitor.email
+        )
+    invitor_email.short_description = 'Invitor'
+    invitor_email.admin_order_field = 'invitor__email'
+
+    def workspace_name(self, obj):
+        """Display workspace name with link to workspace admin"""
+        if obj.workspace:
+            return format_html(
+                '<a href="/admin/master_data/workspace/{}/change/">{}</a>',
+                obj.workspace.id, obj.workspace.name
+            )
+        return '-'
+    workspace_name.short_description = 'Workspace'
+    workspace_name.admin_order_field = 'workspace__name'
+
+    def is_valid_status(self, obj):
+        """Display whether invitation is currently valid"""
+        if obj.is_valid:
+            return format_html('<span style="color: green;">✓ Valid</span>')
+        elif obj.is_expired:
+            return format_html('<span style="color: red;">✗ Expired</span>')
+        elif obj.status == 'used':
+            return format_html('<span style="color: blue;">✓ Used</span>')
+        elif obj.status == 'revoked':
+            return format_html('<span style="color: orange;">✗ Revoked</span>')
+        else:
+            return format_html('<span style="color: gray;">? Unknown</span>')
+    is_valid_status.short_description = 'Valid'
+
+    # Actions
+    actions = ['mark_as_revoked', 'extend_expiration', 'mark_as_expired']
+
+    def mark_as_revoked(self, request, queryset):
+        """Mark selected invitations as revoked"""
+        updated = 0
+        for invitation in queryset:
+            if invitation.status == 'pending':
+                invitation.mark_as_revoked()
+                updated += 1
+        self.message_user(request, f'{updated} invitation(s) revoked.')
+    mark_as_revoked.short_description = "Revoke selected invitations"
+
+    def extend_expiration(self, request, queryset):
+        """Extend expiration of selected invitations by 7 days"""
+        from datetime import timedelta
+        updated = 0
+        for invitation in queryset:
+            if invitation.status in ['pending', 'expired']:
+                invitation.expires_at = timezone.now() + timedelta(days=7)
+                invitation.status = 'pending'
+                invitation.save(update_fields=['expires_at', 'status', 'updated_at'])
+                updated += 1
+        self.message_user(request, f'{updated} invitation(s) extended.')
+    extend_expiration.short_description = "Extend expiration by 7 days"
+
+    def mark_as_expired(self, request, queryset):
+        """Mark selected invitations as expired"""
+        updated = 0
+        for invitation in queryset:
+            if invitation.status == 'pending':
+                invitation.mark_as_expired()
+                updated += 1
+        self.message_user(request, f'{updated} invitation(s) marked as expired.')
+    mark_as_expired.short_description = "Mark as expired"
+
+    # Custom queryset for performance
+    def get_queryset(self, request):
+        """Optimize queryset with select_related"""
+        return super().get_queryset(request).select_related('invitor', 'workspace', 'used_by')
 
 
 # Register models with admin site

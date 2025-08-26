@@ -1,5 +1,8 @@
 from django.db import models
 from django.contrib.auth.models import BaseUserManager, AbstractBaseUser, PermissionsMixin
+from django.utils import timezone
+from datetime import timedelta
+import uuid
 
 
 class UserAccountManager(BaseUserManager):
@@ -119,3 +122,133 @@ class WorkspaceUser(models.Model):
 
     def __str__(self):
         return f"{self.user.email} - {self.workspace.name} ({self.role})"
+
+
+class Invitation(models.Model):
+    """
+    Model for user invitations with secure token-based registration
+    """
+    STATUS_CHOICES = [
+        ('pending', 'Pending'),
+        ('used', 'Used'),
+        ('expired', 'Expired'),
+        ('revoked', 'Revoked'),
+    ]
+
+    ROLE_CHOICES = WorkspaceUser.ROLE_CHOICES  # Reuse role choices from WorkspaceUser
+
+    # Core fields
+    token = models.UUIDField(
+        default=uuid.uuid4,
+        unique=True,
+        db_index=True,
+        help_text="Unique invitation token"
+    )
+    email = models.EmailField(
+        db_index=True,
+        help_text="Email address of the invited user"
+    )
+    
+    # Invitation metadata
+    invitor = models.ForeignKey(
+        'UserAccount',
+        on_delete=models.SET_NULL,
+        null=True,
+        related_name='sent_invitations',
+        help_text="User who sent this invitation"
+    )
+    workspace = models.ForeignKey(
+        'master_data.Workspace',
+        on_delete=models.CASCADE,
+        related_name='invitations',
+        help_text="Workspace the user is being invited to",
+        null=True,
+        blank=True
+    )
+    role = models.CharField(
+        max_length=20,
+        choices=ROLE_CHOICES,
+        default='user',
+        help_text="Role to assign to the invited user"
+    )
+    
+    # Status and lifecycle
+    status = models.CharField(
+        max_length=20,
+        choices=STATUS_CHOICES,
+        default='pending',
+        help_text="Current status of the invitation"
+    )
+    
+    # Timestamps
+    created_at = models.DateTimeField(auto_now_add=True)
+    updated_at = models.DateTimeField(auto_now=True)
+    expires_at = models.DateTimeField(
+        help_text="When this invitation expires"
+    )
+    used_at = models.DateTimeField(
+        null=True,
+        blank=True,
+        help_text="When this invitation was used"
+    )
+    
+    # User who used the invitation (if any)
+    used_by = models.ForeignKey(
+        'UserAccount',
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name='used_invitations',
+        help_text="User who used this invitation"
+    )
+
+    class Meta:
+        ordering = ['-created_at']
+        indexes = [
+            models.Index(fields=['email', 'status']),
+            models.Index(fields=['invitor', 'status']),
+            models.Index(fields=['expires_at', 'status']),
+        ]
+
+    def save(self, *args, **kwargs):
+        """Set default expiration if not provided"""
+        if not self.expires_at:
+            self.expires_at = timezone.now() + timedelta(days=7)
+        super().save(*args, **kwargs)
+
+    def __str__(self):
+        return f"Invitation for {self.email} by {self.invitor.email} ({self.status})"
+
+    @property
+    def is_valid(self):
+        """Check if invitation is valid for use"""
+        return (
+            self.status == 'pending' and
+            timezone.now() < self.expires_at
+        )
+
+    @property
+    def is_expired(self):
+        """Check if invitation has expired"""
+        return timezone.now() >= self.expires_at
+
+    def mark_as_used(self, user):
+        """Mark invitation as used by a user"""
+        self.status = 'used'
+        self.used_at = timezone.now()
+        self.used_by = user
+        self.save(update_fields=['status', 'used_at', 'used_by', 'updated_at'])
+
+    def mark_as_revoked(self):
+        """Mark invitation as revoked"""
+        self.status = 'revoked'
+        self.save(update_fields=['status', 'updated_at'])
+
+    def mark_as_expired(self):
+        """Mark invitation as expired"""
+        self.status = 'expired'
+        self.save(update_fields=['status', 'updated_at'])
+
+    def get_invitation_url(self, base_url):
+        """Generate the invitation URL"""
+        return f"{base_url}/register?token={self.token}"

@@ -1,7 +1,8 @@
 from rest_framework import serializers
 from django.contrib.auth import get_user_model
+from django.utils import timezone
 from master_data.models import Workspace
-from .models import WorkspaceUser
+from .models import WorkspaceUser, Invitation
 
 User = get_user_model()
 
@@ -187,3 +188,188 @@ class LogoutResponseSerializer(serializers.Serializer):
     """Serializer for logout response"""
     message = serializers.CharField(default="Successfully logged out")
     status = serializers.CharField(default="success")
+
+
+# Invitation Serializers
+
+class InvitationCreateSerializer(serializers.ModelSerializer):
+    """Serializer for creating invitations"""
+    
+    class Meta:
+        model = Invitation
+        fields = ['email', 'workspace', 'role', 'expires_at']
+        extra_kwargs = {
+            'expires_at': {'required': False}
+        }
+    
+    def validate_email(self, value):
+        """Validate that email doesn't already have an account"""
+        if User.objects.filter(email=value).exists():
+            raise serializers.ValidationError(
+                "A user with this email already exists"
+            )
+        return value.lower()
+    
+    def validate(self, attrs):
+        """Additional validation"""
+        # Check if there's already a pending invitation for this email
+        email = attrs.get('email')
+        workspace = attrs.get('workspace')
+        
+        if email and workspace:
+            existing_invitation = Invitation.objects.filter(
+                email=email,
+                workspace=workspace,
+                status='pending'
+            ).first()
+            
+            if existing_invitation and existing_invitation.is_valid:
+                raise serializers.ValidationError(
+                    "A pending invitation already exists for this email and workspace"
+                )
+        
+        return attrs
+    
+    def create(self, validated_data):
+        """Create invitation with invitor from request"""
+        request = self.context.get('request')
+        validated_data['invitor'] = request.user
+        return super().create(validated_data)
+
+
+class InvitationSerializer(serializers.ModelSerializer):
+    """Serializer for invitation details"""
+    invitor_name = serializers.CharField(source='invitor.get_full_name', read_only=True)
+    invitor_email = serializers.CharField(source='invitor.email', read_only=True)
+    workspace_name = serializers.CharField(source='workspace.name', read_only=True)
+    is_valid = serializers.BooleanField(read_only=True)
+    is_expired = serializers.BooleanField(read_only=True)
+    
+    class Meta:
+        model = Invitation
+        fields = [
+            'id', 'token', 'email', 'role', 'status',
+            'created_at', 'updated_at', 'expires_at', 'used_at',
+            'invitor_name', 'invitor_email', 'workspace', 'workspace_name',
+            'is_valid', 'is_expired'
+        ]
+        read_only_fields = [
+            'id', 'token', 'created_at', 'updated_at', 'used_at',
+            'invitor_name', 'invitor_email', 'workspace_name',
+            'is_valid', 'is_expired'
+        ]
+
+
+class InvitationListSerializer(serializers.ModelSerializer):
+    """Lightweight serializer for invitation lists"""
+    invitor_name = serializers.CharField(source='invitor.get_full_name', read_only=True)
+    workspace_name = serializers.CharField(source='workspace.name', read_only=True)
+    is_valid = serializers.BooleanField(read_only=True)
+    days_until_expiry = serializers.SerializerMethodField()
+    
+    class Meta:
+        model = Invitation
+        fields = [
+            'id', 'token', 'email', 'role', 'status',
+            'created_at', 'expires_at', 'invitor_name', 'workspace_name',
+            'is_valid', 'days_until_expiry'
+        ]
+    
+    def get_days_until_expiry(self, obj):
+        """Calculate days until expiry"""
+        if obj.status != 'pending':
+            return None
+        
+        delta = obj.expires_at - timezone.now()
+        if delta.days < 0:
+            return 0
+        return delta.days
+
+
+class InvitationValidationSerializer(serializers.Serializer):
+    """Serializer for invitation validation response"""
+    valid = serializers.BooleanField()
+    status = serializers.CharField()
+    email = serializers.EmailField()
+    invitor_name = serializers.CharField()
+    workspace_name = serializers.CharField(allow_null=True)
+    role = serializers.CharField()
+    expires_at = serializers.DateTimeField()
+    message = serializers.CharField()
+
+
+class RegisterViaInvitationSerializer(serializers.Serializer):
+    """Serializer for user registration via invitation"""
+    token = serializers.UUIDField()
+    first_name = serializers.CharField(max_length=255)
+    last_name = serializers.CharField(max_length=255)
+    password = serializers.CharField(min_length=8, write_only=True)
+    password_confirm = serializers.CharField(write_only=True)
+    
+    def validate(self, attrs):
+        """Validate invitation token and password confirmation"""
+        token = attrs.get('token')
+        password = attrs.get('password')
+        password_confirm = attrs.get('password_confirm')
+        
+        # Validate password confirmation
+        if password != password_confirm:
+            raise serializers.ValidationError("Passwords don't match")
+        
+        # Validate invitation token
+        try:
+            invitation = Invitation.objects.get(token=token)
+        except Invitation.DoesNotExist:
+            raise serializers.ValidationError("Invalid invitation token")
+        
+        if not invitation.is_valid:
+            if invitation.is_expired:
+                raise serializers.ValidationError("Invitation has expired")
+            elif invitation.status == 'used':
+                raise serializers.ValidationError("Invitation has already been used")
+            elif invitation.status == 'revoked':
+                raise serializers.ValidationError("Invitation has been revoked")
+            else:
+                raise serializers.ValidationError("Invitation is not valid")
+        
+        # Check if user already exists with this email
+        if User.objects.filter(email=invitation.email).exists():
+            raise serializers.ValidationError("A user with this email already exists")
+        
+        attrs['invitation'] = invitation
+        return attrs
+    
+    def create(self, validated_data):
+        """Create user from invitation"""
+        invitation = validated_data.pop('invitation')
+        validated_data.pop('password_confirm')
+        password = validated_data.pop('password')
+        
+        # Create user with invitation email
+        user = User.objects.create_user(
+            email=invitation.email,
+            password=password,
+            first_name=validated_data['first_name'],
+            last_name=validated_data['last_name'],
+            is_active=True
+        )
+        
+        # Mark invitation as used
+        invitation.mark_as_used(user)
+        
+        # Create workspace relationship if invitation has workspace
+        if invitation.workspace:
+            WorkspaceUser.objects.create(
+                user=user,
+                workspace=invitation.workspace,
+                role=invitation.role,
+                is_active=True
+            )
+        
+        return user
+
+
+class InvitationResendSerializer(serializers.Serializer):
+    """Serializer for resending invitations"""
+    message = serializers.CharField(default="Invitation resent successfully")
+    new_expires_at = serializers.DateTimeField()

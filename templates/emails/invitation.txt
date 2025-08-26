@@ -1,0 +1,37 @@
+🎉 You're Invited to Join {{ invitation.workspace.name|default:"Tuxonomy.com" }}!
+===============================================================================
+
+Hello there! 👋
+
+{{ invitation.invitor.get_full_name|default:invitation.invitor.email }} has invited you to join 
+{% if invitation.workspace %}{{ invitation.workspace.name }}{% else %}TUX Backend{% endif %} as a {{ invitation.get_role_display }}.
+
+{% if invitation.workspace %}
+📋 Workspace Details:
+--------------------
+Name: {{ invitation.workspace.name }}
+Your Role: {{ invitation.get_role_display }}
+{% endif %}
+
+🔑 Getting Started:
+------------------
+To accept this invitation and create your account, visit:
+{{ invitation_url }}
+
+⏰ IMPORTANT: This invitation expires on {{ invitation.expires_at|date:"F j, Y \a\t g:i A T" }}.
+Please accept it before then to join the workspace.
+
+What happens next:
+-----------------
+1. Click the invitation link above
+2. Create your account with a secure password  
+3. Start collaborating with your team!
+
+If you have any questions, feel free to reach out to {{ invitation.invitor.get_full_name|default:invitation.invitor.email }} 
+who sent you this invitation.
+
+===============================================================================
+Tuxonomy.com - Naming Convention Management Platform
+
+If you didn't expect this invitation, you can safely ignore this email.
+This email was sent automatically. Please do not reply to this email.
