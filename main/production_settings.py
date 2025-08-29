@@ -153,29 +153,41 @@ def get_railway_db_config():
         "PORT": os.environ["PGPORT"],
         "OPTIONS": {
             "application_name": f"tux-backend-{CLIENT_SUBDOMAIN}",
-            # Railway-optimized connection options
-            "connect_timeout": 60,  # Longer timeout for Railway
+            # Railway-optimized connection options with enhanced reliability
+            "connect_timeout": 180,  # Extended timeout for Railway startup
             "server_side_binding": True,
+            "sslmode": "prefer",  # Prefer SSL but allow fallback
+            "keepalives_idle": 300,
+            "keepalives_interval": 30,
+            "keepalives_count": 3,
             # PostgreSQL settings for Railway reliability
             "options": (
-                "-c statement_timeout=120s "
-                "-c lock_timeout=60s "
-                "-c idle_in_transaction_session_timeout=300s "
+                "-c statement_timeout=180s "
+                "-c lock_timeout=120s "
+                "-c idle_in_transaction_session_timeout=600s "
                 "-c tcp_keepalives_idle=300 "
                 "-c tcp_keepalives_interval=30 "
-                "-c tcp_keepalives_count=3"
+                "-c tcp_keepalives_count=3 "
+                "-c log_disconnections=on "
+                "-c log_connections=on"
             ),
         },
         "CONN_MAX_AGE": 0,  # No connection reuse during deployment
         "CONN_HEALTH_CHECKS": True,
         "ATOMIC_REQUESTS": True,
+        "TEST": {
+            "NAME": f"test_{get_database_name()}",
+        },
     }
     
     # Special handling for Railway deployment phase
     if os.environ.get('RAILWAY_DEPLOYMENT_ID'):
         # During deployment, use even more conservative settings
-        base_config["OPTIONS"]["connect_timeout"] = 120
-        base_config["OPTIONS"]["options"] += " -c log_min_duration_statement=1000"
+        base_config["OPTIONS"]["connect_timeout"] = 300  # 5 minutes for deployment
+        base_config["OPTIONS"]["options"] += " -c log_min_duration_statement=5000"
+        # Add deployment-specific connection retry logic
+        base_config["OPTIONS"]["keepalives_idle"] = 600
+        base_config["OPTIONS"]["keepalives_interval"] = 60
     
     return base_config
 

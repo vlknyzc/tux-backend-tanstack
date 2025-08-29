@@ -14,7 +14,7 @@ import logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
 logger = logging.getLogger(__name__)
 
-def run_command_with_retry(command, max_retries=3, retry_delay=5):
+def run_command_with_retry(command, max_retries=3, retry_delay=10):
     """
     Run a command with retry logic for database connectivity issues.
     
@@ -58,70 +58,108 @@ def run_command_with_retry(command, max_retries=3, retry_delay=5):
     
     return False
 
-def wait_for_database(max_wait=60):
-    """Wait for database to be available."""
-    logger.info("Checking database connectivity...")
+def wait_for_database(max_wait=180):  # Increase timeout for Railway
+    """Wait for database to be available with Railway-optimized logic."""
+    logger.info("🔍 Checking Railway database connectivity...")
     
     # Skip database check in development/local environments
     if os.environ.get('DJANGO_SETTINGS_MODULE', '').endswith('local_settings'):
-        logger.info("Local environment detected, skipping database connectivity check")
+        logger.info("🏠 Local environment detected, skipping database connectivity check")
         return True
+    
+    # Log Railway deployment info if available
+    if os.environ.get('RAILWAY_DEPLOYMENT_ID'):
+        logger.info(f"🚂 Railway Deployment ID: {os.environ['RAILWAY_DEPLOYMENT_ID']}")
+        # Railway database might take longer during initial deployment
+        max_wait = 300  # 5 minutes for Railway deployments
+    
+    # Initial delay to allow Railway database service to start
+    logger.info("⏳ Initial 10-second delay for Railway database startup...")
+    time.sleep(10)
     
     check_command = ['python', 'manage.py', 'check', '--database', 'default']
     
     start_time = time.time()
+    attempt = 1
+    
     while time.time() - start_time < max_wait:
         try:
-            subprocess.run(check_command, check=True, capture_output=True, text=True)
-            logger.info("✓ Database is available")
+            logger.info(f"🔍 Database connectivity check (attempt {attempt})...")
+            result = subprocess.run(check_command, check=True, capture_output=True, text=True)
+            logger.info("✅ Database is available and healthy!")
             return True
-        except subprocess.CalledProcessError:
-            logger.info("Database not ready, waiting...")
-            time.sleep(2)
+            
+        except subprocess.CalledProcessError as e:
+            error_msg = e.stderr.strip() if e.stderr else str(e)
+            
+            # Check for specific Railway database startup patterns
+            if 'server closed the connection unexpectedly' in error_msg.lower():
+                logger.info("🔄 Railway database is starting up, retrying...")
+            elif 'connection failed' in error_msg.lower():
+                logger.info("🔄 Database connection failed, likely startup delay...")
+            else:
+                logger.warning(f"⚠ Database check failed: {error_msg[:200]}...")
+            
+            # Progressive delay - start with 5 seconds, increase gradually
+            delay = min(5 + (attempt // 3) * 2, 15)  # Max 15 seconds
+            logger.info(f"⏳ Waiting {delay} seconds before retry...")
+            time.sleep(delay)
+            attempt += 1
     
-    logger.error("Database did not become available within the timeout period")
+    logger.error("❌ Database did not become available within the timeout period")
     return False
 
 def main():
-    """Main deployment function."""
-    logger.info("Starting Railway deployment...")
+    """Main deployment function with Railway-optimized flow."""
+    logger.info("🚂 Starting Railway deployment for TUX Backend...")
+    logger.info("=" * 60)
     
     # Set Django settings module (default to production, but allow override)
     if not os.environ.get('DJANGO_SETTINGS_MODULE'):
         os.environ['DJANGO_SETTINGS_MODULE'] = 'main.production_settings'
     
-    # Step 1: Wait for database to be available
+    # Log deployment environment info
+    logger.info(f"⚙️ Django Settings: {os.environ.get('DJANGO_SETTINGS_MODULE')}")
+    if os.environ.get('RAILWAY_ENVIRONMENT'):
+        logger.info(f"🚂 Railway Environment: {os.environ['RAILWAY_ENVIRONMENT']}")
+    
+    # Step 1: Wait for Railway database to be fully available
+    logger.info("✅ STEP 1: Database Connectivity Check")
     if not wait_for_database():
-        logger.error("Database is not available. Deployment failed.")
+        logger.error("❌ Database is not available. Deployment failed.")
+        logger.error("🚨 This might indicate Railway database service issues")
         sys.exit(1)
     
-    # Step 2: Run migrations with retry
-    logger.info("Running database migrations...")
-    if not run_command_with_retry(['python', 'manage.py', 'migrate'], max_retries=5, retry_delay=10):
-        logger.error("Migration failed after all retries. Deployment failed.")
+    # Step 2: Run database migrations with retry
+    logger.info("✅ STEP 2: Database Migrations")
+    if not run_command_with_retry(['python', 'manage.py', 'migrate', '--verbosity=2'], max_retries=5, retry_delay=15):
+        logger.error("❌ Migration failed after all retries. Deployment failed.")
         sys.exit(1)
     
-    # Step 3: Collect static files (usually doesn't fail, but include for completeness)
-    logger.info("Collecting static files...")
-    if not run_command_with_retry(['python', 'manage.py', 'collectstatic', '--noinput'], max_retries=2):
-        logger.error("Static file collection failed. Deployment failed.")
+    # Step 3: Collect static files
+    logger.info("✅ STEP 3: Static File Collection")
+    if not run_command_with_retry(['python', 'manage.py', 'collectstatic', '--noinput', '--verbosity=2'], max_retries=2):
+        logger.error("❌ Static file collection failed. Deployment failed.")
         sys.exit(1)
     
-    # Step 4: Seed platforms (with retry for database operations)
-    logger.info("Seeding platforms...")
-    if not run_command_with_retry(['python', 'manage.py', 'seed_platforms'], max_retries=3):
-        logger.error("Platform seeding failed. Deployment failed.")
+    # Step 4: Seed platforms data
+    logger.info("✅ STEP 4: Platform Data Seeding")
+    if not run_command_with_retry(['python', 'manage.py', 'seed_platforms'], max_retries=3, retry_delay=10):
+        logger.error("❌ Platform seeding failed. Deployment failed.")
         sys.exit(1)
     
-    # Step 5: Create default workspace (with retry)
-    logger.info("Creating default workspace...")
+    # Step 5: Create default workspace (allow this to fail gracefully)
+    logger.info("✅ STEP 5: Default Workspace Creation")
     if not run_command_with_retry([
         'python', 'manage.py', 'create_workspace', 'Default Workspace', 
         '--admin-email', 'demo@tuxonomy.com', '--create-admin', '--skip-existing'
-    ], max_retries=3):
-        logger.warning("Workspace creation failed, but this may be expected if it already exists.")
+    ], max_retries=3, retry_delay=10):
+        logger.warning("⚠ Workspace creation failed, but this may be expected if it already exists.")
+        logger.info("📝 This is not a critical failure for deployment")
     
-    logger.info("🎉 Deployment completed successfully!")
+    logger.info("=" * 60)
+    logger.info("🎉 Railway deployment completed successfully!")
+    logger.info("🚀 TUX Backend is ready to serve requests")
 
 if __name__ == '__main__':
     main()
