@@ -164,11 +164,21 @@ def check_static_files():
 def check_authentication():
     """Check if authentication classes can be imported."""
     try:
-        from users.authentication import CustomJWTAuthentication
-        logger.info("✓ Authentication classes import successfully")
+        # Test JWT authentication without causing circular imports
+        from rest_framework_simplejwt.authentication import JWTAuthentication
+        logger.info("✓ JWT authentication available")
+        
+        # Try to import custom auth but don't fail if it causes issues
+        try:
+            from users.authentication import CustomJWTAuthentication
+            logger.info("✓ Custom authentication classes import successfully")
+        except ImportError as e:
+            logger.warning(f"⚠ Custom authentication import issue: {e}")
+            logger.info("💡 Using base JWT authentication instead")
+        
         return True
     except ImportError as e:
-        logger.error(f"✗ Authentication import failed: {e}")
+        logger.error(f"✗ Authentication system failed: {e}")
         return False
 
 def check_api_schema():

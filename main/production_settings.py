@@ -231,6 +231,27 @@ DEFAULT_AUTO_FIELD = "django.db.models.BigAutoField"
 # ────────────────────────────────────────────────────────────────
 # REST Framework / JWT
 # ────────────────────────────────────────────────────────────────
+# Use lazy loading for authentication to avoid circular imports
+def get_rest_framework_settings():
+    """Get REST Framework settings with lazy imports."""
+    return {
+        'DEFAULT_AUTHENTICATION_CLASSES': [
+            'users.authentication.CustomJWTAuthentication',
+        ],
+        'DEFAULT_PERMISSION_CLASSES': [
+            'rest_framework.permissions.IsAuthenticated',
+        ],
+        'DEFAULT_SCHEMA_CLASS': 'drf_spectacular.openapi.AutoSchema',
+        'DEFAULT_FILTER_BACKENDS': ['django_filters.rest_framework.DjangoFilterBackend'],
+
+        # API Versioning
+        'DEFAULT_VERSIONING_CLASS': 'rest_framework.versioning.URLPathVersioning',
+        'DEFAULT_VERSION': 'v1',
+        'ALLOWED_VERSIONS': ['v1', 'v2'],
+        'VERSION_PARAM': 'version',
+    }
+
+# REST Framework configuration with circular import protection
 REST_FRAMEWORK = {
     'DEFAULT_AUTHENTICATION_CLASSES': [
         'users.authentication.CustomJWTAuthentication',

@@ -24,6 +24,7 @@ from django.views.decorators.cache import never_cache
 from django.db import transaction
 import json
 import datetime
+import os
 
 
 def get_spectacular_views():
@@ -51,9 +52,61 @@ def health_check_endpoint(request):
     return response
 
 
+@csrf_exempt
+@never_cache  
+@transaction.non_atomic_requests
+def debug_django_status(request):
+    """Minimal Django diagnostic endpoint."""
+    try:
+        # Test basic Django functionality
+        from django.conf import settings
+        
+        # Get basic info without database access
+        debug_info = {
+            'django_ready': True,
+            'settings_module': os.environ.get('DJANGO_SETTINGS_MODULE', 'unknown'),
+            'debug_mode': getattr(settings, 'DEBUG', 'unknown'),
+            'secret_key_set': bool(getattr(settings, 'SECRET_KEY', None)),
+            'allowed_hosts_count': len(getattr(settings, 'ALLOWED_HOSTS', [])),
+        }
+        
+        # Try to import critical modules
+        try:
+            from users.models import UserAccount
+            debug_info['user_model'] = 'OK'
+        except Exception as e:
+            debug_info['user_model'] = f'ERROR: {str(e)}'
+        
+        try:
+            from rest_framework_simplejwt.tokens import RefreshToken
+            debug_info['jwt_import'] = 'OK'
+        except Exception as e:
+            debug_info['jwt_import'] = f'ERROR: {str(e)}'
+        
+        # Return as plain text to avoid JSON serialization issues
+        content = '\n'.join([f'{k}: {v}' for k, v in debug_info.items()])
+        
+        return HttpResponse(
+            content=content,
+            status=200,
+            content_type='text/plain'
+        )
+        
+    except Exception as e:
+        # Catch any error and return it as plain text
+        error_content = f'DJANGO_ERROR: {str(e)}\nTRACEBACK: {str(e.__class__.__name__)}'
+        
+        return HttpResponse(
+            content=error_content,
+            status=500,
+            content_type='text/plain'
+        )
+
+
 urlpatterns = [
     path('', TemplateView.as_view(template_name='index.html'), name='index'),
     path('health/', health_check_endpoint, name='health_check'),  # Railway health check endpoint
+    path('debug-status/', debug_django_status, name='debug_status'),  # Django diagnostic endpoint
 
     # Browsable API auth
     path('api-auth/', include('rest_framework.urls')),
