@@ -29,12 +29,18 @@ class Command(BaseCommand):
             action='store_true',
             help='Create admin user if they don\'t exist (requires --admin-email)'
         )
+        parser.add_argument(
+            '--skip-existing',
+            action='store_true',
+            help='Skip creation if workspace already exists (for deployment scripts)'
+        )
 
     def handle(self, *args, **options):
         name = options['name']
         slug = options.get('slug')
         admin_email = options.get('admin_email')
         create_admin = options['create_admin']
+        skip_existing = options['skip_existing']
 
         # Validate inputs
         if create_admin and not admin_email:
@@ -46,13 +52,29 @@ class Command(BaseCommand):
             if slug:
                 existing = Workspace.objects.filter(slug=slug).first()
                 if existing:
-                    raise CommandError(
-                        f'Workspace with slug "{slug}" already exists')
+                    if skip_existing:
+                        self.stdout.write(
+                            self.style.WARNING(
+                                f'Workspace with slug "{slug}" already exists. Skipping creation.'
+                            )
+                        )
+                        return
+                    else:
+                        raise CommandError(
+                            f'Workspace with slug "{slug}" already exists')
 
             existing = Workspace.objects.filter(name=name).first()
             if existing:
-                raise CommandError(
-                    f'Workspace with name "{name}" already exists')
+                if skip_existing:
+                    self.stdout.write(
+                        self.style.WARNING(
+                            f'Workspace with name "{name}" already exists. Skipping creation.'
+                        )
+                    )
+                    return
+                else:
+                    raise CommandError(
+                        f'Workspace with name "{name}" already exists')
 
             # Create workspace
             workspace_data = {'name': name}
