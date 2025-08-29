@@ -151,8 +151,13 @@ DATABASES = {
         "PORT":     os.environ["PGPORT"],
         "OPTIONS": {
             "application_name": f"tux-backend-{CLIENT_SUBDOMAIN}",
+            # Add connection resilience options
+            "connect_timeout": 10,
+            "options": "-c statement_timeout=30s",  # 30 second statement timeout
         },
         "CONN_MAX_AGE": 300,  # 5 minutes
+        # Add connection retry configuration
+        "CONN_HEALTH_CHECKS": True,
     }
 }
 
