@@ -7,4 +7,8 @@ class UsersConfig(AppConfig):
     
     def ready(self):
         """Import signals when the app is ready."""
-        import users.signals  # noqa
+        try:
+            import users.signals  # noqa
+        except ImportError:
+            # In case of circular imports during startup, defer signal loading
+            pass

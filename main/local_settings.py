@@ -44,9 +44,9 @@ INSTALLED_APPS = [
     "corsheaders",
     "rest_framework",
     'djoser',
+    "users",  # Move users before master_data to resolve potential dependencies
     "master_data",
     "django_filters",
-    "users",
     "coreapi",
     "drf_spectacular",
 ]
