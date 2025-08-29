@@ -5,7 +5,8 @@ from .views import (
     CustomTokenObtainPairView,
     CustomTokenRefreshView,
     CustomTokenVerifyView,
-    LogoutView
+    LogoutView,
+    debug_auth_status
 )
 from .management_views import UserManagementViewSet, WorkspaceUserManagementViewSet
 from .invitation_views import (
@@ -32,6 +33,9 @@ urlpatterns = [
     path('jwt/refresh/', CustomTokenRefreshView.as_view()),
     path('jwt/verify/', CustomTokenVerifyView.as_view()),
     path('logout/', LogoutView.as_view()),
+    
+    # Debug endpoint
+    path('debug/auth-status/', debug_auth_status, name='debug-auth-status'),
     
     # Invitation-specific endpoints (non-REST)
     path('invitations/<uuid:token>/validate/', InvitationValidateView.as_view(), name='invitation-validate'),

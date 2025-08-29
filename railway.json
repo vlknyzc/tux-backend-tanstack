@@ -4,10 +4,10 @@
     "builder": "NIXPACKS"
   },
   "deploy": {
-    "preDeployCommand": "python debug_railway_environment.py && python deploy.py",
-    "startCommand": "python railway_health_check.py && gunicorn --timeout 600 --worker-connections 1000 --max-requests 1000 --max-requests-jitter 100 --preload --bind 0.0.0.0:$PORT main.wsgi",
+    "preDeployCommand": "python manage.py migrate && python manage.py collectstatic --noinput && python manage.py seed_platforms && python manage.py create_workspace 'Default Workspace' --admin-email demo@tuxonomy.com --create-admin --skip-existing",
+    "startCommand": "gunicorn --timeout 600 --worker-connections 1000 --max-requests 1000 --max-requests-jitter 100 --preload --bind 0.0.0.0:$PORT main.wsgi",
     "restartPolicyType": "ON_FAILURE",
-    "restartPolicyMaxRetries": 5,
+    "restartPolicyMaxRetries": 3,
     "healthcheckPath": "/health/",
     "healthcheckTimeout": 120
   }
