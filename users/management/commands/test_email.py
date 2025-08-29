@@ -5,7 +5,7 @@ Usage: python manage.py test_email vlknyzc@gmail.com
 
 from django.core.management.base import BaseCommand, CommandError
 from django.utils import timezone
-from users.services import email_service
+from users.services import get_email_service
 import logging
 
 logger = logging.getLogger(__name__)
@@ -47,6 +47,7 @@ class Command(BaseCommand):
             # Check quota if requested
             if options['check_quota']:
                 self.stdout.write("\n📊 Checking SES quota and statistics...")
+                email_service = get_email_service()
                 quota_result = email_service.get_send_quota()
                 if quota_result['success']:
                     self.stdout.write(self.style.SUCCESS("✅ Quota information retrieved:"))
@@ -61,6 +62,7 @@ class Command(BaseCommand):
             # Verify email if requested
             if options['verify']:
                 self.stdout.write(f"\n📧 Verifying email address {email_address}...")
+                email_service = get_email_service()
                 verify_result = email_service.verify_email_address(email_address)
                 if verify_result['success']:
                     self.stdout.write(self.style.SUCCESS(f"✅ {verify_result['message']}"))
@@ -72,6 +74,7 @@ class Command(BaseCommand):
             # Send test email
             self.stdout.write(f"\n📤 Sending test email to {email_address}...")
             
+            email_service = get_email_service()
             if options['template']:
                 # Use template-based email
                 context = {

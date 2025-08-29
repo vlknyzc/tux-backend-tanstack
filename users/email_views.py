@@ -10,8 +10,9 @@ from rest_framework.response import Response
 from django.utils import timezone
 from django.conf import settings
 import logging
+from typing import Dict, Any
 
-from .services import email_service
+from .services import get_email_service
 
 logger = logging.getLogger(__name__)
 
@@ -42,19 +43,19 @@ def send_test_email(request):
         # Send test email
         if use_template:
             context = {
-                'region': getattr(email_service.ses_client._client_config, 'region_name', 'us-east-1'),
-                'from_email': email_service.from_email,
+                'region': getattr(get_email_service().ses_client._client_config, 'region_name', 'us-east-1'),
+                'from_email': get_email_service().from_email,
                 'timestamp': timezone.now().strftime('%Y-%m-%d %H:%M:%S UTC')
             }
             
-            result = email_service.send_template_email(
+            result = get_email_service().send_template_email(
                 to_emails=[email_address],
                 subject="TUX Backend - API Test Email",
                 template_name='test_email',
                 context=context
             )
         else:
-            result = email_service.send_test_email(email_address)
+            result = get_email_service().send_test_email(email_address)
         
         if result['success']:
             return Response({
@@ -62,7 +63,7 @@ def send_test_email(request):
                 'message': result['message'],
                 'message_id': result['message_id'],
                 'recipient': email_address,
-                'from_email': email_service.from_email,
+                'from_email': get_email_service().from_email,
                 'template_used': use_template
             }, status=status.HTTP_200_OK)
         else:
@@ -91,7 +92,7 @@ def get_email_quota(request):
     GET /api/v1/email/quota/
     """
     try:
-        quota_result = email_service.get_send_quota()
+        quota_result = get_email_service().get_send_quota()
         
         if quota_result['success']:
             return Response({
@@ -102,8 +103,8 @@ def get_email_quota(request):
                     'sent_last_24_hours': quota_result['sent_last_24_hours'],
                     'send_data_points': quota_result['send_data_points']
                 },
-                'region': getattr(email_service.ses_client._client_config, 'region_name', 'us-east-1'),
-                'from_email': email_service.from_email
+                'region': getattr(get_email_service().ses_client._client_config, 'region_name', 'us-east-1'),
+                'from_email': get_email_service().from_email
             }, status=status.HTTP_200_OK)
         else:
             return Response({
@@ -140,7 +141,7 @@ def verify_email(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        result = email_service.verify_email_address(email_address)
+        result = get_email_service().verify_email_address(email_address)
         
         if result['success']:
             return Response({
@@ -214,7 +215,7 @@ def send_custom_email(request):
                 status=status.HTTP_400_BAD_REQUEST
             )
         
-        result = email_service.send_email(
+        result = get_email_service().send_email(
             to_emails=to_emails,
             subject=subject,
             html_content=html_content,
@@ -231,7 +232,7 @@ def send_custom_email(request):
                 'recipients': to_emails,
                 'cc_recipients': cc_emails,
                 'bcc_recipients': bcc_emails,
-                'from_email': email_service.from_email
+                'from_email': get_email_service().from_email
             }, status=status.HTTP_200_OK)
         else:
             return Response({

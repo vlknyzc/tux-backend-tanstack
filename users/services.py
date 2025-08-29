@@ -321,8 +321,15 @@ class SESEmailService:
         )
 
 
-# Global instance for easy access
-email_service = SESEmailService()
+# Remove this line (around line 324):
+# email_service = SESEmailService()
+
+# Instead, create a function to get the service instance:
+def get_email_service():
+    """Get a singleton instance of the email service."""
+    if not hasattr(get_email_service, '_instance'):
+        get_email_service._instance = SESEmailService()
+    return get_email_service._instance
 
 
 def send_invitation_email(invitation) -> Dict[str, Any]:
@@ -351,6 +358,8 @@ def send_invitation_email(invitation) -> Dict[str, Any]:
         else:
             subject = "You're invited to join TUX Backend"
         
+        # Use the getter function instead of global instance
+        email_service = get_email_service()
         result = email_service.send_template_email(
             to_emails=[invitation.email],
             subject=subject,
@@ -385,4 +394,6 @@ def send_test_email(to_email: str) -> Dict[str, Any]:
     Returns:
         Dict containing success status and details
     """
+    # Use the getter function instead of global instance
+    email_service = get_email_service()
     return email_service.send_test_email(to_email)

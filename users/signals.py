@@ -8,7 +8,6 @@ from django.db.models.signals import post_save
 from django.dispatch import receiver
 from django.conf import settings
 from .models import Invitation
-from .services import send_invitation_email
 
 logger = logging.getLogger(__name__)
 
@@ -28,6 +27,8 @@ def send_invitation_email_on_create(sender, instance, created, **kwargs):
         try:
             logger.info(f"Sending invitation email to {instance.email} for invitation {instance.token}")
             
+            # Import here to avoid circular imports
+            from .services import send_invitation_email
             result = send_invitation_email(instance)
             
             if result['success']:
