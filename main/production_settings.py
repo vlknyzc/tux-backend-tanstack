@@ -141,24 +141,46 @@ def get_database_name():
     return base_db
 
 
-DATABASES = {
-    "default": {
+# Railway-specific database configuration
+def get_railway_db_config():
+    """Get database configuration optimized for Railway deployment."""
+    base_config = {
         "ENGINE": "django.db.backends.postgresql",
-        "NAME":     get_database_name(),
-        "USER":     os.environ["PGUSER"],
+        "NAME": get_database_name(),
+        "USER": os.environ["PGUSER"],
         "PASSWORD": os.environ["PGPASSWORD"],
-        "HOST":     os.environ["PGHOST"],
-        "PORT":     os.environ["PGPORT"],
+        "HOST": os.environ["PGHOST"],
+        "PORT": os.environ["PGPORT"],
         "OPTIONS": {
             "application_name": f"tux-backend-{CLIENT_SUBDOMAIN}",
-            # Add connection resilience options
-            "connect_timeout": 10,
-            "options": "-c statement_timeout=30s",  # 30 second statement timeout
+            # Railway-optimized connection options
+            "connect_timeout": 60,  # Longer timeout for Railway
+            "server_side_binding": True,
+            # PostgreSQL settings for Railway reliability
+            "options": (
+                "-c statement_timeout=120s "
+                "-c lock_timeout=60s "
+                "-c idle_in_transaction_session_timeout=300s "
+                "-c tcp_keepalives_idle=300 "
+                "-c tcp_keepalives_interval=30 "
+                "-c tcp_keepalives_count=3"
+            ),
         },
-        "CONN_MAX_AGE": 300,  # 5 minutes
-        # Add connection retry configuration
+        "CONN_MAX_AGE": 0,  # No connection reuse during deployment
         "CONN_HEALTH_CHECKS": True,
+        "ATOMIC_REQUESTS": True,
     }
+    
+    # Special handling for Railway deployment phase
+    if os.environ.get('RAILWAY_DEPLOYMENT_ID'):
+        # During deployment, use even more conservative settings
+        base_config["OPTIONS"]["connect_timeout"] = 120
+        base_config["OPTIONS"]["options"] += " -c log_min_duration_statement=1000"
+    
+    return base_config
+
+DATABASES = {
+    "default": get_railway_db_config()
 }
 
 # ────────────────────────────────────────────────────────────────
@@ -320,7 +342,12 @@ LOGGING = {
         },
         'django.db.backends': {
             'handlers': ['console'],
-            'level': 'ERROR',  # Log database errors
+            'level': 'DEBUG' if os.environ.get('RAILWAY_DEPLOYMENT_ID') else 'ERROR',
+            'propagate': False,
+        },
+        'django.db.backends.postgresql': {
+            'handlers': ['console'],
+            'level': 'DEBUG' if os.environ.get('RAILWAY_DEPLOYMENT_ID') else 'WARNING',
             'propagate': False,
         },
         'master_data': {
