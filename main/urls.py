@@ -16,7 +16,6 @@ Including another URLconf
 from django.contrib import admin
 from django.urls import path, include, re_path
 from django.views.generic import TemplateView
-from rest_framework.documentation import include_docs_urls
 from rest_framework.schemas import get_schema_view
 from rest_framework_simplejwt.views import (
     TokenObtainPairView,
@@ -43,7 +42,7 @@ urlpatterns = [
     # re_path(r'^api/(?P<version>(v1|v2))/token/$',
     #         TokenObtainPairView.as_view(), name="token_obtain_pair"),
     # re_path(r'^api/(?P<version>(v1|v2))/token/refresh/$',
-    #         TokenRefreshView.as_view(), name="token_refresh"),
+    #         TokenObtainPairView.as_view(), name="token_refresh"),
 
     # Admin and other endpoints
     path('admin/', admin.site.urls),
