@@ -59,6 +59,34 @@ def run_command_with_retry(command, max_retries=3, retry_delay=10):
     
     return False
 
+def analyze_database_environment():
+    """Analyze database environment for debugging."""
+    logger.info("📊 Database Environment Analysis:")
+    
+    # Check for IPv6 host issues
+    host = os.environ.get('PGHOST', 'unknown')
+    port = os.environ.get('PGPORT', 'unknown')
+    
+    if host != 'unknown':
+        if ':' in host and not host.startswith('['):
+            logger.warning(f"⚠ IPv6 host detected: {host}")
+            logger.info("💡 IPv6 hosts may need special handling")
+        
+        if 'railway.internal' in host:
+            logger.info(f"✅ Railway internal network: {host}")
+        elif 'railway.app' in host:
+            logger.info(f"✅ Railway external network: {host}")
+    
+    if port != 'unknown' and port != '5432':
+        logger.warning(f"⚠ Non-standard PostgreSQL port: {port}")
+    
+    # Check Railway environment
+    railway_env = os.environ.get('RAILWAY_ENVIRONMENT', 'unknown')
+    deployment_id = os.environ.get('RAILWAY_DEPLOYMENT_ID', 'unknown')
+    logger.info(f"🚂 Railway Environment: {railway_env}")
+    logger.info(f"🚂 Deployment ID: {deployment_id[:16]}..." if deployment_id != 'unknown' else "🚂 Deployment ID: unknown")
+
+
 def wait_for_database(max_wait=180):  # Increase timeout for Railway
     """Wait for database to be available with Railway-optimized logic."""
     logger.info("🔍 Checking Railway database connectivity...")
@@ -68,17 +96,24 @@ def wait_for_database(max_wait=180):  # Increase timeout for Railway
         logger.info("🏠 Local environment detected, skipping database connectivity check")
         return True
     
-    # Log Railway deployment info if available
-    if os.environ.get('RAILWAY_DEPLOYMENT_ID'):
-        logger.info(f"🚂 Railway Deployment ID: {os.environ['RAILWAY_DEPLOYMENT_ID']}")
-        # Railway database might take longer during initial deployment
-        max_wait = 300  # 5 minutes for Railway deployments
+    # Analyze database environment
+    analyze_database_environment()
+    
+    # Determine timeout based on environment
+    railway_env = os.environ.get('RAILWAY_ENVIRONMENT', 'development')
+    if railway_env == 'production':
+        max_wait = 450  # 7.5 minutes for production (often slower)
+        initial_delay = 20
+    else:
+        max_wait = 300  # 5 minutes for development/staging
+        initial_delay = 10
     
     # Initial delay to allow Railway database service to start
-    logger.info("⏳ Initial 10-second delay for Railway database startup...")
-    time.sleep(10)
+    logger.info(f"⏳ Initial {initial_delay}-second delay for Railway database startup...")
+    time.sleep(initial_delay)
     
-    check_command = ['python', 'manage.py', 'check', '--database', 'default']
+    # Use debug script for comprehensive checking
+    check_command = ['python', 'debug_railway_environment.py']
     
     start_time = time.time()
     attempt = 1
@@ -95,19 +130,30 @@ def wait_for_database(max_wait=180):  # Increase timeout for Railway
             
             # Check for specific Railway database startup patterns
             if 'server closed the connection unexpectedly' in error_msg.lower():
-                logger.info("🔄 Railway database is starting up, retrying...")
+                logger.warning("🔄 Railway database server terminated connection - likely still starting up")
+                logger.info("💡 This is common during Railway database service initialization")
             elif 'connection failed' in error_msg.lower():
-                logger.info("🔄 Database connection failed, likely startup delay...")
+                logger.warning("🔄 Database connection failed - network or service issue")
+            elif 'timeout' in error_msg.lower():
+                logger.warning("🔄 Database connection timeout - service may be overloaded")
             else:
                 logger.warning(f"⚠ Database check failed: {error_msg[:200]}...")
             
-            # Progressive delay - start with 5 seconds, increase gradually
-            delay = min(5 + (attempt // 3) * 2, 15)  # Max 15 seconds
-            logger.info(f"⏳ Waiting {delay} seconds before retry...")
+            # Progressive delay with longer waits for production
+            if railway_env == 'production':
+                delay = min(10 + (attempt // 2) * 5, 30)  # Up to 30 seconds for production
+            else:
+                delay = min(5 + (attempt // 3) * 2, 15)  # Up to 15 seconds for dev
+                
+            logger.info(f"⏳ Waiting {delay} seconds before retry... (attempt {attempt})")
             time.sleep(delay)
             attempt += 1
     
     logger.error("❌ Database did not become available within the timeout period")
+    logger.error("🚨 This may indicate:")
+    logger.error("   - Railway database service failed to start")
+    logger.error("   - Network connectivity issues between services")
+    logger.error("   - Database configuration mismatch between environments")
     return False
 
 def main():
