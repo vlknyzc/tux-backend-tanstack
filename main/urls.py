@@ -18,6 +18,12 @@ from django.urls import path, include, re_path
 from django.views.generic import TemplateView
 from django.conf import settings
 from django.conf.urls.static import static
+from django.http import JsonResponse, HttpResponse
+from django.views.decorators.csrf import csrf_exempt
+from django.views.decorators.cache import never_cache
+from django.db import transaction
+import json
+import datetime
 
 
 def get_spectacular_views():
@@ -26,8 +32,28 @@ def get_spectacular_views():
     return SpectacularAPIView, SpectacularRedocView, SpectacularSwaggerView
 
 
+@csrf_exempt
+@never_cache
+@transaction.non_atomic_requests
+def health_check_endpoint(request):
+    """Ultra-simple health check endpoint for Railway - no database dependency."""
+    # Return plain text response to avoid any potential JSON/middleware issues
+    response = HttpResponse(
+        content='OK',
+        status=200,
+        content_type='text/plain'
+    )
+    # Ensure health check bypasses SSL redirect and caching
+    response['Cache-Control'] = 'no-cache, no-store, must-revalidate'
+    response['Pragma'] = 'no-cache'
+    response['Expires'] = '0'
+    response['X-Health-Check'] = 'railway'
+    return response
+
+
 urlpatterns = [
     path('', TemplateView.as_view(template_name='index.html'), name='index'),
+    path('health/', health_check_endpoint, name='health_check'),  # Railway health check endpoint
 
     # Browsable API auth
     path('api-auth/', include('rest_framework.urls')),

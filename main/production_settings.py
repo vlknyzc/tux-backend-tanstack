@@ -28,7 +28,29 @@ def get_allowed_hosts():
     # Add specific client subdomain if provided
     if CLIENT_SUBDOMAIN:
         hosts.append(f"{CLIENT_SUBDOMAIN}.{BASE_DOMAIN}")
-
+    
+    # Add Railway-specific domains for health checks and internal routing
+    railway_hosts = [
+        "healthcheck.railway.app",  # Railway health check domain
+        "railway.app",              # Railway base domain
+        ".railway.app",             # Railway wildcard domain
+        "*.railway.app",            # Alternative wildcard syntax
+        "127.0.0.1",                # Localhost
+        "localhost",                # Localhost name
+    ]
+    
+    hosts.extend(railway_hosts)
+    
+    # Add Railway internal domains if deployment ID exists
+    if os.environ.get('RAILWAY_DEPLOYMENT_ID'):
+        deployment_id = os.environ['RAILWAY_DEPLOYMENT_ID']
+        railway_internal = [
+            f"{deployment_id}.railway.internal",
+            f"{deployment_id}-production.railway.internal",
+            f"{deployment_id}-development.railway.internal",
+        ]
+        hosts.extend(railway_internal)
+    
     # Add any additional hosts from environment
     additional_hosts = os.environ.get("ADDITIONAL_ALLOWED_HOSTS", "")
     if additional_hosts:
@@ -340,7 +362,9 @@ STATIC_ROOT = get_static_root()
 # Railway terminates TLS and forwards HTTP with header X-Forwarded-Proto=https
 SECURE_PROXY_SSL_HEADER = ("HTTP_X_FORWARDED_PROTO", "https")  # ‹★›
 
+# SSL settings with health check exemption
 SECURE_SSL_REDIRECT = True
+SECURE_REDIRECT_EXEMPT = [r'^health/$']  # Exempt health check from SSL redirect
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
 
