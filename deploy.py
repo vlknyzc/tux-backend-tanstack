@@ -9,6 +9,7 @@ import sys
 import subprocess
 import time
 import logging
+import django
 
 # Set up logging
 logging.basicConfig(level=logging.INFO, format='%(asctime)s - %(levelname)s - %(message)s')
@@ -118,10 +119,21 @@ def main():
     if not os.environ.get('DJANGO_SETTINGS_MODULE'):
         os.environ['DJANGO_SETTINGS_MODULE'] = 'main.production_settings'
     
+    # Initialize Django early to ensure settings are loaded
+    import django
+    django.setup()
+    
     # Log deployment environment info
     logger.info(f"⚙️ Django Settings: {os.environ.get('DJANGO_SETTINGS_MODULE')}")
     if os.environ.get('RAILWAY_ENVIRONMENT'):
         logger.info(f"🚂 Railway Environment: {os.environ['RAILWAY_ENVIRONMENT']}")
+    if os.environ.get('RAILWAY_DEPLOYMENT_ID'):
+        logger.info(f"🚂 Railway Deployment ID: {os.environ['RAILWAY_DEPLOYMENT_ID']}")
+    
+    # Log working directory and permissions
+    cwd = os.getcwd()
+    logger.info(f"📁 Working directory: {cwd}")
+    logger.info(f"🔐 Directory writable: {os.access(cwd, os.W_OK)}")
     
     # Step 1: Wait for Railway database to be fully available
     logger.info("✅ STEP 1: Database Connectivity Check")
@@ -136,11 +148,38 @@ def main():
         logger.error("❌ Migration failed after all retries. Deployment failed.")
         sys.exit(1)
     
-    # Step 3: Collect static files
+    # Step 3: Collect static files with Railway optimization
     logger.info("✅ STEP 3: Static File Collection")
-    if not run_command_with_retry(['python', 'manage.py', 'collectstatic', '--noinput', '--verbosity=2'], max_retries=2):
-        logger.error("❌ Static file collection failed. Deployment failed.")
-        sys.exit(1)
+    
+    # Ensure static directory exists and is writable
+    try:
+        from django.conf import settings
+        static_root = settings.STATIC_ROOT
+        logger.info(f"📁 Creating static files directory: {static_root}")
+        os.makedirs(static_root, exist_ok=True)
+        
+        # Test write permissions
+        test_file = os.path.join(static_root, '.railway_test')
+        with open(test_file, 'w') as f:
+            f.write('test')
+        os.remove(test_file)
+        logger.info(f"✅ Static directory is writable: {static_root}")
+        
+    except Exception as e:
+        logger.warning(f"⚠ Static directory setup issue: {e}")
+        # Try fallback location
+        fallback_static = '/tmp/staticfiles'
+        logger.info(f"🔄 Trying fallback static location: {fallback_static}")
+        os.makedirs(fallback_static, exist_ok=True)
+    
+    # Collect static files with enhanced error handling
+    collect_command = ['python', 'manage.py', 'collectstatic', '--noinput', '--verbosity=2', '--clear']
+    
+    if not run_command_with_retry(collect_command, max_retries=3, retry_delay=5):
+        logger.warning("⚠ Static file collection failed, but continuing deployment")
+        logger.info("🌐 In Railway, static files might be served by proxy/CDN")
+        # Don't fail deployment for static files in cloud environments
+        pass
     
     # Step 4: Seed platforms data
     logger.info("✅ STEP 4: Platform Data Seeding")

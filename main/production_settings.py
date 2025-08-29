@@ -296,11 +296,43 @@ CORS_PREFLIGHT_MAX_AGE = 86400
 CORS_EXPOSE_HEADERS = []
 
 # ────────────────────────────────────────────────────────────────
-# Static files
+# Static files - Railway optimized
 # ────────────────────────────────────────────────────────────────
 STATIC_URL = "static/"
-STATICFILES_DIRS = [BASE_DIR / "static"]
-STATIC_ROOT = "/app/staticfiles"  # Railway deploys to /app
+
+# Only include static directories if they exist
+staticfiles_dirs = []
+if (BASE_DIR / "static").exists():
+    staticfiles_dirs.append(BASE_DIR / "static")
+STATICFILES_DIRS = staticfiles_dirs
+
+# Railway static files configuration with fallback paths
+def get_static_root():
+    """Get appropriate static root path for Railway deployment."""
+    # Try Railway-specific paths in order of preference
+    railway_paths = [
+        "/opt/railway/staticfiles",
+        "/app/staticfiles", 
+        str(BASE_DIR / "staticfiles"),
+        "/tmp/staticfiles"
+    ]
+    
+    # In Railway environment, use the first writable path
+    if os.environ.get('RAILWAY_DEPLOYMENT_ID'):
+        for path in railway_paths:
+            try:
+                os.makedirs(path, exist_ok=True)
+                if os.access(path, os.W_OK):
+                    return path
+            except (OSError, PermissionError):
+                continue
+    
+    # Fallback to project directory
+    fallback = str(BASE_DIR / "staticfiles")
+    os.makedirs(fallback, exist_ok=True)
+    return fallback
+
+STATIC_ROOT = get_static_root()
 
 # ────────────────────────────────────────────────────────────────
 # Security / SSL  ‹★›
