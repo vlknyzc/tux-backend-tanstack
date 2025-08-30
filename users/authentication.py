@@ -1,4 +1,5 @@
 from django.conf import settings
+from rest_framework.authentication import BaseAuthentication
 
 # Import JWT authentication with error handling to prevent circular imports
 try:
@@ -8,7 +9,7 @@ except ImportError:
     JWTAuthentication = None
 
 
-class CustomJWTAuthentication:
+class CustomJWTAuthentication(BaseAuthentication):
     """Custom JWT Authentication that handles cookies and headers."""
     
     def __init__(self):
@@ -66,3 +67,7 @@ class CustomJWTAuthentication:
         if self._jwt_auth:
             return self._jwt_auth.get_user(validated_token)
         return None
+    
+    def authenticate_header(self, request):
+        """Return the authentication header for 401 responses."""
+        return 'Bearer'

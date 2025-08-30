@@ -87,8 +87,15 @@ def analyze_database_environment():
     logger.info(f"🚂 Deployment ID: {deployment_id[:16]}..." if deployment_id != 'unknown' else "🚂 Deployment ID: unknown")
 
 
-def wait_for_database(max_wait=180):  # Increase timeout for Railway
+def wait_for_database(max_wait=None):
     """Wait for database to be available with Railway-optimized logic."""
+    if max_wait is None:
+        # Use longer timeout for production environments
+        railway_env = os.environ.get('RAILWAY_ENVIRONMENT', 'development')
+        if railway_env == 'production':
+            max_wait = 600  # 10 minutes for production
+        else:
+            max_wait = 180  # 3 minutes for development
     logger.info("🔍 Checking Railway database connectivity...")
     
     # Skip database check in development/local environments
