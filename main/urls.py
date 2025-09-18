@@ -130,7 +130,13 @@ urlpatterns += [
          SpectacularRedocView.as_view(url_name='schema'), name='redoc'),
 ]
 
-# Serve static files only during development
+# Serve static files
 if settings.DEBUG:
+    # Development: serve static files directly
     urlpatterns += static(settings.STATIC_URL,
                           document_root=settings.STATIC_ROOT)
+else:
+    # Production: WhiteNoise will handle static files
+    # But we can also add a fallback pattern for admin static files
+    from django.conf.urls.static import static
+    urlpatterns += static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

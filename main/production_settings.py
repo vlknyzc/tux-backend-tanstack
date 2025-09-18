@@ -378,6 +378,22 @@ def get_static_root():
 STATIC_ROOT = get_static_root()
 
 # ────────────────────────────────────────────────────────────────
+# WhiteNoise Configuration for Static Files
+# ────────────────────────────────────────────────────────────────
+# WhiteNoise settings for serving static files in production
+STATICFILES_STORAGE = 'whitenoise.storage.CompressedManifestStaticFilesStorage'
+
+# WhiteNoise configuration
+WHITENOISE_USE_FINDERS = True
+WHITENOISE_AUTOREFRESH = True
+WHITENOISE_MANIFEST_STRICT = False
+
+# Additional WhiteNoise settings for better performance
+WHITENOISE_SKIP_COMPRESS_EXTENSIONS = [
+    'jpg', 'jpeg', 'png', 'gif', 'webp', 'svg', 'ico', 'woff', 'woff2', 'ttf', 'eot'
+]
+
+# ────────────────────────────────────────────────────────────────
 # Security / SSL  ‹★›
 # ────────────────────────────────────────────────────────────────
 # Railway terminates TLS and forwards HTTP with header X-Forwarded-Proto=https
