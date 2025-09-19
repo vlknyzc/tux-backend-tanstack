@@ -25,9 +25,9 @@ def test_database_connection(max_retries=15, initial_delay=2):
         try:
             logger.info(f"🔍 Database connection attempt {attempt}/{max_retries}...")
             
-            # Test basic connection with database-agnostic query
+            # Test basic connection with PostgreSQL query
             with connection.cursor() as cursor:
-                # Use a simple query that works on both PostgreSQL and SQLite
+                # Use a simple query for PostgreSQL
                 cursor.execute("SELECT 1 as test")
                 result = cursor.fetchone()[0]
                 
@@ -38,9 +38,6 @@ def test_database_connection(max_retries=15, initial_delay=2):
                         if 'postgresql' in connection.settings_dict['ENGINE']:
                             cursor.execute("SELECT version()")
                             version_info = cursor.fetchone()[0][:50] + "..."
-                        elif 'sqlite' in connection.settings_dict['ENGINE']:
-                            cursor.execute("SELECT sqlite_version()")
-                            version_info = f"SQLite {cursor.fetchone()[0]}"
                         else:
                             version_info = "Unknown database type"
                 except Exception:

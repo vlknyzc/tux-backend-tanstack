@@ -184,6 +184,12 @@ class UserAuthorizationSummarySerializer(serializers.Serializer):
     active_assignments = serializers.IntegerField()
 
 
+class UserDeleteSerializer(serializers.Serializer):
+    """Serializer for user deletion confirmation"""
+    message = serializers.CharField(default="User account deleted successfully")
+    status = serializers.CharField(default="success")
+
+
 class LogoutResponseSerializer(serializers.Serializer):
     """Serializer for logout response"""
     message = serializers.CharField(default="Successfully logged out")

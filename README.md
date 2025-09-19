@@ -3,6 +3,7 @@
 Welcome to Django REST Starter! This repository provides a starting point for building RESTful APIs using the Django REST framework
 
 ## File Structure
+
 ```
 django-rest-starter/
 ├── main/
@@ -21,16 +22,19 @@ django-rest-starter/
 ## Getting Started
 
 1. Clone this repository to your local machine:
+
    ```shell
    git clone https://github.com/Grey-A/django-rest-starter.git
    ```
 
 2. Navigate to the project directory:
+
    ```shell
    cd django-rest-starter
    ```
 
 3. Set up a virtual environment (recommended) and install dependencies:
+
    ```shell
    python -m venv venv
    source venv/bin/activate
@@ -38,6 +42,7 @@ django-rest-starter/
    ```
 
 4. Apply database migrations:
+
    ```shell
    python manage.py migrate
    ```
@@ -51,12 +56,12 @@ django-rest-starter/
 
 This project includes two settings files:
 
-- `production_settings.py`: Configuration for when the app is live on railway, it uses PostgreSQL. 
-  
+- `production_settings.py`: Configuration for when the app is live on railway, it uses PostgreSQL.
+
 NOTE: Remember to change the secret key on railway, you can use websites like `https://djecrety.ir/` to generate your new secret key
 
-- `local_settings.py`: Configuration for local development uses a randomly generated secret key with sqlite db
-  
+- `local_settings.py`: Configuration for local development uses a randomly generated secret key with PostgreSQL
+
 NOTE: The DJANG_ENV variable from Railway is used to determine which settings file to use.
 
 ## Contributing

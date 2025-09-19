@@ -29,11 +29,7 @@ def test_constraint_exists():
     
     cursor = connection.cursor()
     
-    if connection.vendor == 'sqlite':
-        cursor.execute('PRAGMA index_list(master_data_stringdetail)')
-        indexes = cursor.fetchall()
-        constraint_exists = any('workspace_string_dimension' in idx[1] for idx in indexes)
-    elif connection.vendor == 'postgresql':
+    if connection.vendor == 'postgresql':
         cursor.execute("""
             SELECT constraint_name 
             FROM information_schema.table_constraints 
@@ -161,7 +157,7 @@ def test_fresh_migration():
     """Test migration on fresh database."""
     print("3. Testing fresh migration...")
     print("   ℹ️  This test requires manual verification:")
-    print("   - Delete db.sqlite3")
+    print("   - Drop and recreate the PostgreSQL database")
     print("   - Run: python manage.py migrate")
     print("   - Check for any errors")
     return True

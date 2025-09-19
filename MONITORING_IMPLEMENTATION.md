@@ -7,13 +7,15 @@ This document provides a comprehensive implementation guide for monitoring and l
 ## Current Architecture Analysis
 
 ### Existing Infrastructure
+
 - **Framework**: Django REST Framework with multi-tenant architecture
-- **Database**: PostgreSQL (production), SQLite (development)
+- **Database**: PostgreSQL (production and development)
 - **Deployment**: Railway platform
 - **Authentication**: JWT-based with workspace isolation
 - **Key Business Logic**: String propagation, dimension management, rule processing
 
 ### Current Logging Setup
+
 - Basic console logging in production
 - Separate log levels for Django core, database, and master_data app
 - No structured logging or centralized log aggregation
@@ -21,18 +23,21 @@ This document provides a comprehensive implementation guide for monitoring and l
 ## Implementation Phases
 
 ### Phase 1: Foundation (Week 1-2)
+
 1. **Error Tracking with Sentry**
 2. **Structured Logging**
 3. **Basic Health Checks**
 4. **Request Monitoring Middleware**
 
 ### Phase 2: Metrics Collection (Week 3-4)
+
 1. **Prometheus Metrics Integration**
 2. **Custom Business Metrics**
 3. **Database Performance Monitoring**
 4. **Background Job Monitoring**
 
 ### Phase 3: Visualization & Alerting (Week 5-6)
+
 1. **Grafana Dashboard Setup**
 2. **Alert Rules Configuration**
 3. **Log Aggregation (ELK Stack or similar)**
@@ -43,11 +48,13 @@ This document provides a comprehensive implementation guide for monitoring and l
 ### 1. Sentry Integration
 
 #### Installation
+
 ```bash
 pip install sentry-sdk[django]
 ```
 
 #### Configuration (settings)
+
 ```python
 import sentry_sdk
 from sentry_sdk.integrations.django import DjangoIntegration
@@ -81,17 +88,18 @@ def filter_sensitive_data(event, hint):
     if 'request' in event and 'headers' in event['request']:
         event['request']['headers'].pop('Authorization', None)
         event['request']['headers'].pop('Cookie', None)
-    
+
     # Add workspace context
     if hasattr(event, 'user') and 'workspace_id' in event.get('extra', {}):
         event.setdefault('tags', {})['workspace'] = event['extra']['workspace_id']
-    
+
     return event
 ```
 
 ### 2. Structured Logging Implementation
 
 #### Custom Logging Formatter
+
 ```python
 # main/logging.py
 import json
@@ -113,7 +121,7 @@ class JSONFormatter(logging.Formatter):
             'function': record.funcName,
             'line': record.lineno,
         }
-        
+
         # Add extra fields
         if hasattr(record, 'workspace_id'):
             log_entry['workspace_id'] = record.workspace_id
@@ -123,11 +131,11 @@ class JSONFormatter(logging.Formatter):
             log_entry['request_id'] = record.request_id
         if hasattr(record, 'duration'):
             log_entry['duration_ms'] = record.duration
-        
+
         # Add exception info if present
         if record.exc_info:
             log_entry['exception'] = self.formatException(record.exc_info)
-        
+
         return json.dumps(log_entry)
 
 # Enhanced logging configuration
@@ -202,18 +210,18 @@ class MonitoringMiddleware(MiddlewareMixin):
     """
     Middleware for request monitoring and performance tracking
     """
-    
+
     def process_request(self, request):
         request.start_time = time.time()
         request.request_id = str(uuid.uuid4())
-        
+
         # Add request ID to headers for tracing
         request.META['HTTP_X_REQUEST_ID'] = request.request_id
-        
+
         # Extract workspace info
         workspace_id = self.get_workspace_id(request)
         request.workspace_id = workspace_id
-        
+
         logger.info(
             "Request started",
             extra={
@@ -225,15 +233,15 @@ class MonitoringMiddleware(MiddlewareMixin):
                 'ip_address': self.get_client_ip(request),
             }
         )
-    
+
     def process_response(self, request, response):
         if hasattr(request, 'start_time'):
             duration = (time.time() - request.start_time) * 1000  # Convert to ms
-            
+
             # Determine if this is a slow request
             is_slow = duration > 1000  # 1 second threshold
             log_level = logging.WARNING if is_slow else logging.INFO
-            
+
             performance_logger.log(
                 log_level,
                 f"Request completed in {duration:.2f}ms",
@@ -248,13 +256,13 @@ class MonitoringMiddleware(MiddlewareMixin):
                     'is_slow_request': is_slow,
                 }
             )
-        
+
         # Add request ID to response headers for tracing
         if hasattr(request, 'request_id'):
             response['X-Request-ID'] = request.request_id
-        
+
         return response
-    
+
     def process_exception(self, request, exception):
         logger.error(
             f"Request failed with exception: {str(exception)}",
@@ -267,7 +275,7 @@ class MonitoringMiddleware(MiddlewareMixin):
             },
             exc_info=True
         )
-    
+
     def get_client_ip(self, request):
         x_forwarded_for = request.META.get('HTTP_X_FORWARDED_FOR')
         if x_forwarded_for:
@@ -275,7 +283,7 @@ class MonitoringMiddleware(MiddlewareMixin):
         else:
             ip = request.META.get('REMOTE_ADDR')
         return ip
-    
+
     def get_workspace_id(self, request):
         # Extract workspace from URL, headers, or user context
         # Implementation depends on your workspace detection logic
@@ -304,7 +312,7 @@ def health_check(request):
         'timestamp': time.time(),
         'services': {}
     }
-    
+
     # Database check
     try:
         with connection.cursor() as cursor:
@@ -313,7 +321,7 @@ def health_check(request):
     except Exception as e:
         health_status['services']['database'] = {'status': 'unhealthy', 'error': str(e)}
         health_status['status'] = 'unhealthy'
-    
+
     # Cache check (if using Redis)
     try:
         cache.set('health_check', 'ok', 30)
@@ -324,11 +332,11 @@ def health_check(request):
             health_status['services']['cache'] = {'status': 'unhealthy', 'error': 'Cache write/read failed'}
     except Exception as e:
         health_status['services']['cache'] = {'status': 'unhealthy', 'error': str(e)}
-    
+
     # Add application-specific checks
     health_status['services']['string_propagation'] = check_propagation_service()
     health_status['services']['workspace_isolation'] = check_workspace_isolation()
-    
+
     status_code = 200 if health_status['status'] == 'healthy' else 503
     return JsonResponse(health_status, status=status_code)
 
@@ -342,7 +350,7 @@ def readiness_check(request):
         check_required_environment_variables(),
         check_workspace_configuration(),
     ]
-    
+
     if all(checks):
         return JsonResponse({'status': 'ready'})
     else:
@@ -425,13 +433,13 @@ class MetricsCollector:
     def record_string_generation(workspace_id, success=True):
         status = 'success' if success else 'error'
         string_generations.labels(workspace_id=workspace_id, status=status).inc()
-    
+
     @staticmethod
     def record_propagation_job(workspace_id, duration_seconds, success=True):
         status = 'success' if success else 'error'
         propagation_jobs.labels(workspace_id=workspace_id, status=status).inc()
         propagation_duration.labels(workspace_id=workspace_id).observe(duration_seconds)
-    
+
     @staticmethod
     def record_dimension_query(workspace_id, cache_hit=False):
         cache_status = 'hit' if cache_hit else 'miss'
@@ -454,9 +462,9 @@ class BusinessMonitoringService:
     """
     Service for monitoring business-specific metrics and events
     """
-    
+
     @staticmethod
-    def log_string_generation(workspace_id: str, rule_id: str, success: bool, 
+    def log_string_generation(workspace_id: str, rule_id: str, success: bool,
                             generation_time: float, error_message: Optional[str] = None):
         """Log string generation events"""
         logger.info(
@@ -470,10 +478,10 @@ class BusinessMonitoringService:
                 'event_type': 'string_generation'
             }
         )
-        
+
         # Update metrics
         MetricsCollector.record_string_generation(workspace_id, success)
-    
+
     @staticmethod
     def log_propagation_job(workspace_id: str, job_id: str, affected_strings: int,
                            duration: float, success: bool, error_details: Optional[Dict] = None):
@@ -490,12 +498,12 @@ class BusinessMonitoringService:
                 'event_type': 'propagation_job'
             }
         )
-        
+
         # Update metrics
         MetricsCollector.record_propagation_job(workspace_id, duration, success)
-    
+
     @staticmethod
-    def log_dimension_access(workspace_id: str, dimension_id: str, 
+    def log_dimension_access(workspace_id: str, dimension_id: str,
                            operation: str, cache_hit: bool = False):
         """Log dimension catalog access"""
         logger.debug(
@@ -508,10 +516,10 @@ class BusinessMonitoringService:
                 'event_type': 'dimension_access'
             }
         )
-        
+
         # Update metrics
         MetricsCollector.record_dimension_query(workspace_id, cache_hit)
-    
+
     @staticmethod
     def log_workspace_activity(workspace_id: str, user_id: str, activity_type: str):
         """Log user activity within workspace"""
@@ -524,13 +532,13 @@ class BusinessMonitoringService:
                 'event_type': 'workspace_activity'
             }
         )
-    
+
     @staticmethod
     def generate_performance_report(workspace_id: str, days: int = 7) -> Dict[str, Any]:
         """Generate performance report for a workspace"""
         end_date = datetime.now()
         start_date = end_date - timedelta(days=days)
-        
+
         # This would query your metrics storage (Prometheus, database, etc.)
         report = {
             'workspace_id': workspace_id,
@@ -547,7 +555,7 @@ class BusinessMonitoringService:
                 'cache_hit_rate': 0
             }
         }
-        
+
         logger.info(
             "Performance report generated",
             extra={
@@ -556,7 +564,7 @@ class BusinessMonitoringService:
                 'event_type': 'performance_report'
             }
         )
-        
+
         return report
 ```
 
@@ -565,58 +573,57 @@ class BusinessMonitoringService:
 ```yaml
 # alerts/tux-backend-alerts.yml
 groups:
-- name: tux-backend
-  rules:
-  
-  # High Error Rate
-  - alert: HighErrorRate
-    expr: rate(django_http_responses_total_by_status_view_method{status=~"5.."}[5m]) > 0.1
-    for: 5m
-    labels:
-      severity: critical
-    annotations:
-      summary: "High error rate detected"
-      description: "Error rate is {{ $value }} errors per second"
-  
-  # Slow Response Times
-  - alert: SlowResponseTimes
-    expr: django_http_request_duration_seconds{quantile="0.95"} > 2
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: "Slow response times detected"
-      description: "95th percentile response time is {{ $value }} seconds"
-  
-  # String Propagation Job Failures
-  - alert: PropagationJobFailures
-    expr: rate(tux_propagation_jobs_total{status="error"}[10m]) > 0.05
-    for: 5m
-    labels:
-      severity: warning
-    annotations:
-      summary: "Propagation job failures detected"
-      description: "Propagation job failure rate is {{ $value }} per second"
-  
-  # Database Connection Issues
-  - alert: DatabaseConnectionIssues
-    expr: up{job="tux-backend-health"} == 0
-    for: 2m
-    labels:
-      severity: critical
-    annotations:
-      summary: "Database connection failed"
-      description: "Cannot connect to database for 2+ minutes"
-  
-  # Memory Usage
-  - alert: HighMemoryUsage
-    expr: process_resident_memory_bytes / 1024 / 1024 > 512
-    for: 10m
-    labels:
-      severity: warning
-    annotations:
-      summary: "High memory usage"
-      description: "Memory usage is {{ $value }}MB"
+  - name: tux-backend
+    rules:
+      # High Error Rate
+      - alert: HighErrorRate
+        expr: rate(django_http_responses_total_by_status_view_method{status=~"5.."}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: critical
+        annotations:
+          summary: "High error rate detected"
+          description: "Error rate is {{ $value }} errors per second"
+
+      # Slow Response Times
+      - alert: SlowResponseTimes
+        expr: django_http_request_duration_seconds{quantile="0.95"} > 2
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Slow response times detected"
+          description: "95th percentile response time is {{ $value }} seconds"
+
+      # String Propagation Job Failures
+      - alert: PropagationJobFailures
+        expr: rate(tux_propagation_jobs_total{status="error"}[10m]) > 0.05
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "Propagation job failures detected"
+          description: "Propagation job failure rate is {{ $value }} per second"
+
+      # Database Connection Issues
+      - alert: DatabaseConnectionIssues
+        expr: up{job="tux-backend-health"} == 0
+        for: 2m
+        labels:
+          severity: critical
+        annotations:
+          summary: "Database connection failed"
+          description: "Cannot connect to database for 2+ minutes"
+
+      # Memory Usage
+      - alert: HighMemoryUsage
+        expr: process_resident_memory_bytes / 1024 / 1024 > 512
+        for: 10m
+        labels:
+          severity: warning
+        annotations:
+          summary: "High memory usage"
+          description: "Memory usage is {{ $value }}MB"
 ```
 
 ### 8. Dashboard Configuration (Grafana)
@@ -679,16 +686,19 @@ groups:
 ## Security Considerations
 
 ### 1. Data Privacy
+
 - Filter sensitive data from logs (passwords, tokens, personal information)
 - Implement log retention policies
 - Ensure GDPR compliance for user data in logs
 
 ### 2. Access Control
+
 - Restrict access to monitoring dashboards
 - Use role-based access for different monitoring levels
 - Secure API keys and monitoring credentials
 
 ### 3. Log Security
+
 - Encrypt logs in transit and at rest
 - Implement log integrity verification
 - Monitor for log tampering attempts
@@ -696,16 +706,19 @@ groups:
 ## Performance Considerations
 
 ### 1. Monitoring Overhead
+
 - Use sampling for high-volume metrics
 - Implement circuit breakers for monitoring failures
 - Monitor the monitoring system performance
 
 ### 2. Storage Management
+
 - Implement log rotation and retention policies
 - Use appropriate storage tiers for different log types
 - Compress historical data
 
 ### 3. Network Impact
+
 - Batch metric exports when possible
 - Use local buffering for metrics collection
 - Implement backpressure handling
@@ -713,6 +726,7 @@ groups:
 ## Testing the Implementation
 
 ### 1. Unit Tests for Monitoring Components
+
 ```python
 # tests/test_monitoring.py
 from django.test import TestCase, RequestFactory
@@ -723,29 +737,30 @@ class MonitoringMiddlewareTest(TestCase):
     def setUp(self):
         self.factory = RequestFactory()
         self.middleware = MonitoringMiddleware()
-    
+
     def test_request_id_generation(self):
         request = self.factory.get('/api/v1/test/')
         self.middleware.process_request(request)
-        
+
         self.assertTrue(hasattr(request, 'request_id'))
         self.assertTrue(hasattr(request, 'start_time'))
-    
+
     def test_performance_logging(self):
         request = self.factory.get('/api/v1/test/')
         self.middleware.process_request(request)
-        
+
         # Simulate slow request
         import time
         time.sleep(0.1)
-        
+
         response = self.middleware.process_response(request, type('Response', (), {'status_code': 200})())
-        
+
         # Check if X-Request-ID is in response
         self.assertIn('X-Request-ID', response)
 ```
 
 ### 2. Load Testing with Monitoring
+
 ```python
 # scripts/load_test_with_monitoring.py
 import requests
@@ -774,15 +789,15 @@ def make_request(url, headers):
 def load_test():
     url = 'http://localhost:8000/api/v1/health/'
     headers = {'Authorization': 'JWT your-test-token'}
-    
+
     with concurrent.futures.ThreadPoolExecutor(max_workers=10) as executor:
         futures = [executor.submit(make_request, url, headers) for _ in range(100)]
         results = [future.result() for future in concurrent.futures.as_completed(futures)]
-    
+
     # Analyze results
     success_rate = sum(1 for r in results if r['success']) / len(results)
     avg_duration = sum(r['duration'] for r in results) / len(results)
-    
+
     print(f"Success Rate: {success_rate:.2%}")
     print(f"Average Duration: {avg_duration:.3f}s")
 
@@ -793,17 +808,20 @@ if __name__ == '__main__':
 ## Maintenance and Operations
 
 ### 1. Regular Monitoring Tasks
+
 - Weekly performance report generation
 - Monthly log analysis and cleanup
 - Quarterly alert rule review and optimization
 - Annual security audit of monitoring infrastructure
 
 ### 2. Troubleshooting Guide
+
 - Common monitoring issues and solutions
 - Performance debugging workflows
 - Log analysis techniques for different problem types
 
 ### 3. Scaling Considerations
+
 - Horizontal scaling of monitoring components
 - Multi-region monitoring setup
 - Load balancing for monitoring endpoints
@@ -811,14 +829,15 @@ if __name__ == '__main__':
 ## Integration with CI/CD
 
 ### 1. Monitoring Configuration as Code
+
 ```yaml
 # .github/workflows/monitoring.yml
 name: Deploy Monitoring Configuration
 on:
   push:
     paths:
-      - 'monitoring/**'
-      - 'alerts/**'
+      - "monitoring/**"
+      - "alerts/**"
 
 jobs:
   deploy-monitoring:
@@ -833,6 +852,7 @@ jobs:
 ```
 
 ### 2. Monitoring Metrics in CI/CD
+
 - Performance regression detection
 - Error rate monitoring in deployments
 - Automated rollback triggers based on monitoring data
@@ -840,11 +860,13 @@ jobs:
 ## Cost Optimization
 
 ### 1. Monitoring Cost Management
+
 - Log level optimization in production
 - Metric retention policies
 - Efficient data storage strategies
 
 ### 2. Resource Optimization
+
 - Monitor monitoring resource usage
 - Optimize query performance for dashboards
 - Use caching for frequently accessed metrics

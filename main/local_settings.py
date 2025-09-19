@@ -88,10 +88,26 @@ WSGI_APPLICATION = "main.wsgi.application"
 # Database
 # https://docs.djangoproject.com/en/4.0/ref/settings/#databases
 
+# PostgreSQL configuration for local development
 DATABASES = {
     "default": {
-        "ENGINE": "django.db.backends.sqlite3",
-        "NAME": BASE_DIR / "db.sqlite3",
+        "ENGINE": "django.db.backends.postgresql",
+        "NAME": getenv("PGDATABASE", "tux_local"),
+        "USER": getenv("PGUSER", "postgres"),
+        "PASSWORD": getenv("PGPASSWORD", "postgres"),
+        "HOST": getenv("PGHOST", "localhost"),
+        "PORT": getenv("PGPORT", "5432"),
+        "OPTIONS": {
+            "application_name": "tux-backend-local",
+            "connect_timeout": 30,
+            "sslmode": "prefer",
+        },
+        "CONN_MAX_AGE": 0,  # No connection reuse in development
+        "CONN_HEALTH_CHECKS": True,
+        "ATOMIC_REQUESTS": True,
+        "TEST": {
+            "NAME": "test_tux_local",
+        },
     }
 }
 
@@ -282,6 +298,7 @@ DJOSER = {
     'SERIALIZERS': {
         'user_create': 'users.serializers.UserCreateSerializer',
         'user': 'users.serializers.UserSerializer',
+        'current_user': 'users.serializers.UserSerializer',
         'user_delete': 'users.serializers.UserDeleteSerializer',
     }
 }
