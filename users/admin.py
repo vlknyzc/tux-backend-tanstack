@@ -216,10 +216,12 @@ class InvitationAdmin(admin.ModelAdmin):
     # Custom methods for list display
     def invitor_email(self, obj):
         """Display invitor's email with link to user admin"""
-        return format_html(
-            '<a href="/admin/users/useraccount/{}/change/">{}</a>',
-            obj.invitor.id, obj.invitor.email
-        )
+        if obj.invitor:
+            return format_html(
+                '<a href="/admin/users/useraccount/{}/change/">{}</a>',
+                obj.invitor.id, obj.invitor.email
+            )
+        return '-'
     invitor_email.short_description = 'Invitor'
     invitor_email.admin_order_field = 'invitor__email'
 
@@ -287,7 +289,9 @@ class InvitationAdmin(admin.ModelAdmin):
     # Custom queryset for performance
     def get_queryset(self, request):
         """Optimize queryset with select_related"""
-        return super().get_queryset(request).select_related('invitor', 'workspace', 'used_by')
+        queryset = super().get_queryset(request)
+        # Use select_related for foreign keys, but handle potential nulls
+        return queryset.select_related('invitor', 'workspace', 'used_by')
 
 
 # Register models with admin site

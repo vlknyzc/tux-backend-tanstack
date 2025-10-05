@@ -29,17 +29,24 @@ class WorkspaceMiddleware(MiddlewareMixin):
         set_current_workspace(workspace_id)
 
         # Set user context for superuser bypass
-        if hasattr(request, 'user') and request.user.is_authenticated:
-            _thread_locals.is_superuser = request.user.is_superuser
-        else:
+        try:
+            if hasattr(request, 'user') and request.user.is_authenticated:
+                _thread_locals.is_superuser = request.user.is_superuser
+            else:
+                _thread_locals.is_superuser = False
+        except Exception as e:
+            logger.warning(f"Error setting superuser context: {e}")
             _thread_locals.is_superuser = False
 
     def process_response(self, request, response):
         """Clean up thread-local data"""
         # Clean up thread-local storage
-        if hasattr(_thread_locals, 'workspace_id'):
-            delattr(_thread_locals, 'workspace_id')
-        if hasattr(_thread_locals, 'is_superuser'):
-            delattr(_thread_locals, 'is_superuser')
+        try:
+            if hasattr(_thread_locals, 'workspace_id'):
+                delattr(_thread_locals, 'workspace_id')
+            if hasattr(_thread_locals, 'is_superuser'):
+                delattr(_thread_locals, 'is_superuser')
+        except Exception as e:
+            logger.warning(f"Error cleaning up thread-local data: {e}")
 
         return response

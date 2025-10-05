@@ -217,7 +217,8 @@ class Invitation(models.Model):
         super().save(*args, **kwargs)
 
     def __str__(self):
-        return f"Invitation for {self.email} by {self.invitor.email} ({self.status})"
+        invitor_email = self.invitor.email if self.invitor else "Unknown"
+        return f"Invitation for {self.email} by {invitor_email} ({self.status})"
 
     @property
     def is_valid(self):
