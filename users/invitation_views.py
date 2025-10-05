@@ -6,8 +6,12 @@ from rest_framework.views import APIView
 from django.shortcuts import get_object_or_404
 from django.utils import timezone
 from django.db import transaction
+from django.core.mail import send_mail
+from django.conf import settings
+from django.template.loader import render_to_string
 from datetime import timedelta
 from drf_spectacular.utils import extend_schema, extend_schema_view
+import logging
 
 from .models import Invitation, UserAccount
 from .serializers import (
@@ -84,7 +88,10 @@ class InvitationViewSet(ModelViewSet):
     
     def perform_create(self, serializer):
         """Create invitation with current user as invitor"""
-        serializer.save(invitor=self.request.user)
+        invitation = serializer.save(invitor=self.request.user)
+
+        # Send invitation email
+        self._send_invitation_email(invitation)
     
     def destroy(self, request, *args, **kwargs):
         """Revoke invitation instead of deleting"""
@@ -137,13 +144,59 @@ class InvitationViewSet(ModelViewSet):
         invitation.expires_at = timezone.now() + timedelta(days=7)
         invitation.status = 'pending'
         invitation.save(update_fields=['expires_at', 'status', 'updated_at'])
-        
+
+        # Resend invitation email
+        self._send_invitation_email(invitation)
+
         serializer = self.get_serializer({
             'message': 'Invitation resent successfully',
             'new_expires_at': invitation.expires_at
         })
-        
+
         return Response(serializer.data, status=status.HTTP_200_OK)
+
+    def _send_invitation_email(self, invitation):
+        """Send invitation email to the invitee"""
+        logger = logging.getLogger(__name__)
+
+        try:
+            # Construct invitation URL (you may need to adjust this based on your frontend URL)
+            frontend_url = getattr(settings, 'FRONTEND_URL', 'http://localhost:3000')
+            invitation_url = f"{frontend_url}/register?token={invitation.token}"
+
+            # Email subject
+            subject = f"You're invited to join {invitation.workspace.name if invitation.workspace else 'Tuxonomy'}"
+
+            # Email content
+            message = f"""
+Hi,
+
+{invitation.invitor.get_full_name()} has invited you to join {invitation.workspace.name if invitation.workspace else 'Tuxonomy'}.
+
+Click the link below to accept the invitation and create your account:
+{invitation_url}
+
+This invitation will expire on {invitation.expires_at.strftime('%B %d, %Y at %I:%M %p UTC')}.
+
+Best regards,
+The Tuxonomy Team
+"""
+
+            # Send email
+            send_mail(
+                subject=subject,
+                message=message,
+                from_email=settings.DEFAULT_FROM_EMAIL,
+                recipient_list=[invitation.email],
+                fail_silently=False,
+            )
+
+            logger.info(f"Invitation email sent successfully to {invitation.email}")
+
+        except Exception as e:
+            logger.error(f"Failed to send invitation email to {invitation.email}: {str(e)}")
+            # You may want to handle this differently in production
+            # For now, we'll log the error but not fail the invitation creation
 
 
 @extend_schema(
