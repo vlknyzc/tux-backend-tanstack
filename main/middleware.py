@@ -40,13 +40,21 @@ class WorkspaceMiddleware(MiddlewareMixin):
 
     def process_response(self, request, response):
         """Clean up thread-local data"""
-        # Clean up thread-local storage
+        # Clean up thread-local storage - handle each cleanup separately
+        # to ensure one failure doesn't prevent the other from being cleaned up
+        
+        # Clean up workspace_id
         try:
             if hasattr(_thread_locals, 'workspace_id'):
                 delattr(_thread_locals, 'workspace_id')
+        except Exception as e:
+            logger.warning(f"Error cleaning up workspace_id: {e}")
+        
+        # Clean up is_superuser
+        try:
             if hasattr(_thread_locals, 'is_superuser'):
                 delattr(_thread_locals, 'is_superuser')
         except Exception as e:
-            logger.warning(f"Error cleaning up thread-local data: {e}")
+            logger.warning(f"Error cleaning up is_superuser: {e}")
 
         return response
