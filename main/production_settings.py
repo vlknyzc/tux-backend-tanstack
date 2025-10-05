@@ -481,3 +481,30 @@ MASTER_DATA_CONFIG = {
     'ENABLE_INHERITANCE_PROPAGATION': os.getenv('ENABLE_INHERITANCE_PROPAGATION', 'True').lower() == 'true',
     'MAX_INHERITANCE_DEPTH': int(os.getenv('MAX_INHERITANCE_DEPTH', '5')),
 }
+
+# ────────────────────────────────────────────────────────────────
+# Email Configuration (Amazon SES via django-ses)
+# ────────────────────────────────────────────────────────────────
+EMAIL_BACKEND = 'django_ses.SESBackend'
+
+# AWS SES Configuration
+AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
+AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
+AWS_SES_REGION_NAME = os.environ.get("AWS_SES_REGION_NAME", "us-east-1")
+AWS_SES_REGION_ENDPOINT = os.environ.get(
+    "AWS_SES_REGION_ENDPOINT",
+    f"email.{os.environ.get('AWS_SES_REGION_NAME', 'us-east-1')}.amazonaws.com"
+)
+
+# Email sender configuration
+DEFAULT_FROM_EMAIL = os.environ.get("AWS_SES_FROM_EMAIL", "noreply@tuxonomy.com")
+AWS_SES_FROM_EMAIL = os.environ.get("AWS_SES_FROM_EMAIL")
+
+# Use SES v2 API
+USE_SES_V2 = True
+
+# Frontend URL for invitation links and email templates
+FRONTEND_URL = os.environ.get(
+    'FRONTEND_URL',
+    f"https://{os.environ.get('FRONTEND_SUBDOMAIN', CLIENT_SUBDOMAIN)}.{os.environ.get('FRONTEND_DOMAIN', 'vercel.app')}"
+)
