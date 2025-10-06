@@ -356,7 +356,7 @@ def send_invitation_email(invitation) -> Dict[str, Any]:
         if invitation.workspace:
             subject = f"You're invited to join {invitation.workspace.name}"
         else:
-            subject = "You're invited to join TUX Backend"
+            subject = "You're invited to join tuxonomy.com"
         
         # Use the getter function instead of global instance
         email_service = get_email_service()
