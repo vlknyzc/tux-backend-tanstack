@@ -4,7 +4,7 @@
 Hello there! 👋
 
 {{ invitation.invitor.get_full_name|default:invitation.invitor.email }} has invited you to join 
-{% if invitation.workspace %}{{ invitation.workspace.name }}{% else %}TUX Backend{% endif %} as a {{ invitation.get_role_display }}.
+{% if invitation.workspace %}{{ invitation.workspace.name }}{% else %}tuxonomy.com{% endif %} as a {{ invitation.get_role_display }}.
 
 {% if invitation.workspace %}
 📋 Workspace Details:

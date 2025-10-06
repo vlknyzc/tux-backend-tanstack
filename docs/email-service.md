@@ -1,8 +1,8 @@
-# TUX Backend - Email Service Documentation
+# tuxonomy.com - Email Service Documentation
 
 ## Overview
 
-The TUX Backend application uses **Resend** for sending emails. This service provides reliable email delivery for user invitations, notifications, and system communications.
+The tuxonomy.com application uses **Resend** for sending emails. This service provides reliable email delivery for user invitations, notifications, and system communications.
 
 ## Features
 
@@ -37,6 +37,7 @@ FROM_EMAIL=noreply@yourdomain.com
 The following settings are configured in `local_settings.py` and `production_settings.py`:
 
 **Local (Development):**
+
 ```python
 EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Prints to console
 DEFAULT_FROM_EMAIL = getenv("FROM_EMAIL", "noreply@tuxonomy.com")
@@ -44,6 +45,7 @@ RESEND_API_KEY = getenv("RESEND_API_KEY")
 ```
 
 **Production:**
+
 ```python
 EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
@@ -218,6 +220,7 @@ The service includes comprehensive error handling:
 ### Rate Limits
 
 Resend has different rate limits based on your plan:
+
 - Free tier: 100 emails/day
 - Paid plans: Higher limits based on subscription
 

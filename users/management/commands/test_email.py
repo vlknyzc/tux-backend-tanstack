@@ -47,7 +47,7 @@ class Command(BaseCommand):
 
                 result = email_service.send_template_email(
                     to_emails=[email_address],
-                    subject="TUX Backend - Resend Template Test Email",
+                    subject="tuxonomy.com - Resend Template Test Email",
                     template_name='test_email',
                     context=context
                 )
@@ -86,5 +86,5 @@ class Command(BaseCommand):
             raise CommandError(f"Failed to test email service: {str(e)}")
 
         self.stdout.write("\n" + "="*60)
-        self.stdout.write("TUX Backend Email Service Test Complete")
+        self.stdout.write("tuxonomy.com Email Service Test Complete")
         self.stdout.write("="*60)

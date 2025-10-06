@@ -1,5 +1,5 @@
 """
-Email-related API views for the TUX backend application.
+Email-related API views for the tuxonomy.com application.
 Provides endpoints for testing and managing email functionality.
 """
 
@@ -49,7 +49,7 @@ def send_test_email(request):
 
             result = get_email_service().send_template_email(
                 to_emails=[email_address],
-                subject="TUX Backend - API Test Email",
+                subject="tuxonomy.com - API Test Email",
                 template_name='test_email',
                 context=context
             )

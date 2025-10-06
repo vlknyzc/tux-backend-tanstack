@@ -37,7 +37,7 @@ class APIVersionView(APIView):
         if detected_version == 'v1':
             return Response({
                 'version': detected_version,
-                'message': 'Welcome to TUX Backend API v1',
+                'message': 'Welcome to tuxonomy.com API v1',
                 'features': [
                     'Multi-tenant workspace support',
                     'Basic string generation',
@@ -55,7 +55,7 @@ class APIVersionView(APIView):
         elif detected_version == 'v2':
             return Response({
                 'version': detected_version,
-                'message': 'Welcome to TUX Backend API v2',
+                'message': 'Welcome to tuxonomy.com API v2',
                 'features': [
                     'Enhanced multi-tenant workspace support',
                     'Advanced string generation with AI',

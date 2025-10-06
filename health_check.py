@@ -211,7 +211,7 @@ def check_environment():
 
 def main():
     """Main health check function with enhanced Railway support."""
-    logger.info("🏥 Starting TUX Backend Health Check for Railway...")
+    logger.info("🏥 Starting tuxonomy.com Health Check for Railway...")
     logger.info("=" * 60)
     
     # Check environment first

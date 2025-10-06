@@ -170,7 +170,7 @@ class Command(BaseCommand):
                 )
                 self.stdout.write(f"   Message ID: {result['message_id']}")
                 self.stdout.write(f"   Recipient: {invitation.email}")
-                self.stdout.write(f"   Subject: You're invited to join {invitation.workspace.name if invitation.workspace else 'TUX Backend'}")
+                self.stdout.write(f"   Subject: You're invited to join {invitation.workspace.name if invitation.workspace else 'tuxonomy.com'}")
                 
                 # Show invitation URL for testing
                 frontend_url = 'http://localhost:3000'  # Default frontend URL
@@ -197,5 +197,5 @@ class Command(BaseCommand):
             raise CommandError(f"Failed to test invitation email: {str(e)}")
         
         self.stdout.write("\n" + "="*70)
-        self.stdout.write("TUX Backend Invitation Email Test Complete")
+        self.stdout.write("tuxonomy.com Invitation Email Test Complete")
         self.stdout.write("="*70)

@@ -1,5 +1,5 @@
 """
-Email services for the TUX backend application.
+Email services for the tuxonomy.com application.
 Uses Resend for sending emails.
 """
 
@@ -197,13 +197,13 @@ class ResendEmailService:
         Returns:
             Dict containing success status and details
         """
-        subject = "TUX Backend - Resend Test Email"
+        subject = "tuxonomy.com - Resend Test Email"
         html_content = """
         <html>
         <head></head>
         <body>
-            <h2>TUX Backend Resend Test Email</h2>
-            <p>This is a test email sent from the TUX Backend application using Resend.</p>
+            <h2>tuxonomy.com Resend Test Email</h2>
+            <p>This is a test email sent from the tuxonomy.com application using Resend.</p>
             <p><strong>Configuration Details:</strong></p>
             <ul>
                 <li>Service: Resend</li>
@@ -211,15 +211,15 @@ class ResendEmailService:
             </ul>
             <p>If you received this email, your Resend configuration is working correctly!</p>
             <hr>
-            <p><small>Sent from TUX Backend Email Service</small></p>
+            <p><small>Sent from tuxonomy.com Email Service</small></p>
         </body>
         </html>
         """.format(from_email=self.from_email)
 
         text_content = """
-        TUX Backend - Resend Test Email
+        tuxonomy.com - Resend Test Email
 
-        This is a test email sent from the TUX Backend application using Resend.
+        This is a test email sent from the tuxonomy.com application using Resend.
 
         Configuration Details:
         - Service: Resend
@@ -228,7 +228,7 @@ class ResendEmailService:
         If you received this email, your Resend configuration is working correctly!
 
         ---
-        Sent from TUX Backend Email Service
+        Sent from tuxonomy.com Email Service
         """.format(from_email=self.from_email)
 
         return self.send_email(

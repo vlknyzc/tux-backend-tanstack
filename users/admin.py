@@ -295,6 +295,6 @@ class InvitationAdmin(admin.ModelAdmin):
 
 
 # Register models with admin site
-admin.site.site_header = "TUX Backend Administration"
+admin.site.site_header = "tuxonomy.com Administration"
 admin.site.site_title = "TUX Admin"
-admin.site.index_title = "Welcome to TUX Backend Administration"
+admin.site.index_title = "Welcome to tuxonomy.com Administration"

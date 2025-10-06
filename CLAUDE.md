@@ -4,7 +4,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Project Overview
 
-This is a Django REST API backend called "TUX Backend" that manages master data for multi-tenant SaaS applications. The system handles workspaces, platforms, dimensions, rules, and string generation with complex propagation logic.
+This is a Django REST API backend called "tuxonomy.com" that manages master data for multi-tenant SaaS applications. The system handles workspaces, platforms, dimensions, rules, and string generation with complex propagation logic.
 
 ## Architecture
 

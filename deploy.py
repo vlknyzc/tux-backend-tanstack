@@ -165,7 +165,7 @@ def wait_for_database(max_wait=None):
 
 def main():
     """Main deployment function with Railway-optimized flow."""
-    logger.info("🚂 Starting Railway deployment for TUX Backend...")
+    logger.info("🚂 Starting Railway deployment for tuxonomy.com...")
     logger.info("=" * 60)
     
     # Set Django settings module (default to production, but allow override)
@@ -251,7 +251,7 @@ def main():
     
     logger.info("=" * 60)
     logger.info("🎉 Railway deployment completed successfully!")
-    logger.info("🚀 TUX Backend is ready to serve requests")
+    logger.info("🚀 tuxonomy.com is ready to serve requests")
 
 if __name__ == '__main__':
     main()

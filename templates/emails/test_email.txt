@@ -1,9 +1,9 @@
-TUX Backend - SES Email Service Test
+tuxonomy.com - SES Email Service Test
 ====================================
 
 🚀 Email Service Working!
 
-Congratulations! This test email was successfully sent from the TUX Backend 
+Congratulations! This test email was successfully sent from the tuxonomy.com 
 application using Amazon SES.
 
 Configuration Details:
@@ -19,7 +19,7 @@ What this means:
 ✅ Your AWS credentials are correctly configured
 ✅ Your SES service is active and accessible  
 ✅ Email templates are rendering properly
-✅ The TUX Backend email service is ready for production use
+✅ The tuxonomy.com email service is ready for production use
 
 You can now use the email service for:
 - User invitation emails
@@ -28,5 +28,5 @@ You can now use the email service for:
 - Workspace-related communications
 
 ---
-Sent from TUX Backend Email Service
+Sent from tuxonomy.com Email Service
 This is an automated test email.

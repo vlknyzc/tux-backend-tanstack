@@ -1,6 +1,6 @@
-# Tux Backend API Endpoints
+# tuxonomy.com API Endpoints
 
-This document provides a comprehensive list of all available API endpoints in the Tux Backend system.
+This document provides a comprehensive list of all available API endpoints in the tuxonomy.com system.
 
 ## Base URL Structure
 
