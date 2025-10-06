@@ -483,25 +483,16 @@ MASTER_DATA_CONFIG = {
 }
 
 # ────────────────────────────────────────────────────────────────
-# Email Configuration (Amazon SES via django-ses)
+# Email Configuration (Resend)
 # ────────────────────────────────────────────────────────────────
-EMAIL_BACKEND = 'django_ses.SESBackend'
+# Email backend - using console for development, Resend for production
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
 
-# AWS SES Configuration
-AWS_ACCESS_KEY_ID = os.environ.get("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = os.environ.get("AWS_SECRET_ACCESS_KEY")
-AWS_SES_REGION_NAME = os.environ.get("AWS_SES_REGION_NAME", "us-east-1")
-AWS_SES_REGION_ENDPOINT = os.environ.get(
-    "AWS_SES_REGION_ENDPOINT",
-    f"email.{os.environ.get('AWS_SES_REGION_NAME', 'us-east-1')}.amazonaws.com"
-)
+# Resend API Configuration
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
 
 # Email sender configuration
-DEFAULT_FROM_EMAIL = os.environ.get("AWS_SES_FROM_EMAIL", "noreply@tuxonomy.com")
-AWS_SES_FROM_EMAIL = os.environ.get("AWS_SES_FROM_EMAIL")
-
-# Use SES v2 API
-USE_SES_V2 = True
+DEFAULT_FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@tuxonomy.com")
 
 # Frontend URL for invitation links and email templates
 FRONTEND_URL = os.environ.get(

@@ -2,15 +2,13 @@
 
 ## Overview
 
-The TUX Backend application now includes a comprehensive email service powered by Amazon SES (Simple Email Service) using boto3. This service provides reliable email delivery for user invitations, notifications, and system communications.
+The TUX Backend application uses **Resend** for sending emails. This service provides reliable email delivery for user invitations, notifications, and system communications.
 
 ## Features
 
-- ✅ **Amazon SES Integration**: Full integration with AWS SES using boto3
+- ✅ **Resend Integration**: Full integration with Resend API
 - ✅ **Template Support**: HTML and plain text email templates using Django's template system
 - ✅ **Test Email Functionality**: Built-in test email capabilities
-- ✅ **Quota Management**: SES quota monitoring and statistics
-- ✅ **Email Verification**: SES email address verification
 - ✅ **REST API Endpoints**: Complete API for email operations
 - ✅ **Management Commands**: Django management commands for testing
 - ✅ **Error Handling**: Comprehensive error handling and logging
@@ -22,45 +20,50 @@ The TUX Backend application now includes a comprehensive email service powered b
 The email service requires the following environment variables in your `.env.local` file:
 
 ```bash
-# AWS SES Configuration
-AWS_ACCESS_KEY_ID=your_access_key_here
-AWS_SECRET_ACCESS_KEY=your_secret_key_here
-AWS_SES_REGION_NAME=us-east-1
-AWS_SES_REGION_ENDPOINT=email.us-east-1.amazonaws.com
-AWS_SES_FROM_EMAIL=donotreply@yourdomain.com
+# Resend Configuration
+RESEND_API_KEY=re_your_api_key_here
+FROM_EMAIL=noreply@yourdomain.com
 ```
+
+### Getting Your Resend API Key
+
+1. Sign up at [resend.com](https://resend.com)
+2. Verify your domain
+3. Generate an API key from the dashboard
+4. Add the API key to your `.env.local` file
 
 ### Django Settings
 
-The following settings are already configured in `local_settings.py`:
+The following settings are configured in `local_settings.py` and `production_settings.py`:
 
+**Local (Development):**
 ```python
-# Email settings
-EMAIL_BACKEND = 'django_ses.SESBackend'
-DEFAULT_FROM_EMAIL = getenv("AWS_SES_FROM_EMAIL")
+EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'  # Prints to console
+DEFAULT_FROM_EMAIL = getenv("FROM_EMAIL", "noreply@tuxonomy.com")
+RESEND_API_KEY = getenv("RESEND_API_KEY")
+```
 
-AWS_ACCESS_KEY_ID = getenv("AWS_ACCESS_KEY_ID")
-AWS_SECRET_ACCESS_KEY = getenv("AWS_SECRET_ACCESS_KEY")
-AWS_SES_REGION_NAME = getenv("AWS_SES_REGION_NAME")
-AWS_SES_REGION_ENDPOINT = getenv("AWS_SES_REGION_ENDPOINT")
-AWS_SES_FROM_EMAIL = getenv("AWS_SES_FROM_EMAIL")
-USE_SES_V2 = True
+**Production:**
+```python
+EMAIL_BACKEND = 'django.core.mail.backends.smtp.EmailBackend'
+RESEND_API_KEY = os.environ.get("RESEND_API_KEY")
+DEFAULT_FROM_EMAIL = os.environ.get("FROM_EMAIL", "noreply@tuxonomy.com")
 ```
 
 ## Email Service Components
 
 ### 1. Core Service (`users/services.py`)
 
-The `SESEmailService` class provides the main email functionality:
+The `ResendEmailService` class provides the main email functionality:
 
 ```python
-from users.services import email_service
+from users.services import get_email_service
 
 # Send a simple test email
-result = email_service.send_test_email("user@example.com")
+result = get_email_service().send_test_email("user@example.com")
 
 # Send a template-based email
-result = email_service.send_template_email(
+result = get_email_service().send_template_email(
     to_emails=["user@example.com"],
     subject="Welcome!",
     template_name="welcome",
@@ -68,7 +71,7 @@ result = email_service.send_template_email(
 )
 
 # Send a custom email
-result = email_service.send_email(
+result = get_email_service().send_email(
     to_emails=["user@example.com"],
     subject="Custom Subject",
     html_content="<h1>Hello!</h1>",
@@ -99,12 +102,6 @@ python manage.py test_email user@example.com
 
 # Test email with template
 python manage.py test_email user@example.com --template
-
-# Check SES quota and send test email
-python manage.py test_email user@example.com --template --check-quota
-
-# Verify email address with SES
-python manage.py test_email user@example.com --verify
 ```
 
 ### 4. REST API Endpoints
@@ -121,25 +118,6 @@ Authorization: JWT your_token_here
 {
     "email": "test@example.com",
     "use_template": true
-}
-```
-
-#### Get SES Quota
-
-```http
-GET /api/v1/users/email/quota/
-Authorization: JWT your_token_here
-```
-
-#### Verify Email Address
-
-```http
-POST /api/v1/users/email/verify/
-Content-Type: application/json
-Authorization: JWT your_token_here
-
-{
-    "email": "test@example.com"
 }
 ```
 
@@ -180,7 +158,7 @@ else:
 ### 2. Custom Email with Template
 
 ```python
-from users.services import email_service
+from users.services import get_email_service
 
 context = {
     'user_name': 'John Doe',
@@ -188,7 +166,7 @@ context = {
     'expires_at': timezone.now() + timedelta(days=7)
 }
 
-result = email_service.send_template_email(
+result = get_email_service().send_template_email(
     to_emails=['john@example.com'],
     subject='Action Required',
     template_name='action_required',
@@ -199,56 +177,24 @@ result = email_service.send_template_email(
 ### 3. Bulk Email Sending
 
 ```python
-from users.services import email_service
+from users.services import get_email_service
 
 recipients = ['user1@example.com', 'user2@example.com']
 
 for email in recipients:
-    result = email_service.send_test_email(email)
+    result = get_email_service().send_test_email(email)
     if result['success']:
         print(f"✅ Sent to {email}")
     else:
         print(f"❌ Failed to send to {email}: {result['message']}")
 ```
 
-## Testing
-
-### 1. Successful Test Results
-
-The email service has been successfully tested:
-
-```
-Testing SES email service with vlknyzc@gmail.com
-
-📊 Checking SES quota and statistics...
-✅ Quota information retrieved:
-   Max 24-hour send: 200.0
-   Max send rate: 1.0
-   Sent last 24 hours: 2.0
-
-📤 Sending test email to vlknyzc@gmail.com...
-✅ Email sent successfully
-   Message ID: 010b0198e3c712d2-3bad902a-fc96-469b-b7eb-e2da7de59216-000000
-   Recipient: vlknyzc@gmail.com
-   From: donotreply@tuxonomy.com
-```
-
-### 2. Test Email Content
-
-The test email includes:
-
-- Professional HTML design with TUX Backend branding
-- Configuration details table
-- Success indicators
-- Plain text fallback
-- Responsive design
-
 ## Error Handling
 
 The service includes comprehensive error handling:
 
-- **AWS Credential Issues**: Clear error messages for missing/invalid credentials
-- **SES Service Errors**: Detailed error codes and messages from AWS
+- **Missing API Key**: Clear error messages for missing/invalid API keys
+- **Resend Service Errors**: Detailed error codes and messages from Resend
 - **Template Errors**: Graceful handling of missing templates
 - **Network Issues**: Timeout and connection error handling
 - **Validation Errors**: Input validation for email addresses and content
@@ -257,34 +203,30 @@ The service includes comprehensive error handling:
 
 - ✅ Admin-only access to email endpoints
 - ✅ Input validation and sanitization
-- ✅ Rate limiting considerations (via SES quotas)
 - ✅ Secure credential management via environment variables
 - ✅ No sensitive data in logs
 
-## SES Configuration Notes
+## Resend Configuration Notes
 
-### Sandbox Mode
+### Domain Verification
 
-If your SES account is in sandbox mode:
+1. Add your domain to Resend
+2. Add the required DNS records (SPF, DKIM, DMARC)
+3. Wait for verification (usually takes a few minutes)
+4. Start sending emails from your verified domain
 
-- You can only send emails to verified email addresses
-- Maximum of 200 emails per 24-hour period
-- Maximum send rate of 1 email per second
+### Rate Limits
 
-### Production Setup
+Resend has different rate limits based on your plan:
+- Free tier: 100 emails/day
+- Paid plans: Higher limits based on subscription
 
-For production use:
-
-1. Request production access from AWS SES
-2. Verify your domain (not just email addresses)
-3. Set up proper SPF, DKIM, and DMARC records
-4. Monitor bounce and complaint rates
+Check the [Resend documentation](https://resend.com/docs) for current limits.
 
 ## Dependencies
 
 ```
-boto3==1.40.17
-django-ses==4.4.0
+resend==2.8.0
 django>=4.2
 ```
 
@@ -311,7 +253,7 @@ templates/
 
 ### Automatic Email Sending
 
-The email service is now **fully integrated** with the invitation system. When a new invitation is created, an email is automatically sent to the recipient.
+The email service is **fully integrated** with the invitation system. When a new invitation is created, an email is automatically sent to the recipient.
 
 #### How It Works
 
@@ -327,19 +269,6 @@ The email service is now **fully integrated** with the invitation system. When a
 - `templates/emails/invitation.html` - Professional HTML template
 - `templates/emails/invitation.txt` - Plain text fallback
 - `users/services.py` - Email service integration
-
-#### Testing Invitation Emails
-
-```bash
-# Test complete invitation flow
-python manage.py test_invitation_email your-email@example.com --create-workspace --workspace-name "My Test Workspace"
-
-# Test with specific invitor
-python manage.py test_invitation_email your-email@example.com --invitor-email admin@example.com
-
-# Create invitation without sending (template testing)
-python manage.py test_invitation_email your-email@example.com --no-send
-```
 
 #### Email Template Features
 
@@ -368,40 +297,42 @@ Authorization: JWT your_token_here
 
 The response includes invitation details, and the email is sent in the background.
 
-#### Successful Test Results
+## Migration from Amazon SES
 
-```
-✅ Created test invitation:
-   Token: a0470164-d219-4733-9181-239e225f85e7
-   Email: vlknyzc@gmail.com
-   Invitor: test.admin@tuxonomy.com
-   Workspace: TUX Test Workspace
-   Role: User
+This project was previously using Amazon SES. The migration to Resend includes:
 
-✅ Email sent successfully
-   Message ID: 010b0198e3dd04ef-d01a326f-7725-406b-85aa-31d6fcc6e3db-000000
-   Subject: You're invited to join TUX Test Workspace
-```
+1. ✅ Removed `boto3`, `botocore`, `django-ses`, and related AWS dependencies
+2. ✅ Replaced `SESEmailService` with `ResendEmailService`
+3. ✅ Updated all email configuration in settings files
+4. ✅ Updated management commands and API views
+5. ✅ Simplified email service with fewer dependencies
 
-## Next Steps
+### Benefits of Resend
 
-1. ✅ **Integration with Invitation System**: **COMPLETED** - Fully integrated with automatic email sending
-2. **Additional Templates**: Create templates for password resets, welcome emails, etc.
-3. **Email Analytics**: Consider adding email open/click tracking
-4. **Background Processing**: For high-volume sending, consider using Celery for background processing
-5. **Email Preferences**: Allow users to customize email notification preferences
+- **Simpler Setup**: No AWS account or complex IAM configuration needed
+- **Better Developer Experience**: Clean API and excellent documentation
+- **Modern Features**: Built for developers with great tooling
+- **Easier Domain Verification**: Simpler DNS setup process
+- **Better Pricing**: More predictable pricing model
 
 ## Support
 
 For issues or questions about the email service:
 
 1. Check the Django logs for error details
-2. Verify AWS SES configuration and quotas
-3. Test with the management command first
-4. Ensure proper authentication for API endpoints
+2. Verify Resend API key configuration
+3. Check domain verification status in Resend dashboard
+4. Test with the management command first
+5. Ensure proper authentication for API endpoints
+
+## Resources
+
+- [Resend Documentation](https://resend.com/docs)
+- [Resend Python SDK](https://github.com/resend/resend-python)
+- [Django Email Documentation](https://docs.djangoproject.com/en/stable/topics/email/)
 
 ---
 
-**Status**: ✅ **Fully Implemented and Tested**  
-**Last Updated**: January 2025  
-**Test Email Sent To**: vlknyzc@gmail.com (Successful)
+**Status**: ✅ **Migrated to Resend**
+**Last Updated**: January 2025
+**Email Provider**: Resend
