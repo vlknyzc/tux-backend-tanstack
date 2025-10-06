@@ -44,7 +44,5 @@ urlpatterns = [
     
     # Email API endpoints
     path('email/test/', email_views.send_test_email, name='send-test-email'),
-    path('email/quota/', email_views.get_email_quota, name='get-email-quota'),
-    path('email/verify/', email_views.verify_email, name='verify-email'),
     path('email/send/', email_views.send_custom_email, name='send-custom-email'),
 ]
