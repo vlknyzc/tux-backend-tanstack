@@ -53,11 +53,12 @@ FIELDS = {
         {'name': 'URL',              'field_level': 6},
     ],
     'CM360': [
-        {'name': 'Advertiser', 'field_level': 1},
-        {'name': 'Campaign',   'field_level': 2},
-        {'name': 'Ad Group',   'field_level': 3},
-        {'name': 'Ad',         'field_level': 4},
-        {'name': 'URL',        'field_level': 5},
+        {'name': 'Account', 'field_level': 1},
+        {'name': 'Advertiser', 'field_level': 2},
+        {'name': 'Campaign',   'field_level': 3},
+        {'name': 'Placement',   'field_level': 4},
+        {'name': 'Creative',         'field_level': 5},
+        {'name': 'URL',        'field_level': 6},
     ],
     'Flashtalking': [
         {'name': 'Advertiser', 'field_level': 1},

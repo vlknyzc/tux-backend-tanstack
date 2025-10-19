@@ -234,6 +234,33 @@ class SubmissionAdmin(admin.ModelAdmin):
     ]
 
 
+class DimensionConstraintAdminForm(forms.ModelForm):
+
+    class Meta:
+        model = models.DimensionConstraint
+        fields = "__all__"
+
+
+class DimensionConstraintAdmin(admin.ModelAdmin):
+    form = DimensionConstraintAdminForm
+    list_display = [
+        "dimension",
+        "constraint_type",
+        "value",
+        "order",
+        "is_active",
+    ]
+    list_filter = [
+        "constraint_type",
+        "is_active",
+    ]
+    search_fields = [
+        "dimension__name",
+        "error_message",
+    ]
+    ordering = ["dimension", "order"]
+
+
 admin.site.register(models.Dimension, DimensionAdmin)
 admin.site.register(models.DimensionValue, DimensionValueAdmin)
 admin.site.register(models.Workspace, WorkspaceAdmin)
@@ -244,3 +271,4 @@ admin.site.register(models.RuleDetail, RuleDetailAdmin)
 admin.site.register(models.String, StringAdmin)
 admin.site.register(models.StringDetail, StringDetailAdmin)
 admin.site.register(models.Submission, SubmissionAdmin)
+admin.site.register(models.DimensionConstraint, DimensionConstraintAdmin)
