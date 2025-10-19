@@ -4,6 +4,7 @@ from rest_framework import routers
 from .views import (
     DimensionViewSet,
     DimensionValueViewSet,
+    DimensionConstraintViewSet,
     WorkspaceViewSet,
     PlatformViewSet,
     FieldViewSet,
@@ -32,6 +33,8 @@ router = routers.DefaultRouter()
 router.register("dimensions", DimensionViewSet, basename="dimension")
 router.register("dimension-values", DimensionValueViewSet,
                 basename="dimensionvalue")
+router.register("dimension-constraints", DimensionConstraintViewSet,
+                basename="dimensionconstraint")
 router.register("workspaces", WorkspaceViewSet, basename="workspace")
 router.register("platforms", PlatformViewSet, basename="platform")
 router.register("fields", FieldViewSet, basename="field")

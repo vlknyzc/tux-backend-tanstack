@@ -7,7 +7,7 @@ from django.db.models.signals import post_save, post_delete
 from django.dispatch import receiver
 from django.core.cache import cache
 
-from ..models import Rule, RuleDetail, DimensionValue, Field, Platform, Workspace
+from ..models import Rule, RuleDetail, DimensionValue, DimensionConstraint, Field, Platform, Workspace
 
 logger = logging.getLogger(__name__)
 
@@ -171,3 +171,34 @@ def invalidate_caches_on_dimension_value_delete(sender, instance, **kwargs):
     reason = f"DimensionValue deleted: {instance.dimension.name}={instance.value} (workspace: {instance.workspace.name})"
 
     CacheInvalidationHelper.invalidate_rule_caches(rule_ids, reason)
+
+
+# ─── DIMENSION CONSTRAINT CACHE INVALIDATION ────────────────────────────────
+
+
+@receiver(post_save, sender=DimensionConstraint)
+def invalidate_constraint_cache_on_save(sender, instance, created, **kwargs):
+    """Invalidate constraint cache when a constraint is created or updated"""
+    from ..services.constraint_validator import ConstraintValidatorService
+
+    action = "created" if created else "updated"
+    logger.info(
+        f"Constraint {action}: {instance.constraint_type} for dimension {instance.dimension.name} "
+        f"(order: {instance.order}, active: {instance.is_active})"
+    )
+
+    # Clear the constraint cache for this dimension
+    ConstraintValidatorService.clear_constraint_cache(instance.dimension.id)
+
+
+@receiver(post_delete, sender=DimensionConstraint)
+def invalidate_constraint_cache_on_delete(sender, instance, **kwargs):
+    """Invalidate constraint cache when a constraint is deleted"""
+    from ..services.constraint_validator import ConstraintValidatorService
+
+    logger.info(
+        f"Constraint deleted: {instance.constraint_type} for dimension {instance.dimension.name}"
+    )
+
+    # Clear the constraint cache for this dimension
+    ConstraintValidatorService.clear_constraint_cache(instance.dimension.id)

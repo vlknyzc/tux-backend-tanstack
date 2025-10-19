@@ -1,4 +1,5 @@
 from .dimension_views import DimensionViewSet, DimensionValueViewSet
+from .dimension_constraint_views import DimensionConstraintViewSet
 from .workspace_views import WorkspaceViewSet, PlatformViewSet
 from .rule_views import RuleViewSet, RuleDetailViewSet, RuleNestedViewSet
 from .field_views import FieldViewSet
@@ -21,6 +22,7 @@ from .propagation_views import (
 __all__ = [
     'DimensionViewSet',
     'DimensionValueViewSet',
+    'DimensionConstraintViewSet',
     'WorkspaceViewSet',
     'PlatformViewSet',
     'RuleViewSet',

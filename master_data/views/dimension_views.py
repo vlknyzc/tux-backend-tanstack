@@ -299,13 +299,24 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
 
     def get_queryset(self):
         wid = self.get_workspace_id()
+        
         if wid:
             self.check_workspace_access(wid)
-            return models.DimensionValue.objects.all_workspaces().filter(workspace_id=wid)
-        user = getattr(self.request, 'user', None)
-        if user and user.is_superuser:
-            return models.DimensionValue.objects.all_workspaces()
-        return models.DimensionValue.objects.all()
+            queryset = models.DimensionValue.objects.all_workspaces().filter(workspace_id=wid)
+        else:
+            user = getattr(self.request, 'user', None)
+            if user and user.is_superuser:
+                queryset = models.DimensionValue.objects.all_workspaces()
+            else:
+                queryset = models.DimensionValue.objects.all()
+        
+        # Apply select_related optimizations
+        return queryset.select_related(
+            'dimension__parent',  # For dimension_parent_name
+            'parent',             # For parent_name and parent_value
+            'created_by',         # For created_by_name
+            'workspace'           # For workspace_name
+        )
 
     def get_object(self):
         obj = super().get_object()
@@ -315,6 +326,8 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
         return obj
 
     def perform_create(self, serializer):
+        from ..services.constraint_validator import ConstraintValidatorService
+
         # require a write-only `workspace` field in the serializer
         workspace_obj = serializer.validated_data.get('workspace')
         if not workspace_obj:
@@ -322,11 +335,53 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
         wid = workspace_obj.id
         self.check_workspace_access(wid)
 
+        # Validate against dimension constraints
+        dimension = serializer.validated_data.get('dimension')
+        value = serializer.validated_data.get('value')
+
+        if dimension and value:
+            validation_result = ConstraintValidatorService.validate_all_constraints(
+                value,
+                dimension.id
+            )
+
+            if not validation_result['is_valid']:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({
+                    'error': 'Constraint validation failed',
+                    'validation_errors': validation_result['errors']
+                })
+
         kwargs = {}
         user = getattr(self.request, 'user', None)
         if user and user.is_authenticated:
             kwargs['created_by'] = user
         serializer.save(**kwargs)
+
+    def perform_update(self, serializer):
+        from ..services.constraint_validator import ConstraintValidatorService
+
+        instance = self.get_object()
+        self.check_workspace_access(instance.workspace_id)
+
+        # Validate against dimension constraints if value is being updated
+        dimension = serializer.validated_data.get('dimension', instance.dimension)
+        value = serializer.validated_data.get('value', instance.value)
+
+        if dimension and value:
+            validation_result = ConstraintValidatorService.validate_all_constraints(
+                value,
+                dimension.id
+            )
+
+            if not validation_result['is_valid']:
+                from rest_framework.exceptions import ValidationError
+                raise ValidationError({
+                    'error': 'Constraint validation failed',
+                    'validation_errors': validation_result['errors']
+                })
+
+        serializer.save()
 
     @extend_schema(tags=["Dimensions"])
     @action(detail=False, methods=['post'])

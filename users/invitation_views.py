@@ -86,10 +86,20 @@ class InvitationViewSet(ModelViewSet):
         
         return queryset.select_related('invitor', 'workspace', 'used_by')
     
-    def perform_create(self, serializer):
-        """Create invitation with current user as invitor"""
-        # Email will be sent automatically via post_save signal
-        invitation = serializer.save(invitor=self.request.user)
+    def create(self, request, *args, **kwargs):
+        """Create invitation and return detailed response"""
+        serializer = self.get_serializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+        invitation = serializer.save(invitor=request.user)
+
+        # Use InvitationSerializer for response to include all details
+        response_serializer = InvitationSerializer(invitation)
+        headers = self.get_success_headers(response_serializer.data)
+        return Response(
+            response_serializer.data,
+            status=status.HTTP_201_CREATED,
+            headers=headers
+        )
     
     def destroy(self, request, *args, **kwargs):
         """Revoke invitation instead of deleting"""

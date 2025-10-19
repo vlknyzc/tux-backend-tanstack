@@ -200,10 +200,16 @@ class LogoutResponseSerializer(serializers.Serializer):
 
 class InvitationCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating invitations"""
-    
+    workspace_id = serializers.PrimaryKeyRelatedField(
+        queryset=Workspace.objects.all(),
+        source='workspace',
+        required=True,
+        allow_null=False
+    )
+
     class Meta:
         model = Invitation
-        fields = ['email', 'workspace', 'role', 'expires_at']
+        fields = ['email', 'workspace_id', 'role', 'expires_at']
         extra_kwargs = {
             'expires_at': {'required': False}
         }
@@ -247,7 +253,7 @@ class InvitationSerializer(serializers.ModelSerializer):
     """Serializer for invitation details"""
     invitor_name = serializers.CharField(source='invitor.get_full_name', read_only=True)
     invitor_email = serializers.CharField(source='invitor.email', read_only=True)
-    workspace_name = serializers.CharField(source='workspace.name', read_only=True)
+    workspace_name = serializers.CharField(source='workspace.name', read_only=True, allow_null=True)
     is_valid = serializers.BooleanField(read_only=True)
     is_expired = serializers.BooleanField(read_only=True)
     

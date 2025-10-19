@@ -118,8 +118,8 @@ class DimensionValueSerializer(serializers.ModelSerializer):
             return None
 
     def get_dimension_parent_name(self, obj) -> Optional[str]:
-        if obj.parent:
-            return obj.parent.dimension.name  # obj.parent is already a DimensionValue instance
+        if obj.dimension.parent:
+            return obj.dimension.parent.name  # obj.dimension.parent is the parent Dimension
         else:
             return None
 

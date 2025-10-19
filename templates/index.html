@@ -1,10 +1,12 @@
 {% extends "base.html" %}
 {% block content %}
-<div class="m-2"><h4>master_data</h4></div>
-<div class="m-2"><a class="btn btn-light" href="{% url 'master_data_Dimension_list' %}">Dimension Listing</a></div>
-<div class="m-2"><a class="btn btn-light" href="{% url 'master_data_JunkDimension_list' %}">JunkDimension Listing</a></div>
-<div class="m-2"><a class="btn btn-light" href="{% url 'master_data_Workspace_list' %}">Workspace Listing</a></div>
-<div class="m-2"><a class="btn btn-light" href="{% url 'master_data_Platform_list' %}">Platform Listing</a></div>
-<div class="m-2"><a class="btn btn-light" href="{% url 'master_data_Rule_list' %}">Rule Listing</a></div>
-<div class="m-2"><a class="btn btn-light" href="{% url 'master_data_Structure_list' %}">Structure Listing</a></div>
+<div class="m-2"><h4>Tux Backend API</h4></div>
+<div class="m-2"><p>Welcome to the Tux Backend API. Use the following links to explore the API:</p></div>
+<div class="m-2"><a class="btn btn-primary" href="/api/v1/dimensions/">Dimensions API</a></div>
+<div class="m-2"><a class="btn btn-primary" href="/api/v1/workspaces/">Workspaces API</a></div>
+<div class="m-2"><a class="btn btn-primary" href="/api/v1/platforms/">Platforms API</a></div>
+<div class="m-2"><a class="btn btn-primary" href="/api/v1/rules/">Rules API</a></div>
+<div class="m-2"><a class="btn btn-primary" href="/api/v1/fields/">Fields API</a></div>
+<div class="m-2"><a class="btn btn-success" href="/api/schema/swagger-ui/">API Documentation (Swagger)</a></div>
+<div class="m-2"><a class="btn btn-info" href="/admin/">Django Admin</a></div>
 {% endblock %}
