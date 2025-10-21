@@ -131,8 +131,8 @@ class String(TimeStampModel, WorkspaceMixin):
     class Meta:
         verbose_name = "String"
         verbose_name_plural = "Strings"
-        # Unique per workspace
-        unique_together = [('workspace', 'rule', 'field', 'value')]
+        # Unique per workspace and parent - allows same value across different parents
+        unique_together = [('workspace', 'rule', 'field', 'parent', 'value')]
         ordering = ['workspace', 'field__field_level', 'value']
         indexes = [
             models.Index(fields=['workspace', 'rule', 'field']),
