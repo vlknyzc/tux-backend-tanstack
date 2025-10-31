@@ -2,7 +2,7 @@
 Views for Project management API endpoints.
 """
 
-from rest_framework import viewsets, status
+from rest_framework import viewsets, views, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
 from rest_framework.permissions import IsAuthenticated
@@ -322,4 +322,222 @@ class ProjectViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
 
         # Check if user is workspace admin
         workspace_role = user.get_workspace_role(project.workspace_id)
+        return workspace_role == 'admin'
+
+
+class PlatformAssignmentApprovalView(WorkspaceValidationMixin, views.APIView):
+    """
+    Views for platform-level approval operations.
+
+    Supports:
+    - Submit platform for approval
+    - Approve platform
+    - Reject platform
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, workspace_id, project_id, platform_id, action):
+        """Handle platform approval actions."""
+        # Validate workspace access
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.has_workspace_access(workspace_id):
+            raise PermissionError("Access denied to this workspace")
+
+        # Validate project exists and belongs to workspace
+        project = get_object_or_404(Project, id=project_id, workspace=workspace)
+
+        # Validate platform assignment exists
+        platform_assignment = get_object_or_404(
+            PlatformAssignment,
+            project=project,
+            platform_id=platform_id
+        )
+
+        # Route to appropriate handler
+        if action == 'submit-for-approval':
+            return self.submit_for_approval(request, platform_assignment)
+        elif action == 'approve':
+            return self.approve(request, platform_assignment)
+        elif action == 'reject':
+            return self.reject(request, platform_assignment)
+        else:
+            return Response(
+                {'error': 'Invalid action'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def submit_for_approval(self, request, platform_assignment):
+        """Submit platform assignment for approval."""
+        # Validate current status
+        if platform_assignment.approval_status not in ['draft', 'rejected']:
+            return Response(
+                {'error': 'Platform must be in draft or rejected status to submit for approval'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate user has permission (assigned to platform or owner/editor)
+        if not self.can_submit_platform(request.user, platform_assignment):
+            return Response(
+                {'error': 'Only assigned members or project owners/editors can submit for approval'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = SubmitForApprovalSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Update platform assignment status
+        platform_assignment.approval_status = 'pending_approval'
+        platform_assignment.save(update_fields=['approval_status', 'last_updated'])
+
+        # Create approval history
+        ApprovalHistory.objects.create(
+            platform_assignment=platform_assignment,
+            user=request.user,
+            action='submitted',
+            comment=serializer.validated_data.get('comment', '')
+        )
+
+        # Create project activity
+        ProjectActivity.objects.create(
+            project=platform_assignment.project,
+            user=request.user,
+            type='submitted_for_approval',
+            description=f"submitted platform {platform_assignment.platform.name} for approval",
+            metadata={'platform_id': platform_assignment.platform.id}
+        )
+
+        return Response({
+            'platform_assignment_id': platform_assignment.id,
+            'approval_status': platform_assignment.approval_status,
+            'submitted_at': timezone.now(),
+            'submitted_by': request.user.id
+        })
+
+    def approve(self, request, platform_assignment):
+        """Approve platform assignment."""
+        # Validate current status
+        if platform_assignment.approval_status != 'pending_approval':
+            return Response(
+                {'error': 'Platform must be in pending_approval status to approve'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate user has permission (workspace admin)
+        if not self.can_approve_platform(request.user, platform_assignment):
+            return Response(
+                {'error': 'Only workspace admins can approve platforms'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = ApproveSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Update platform assignment status
+        platform_assignment.approval_status = 'approved'
+        platform_assignment.approved_by = request.user
+        platform_assignment.approved_at = timezone.now()
+        platform_assignment.save(update_fields=[
+            'approval_status', 'approved_by', 'approved_at', 'last_updated'
+        ])
+
+        # Create approval history
+        ApprovalHistory.objects.create(
+            platform_assignment=platform_assignment,
+            user=request.user,
+            action='approved',
+            comment=serializer.validated_data.get('comment', '')
+        )
+
+        # Create project activity
+        ProjectActivity.objects.create(
+            project=platform_assignment.project,
+            user=request.user,
+            type='approved',
+            description=f"approved platform {platform_assignment.platform.name}",
+            metadata={'platform_id': platform_assignment.platform.id}
+        )
+
+        return Response({
+            'platform_assignment_id': platform_assignment.id,
+            'approval_status': platform_assignment.approval_status,
+            'approved_at': platform_assignment.approved_at,
+            'approved_by': request.user.id
+        })
+
+    def reject(self, request, platform_assignment):
+        """Reject platform assignment."""
+        # Validate current status
+        if platform_assignment.approval_status != 'pending_approval':
+            return Response(
+                {'error': 'Platform must be in pending_approval status to reject'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate user has permission (workspace admin)
+        if not self.can_approve_platform(request.user, platform_assignment):
+            return Response(
+                {'error': 'Only workspace admins can reject platforms'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        serializer = RejectSerializer(data=request.data)
+        serializer.is_valid(raise_exception=True)
+
+        # Update platform assignment status
+        platform_assignment.approval_status = 'rejected'
+        platform_assignment.rejected_by = request.user
+        platform_assignment.rejected_at = timezone.now()
+        platform_assignment.rejection_reason = serializer.validated_data['reason']
+        platform_assignment.save(update_fields=[
+            'approval_status', 'rejected_by', 'rejected_at', 'rejection_reason', 'last_updated'
+        ])
+
+        # Create approval history
+        ApprovalHistory.objects.create(
+            platform_assignment=platform_assignment,
+            user=request.user,
+            action='rejected',
+            comment=serializer.validated_data['reason']
+        )
+
+        # Create project activity
+        ProjectActivity.objects.create(
+            project=platform_assignment.project,
+            user=request.user,
+            type='rejected',
+            description=f"rejected platform {platform_assignment.platform.name}",
+            metadata={'platform_id': platform_assignment.platform.id}
+        )
+
+        return Response({
+            'platform_assignment_id': platform_assignment.id,
+            'approval_status': platform_assignment.approval_status,
+            'rejected_at': platform_assignment.rejected_at,
+            'rejected_by': request.user.id,
+            'rejection_reason': platform_assignment.rejection_reason
+        })
+
+    def can_submit_platform(self, user, platform_assignment):
+        """Check if user can submit platform for approval."""
+        if user.is_superuser:
+            return True
+
+        # Check if user is assigned to platform
+        if platform_assignment.assigned_members.filter(id=user.id).exists():
+            return True
+
+        # Check if user has owner/editor role in project
+        try:
+            member = ProjectMember.objects.get(project=platform_assignment.project, user=user)
+            return member.role in ['owner', 'editor']
+        except ProjectMember.DoesNotExist:
+            return False
+
+    def can_approve_platform(self, user, platform_assignment):
+        """Check if user can approve/reject platform."""
+        if user.is_superuser:
+            return True
+
+        # Check if user is workspace admin
+        workspace_role = user.get_workspace_role(platform_assignment.project.workspace_id)
         return workspace_role == 'admin'

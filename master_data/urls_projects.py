@@ -9,6 +9,7 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     ProjectViewSet,
+    PlatformAssignmentApprovalView,
     BulkCreateProjectStringsView,
     ListProjectStringsView,
     ProjectStringExpandedView,
@@ -30,6 +31,33 @@ router.register(
 )
 
 urlpatterns = router.urls
+
+# Add platform approval endpoints
+urlpatterns += [
+    # Submit platform for approval
+    path(
+        'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/submit-for-approval/',
+        PlatformAssignmentApprovalView.as_view(),
+        {'action': 'submit-for-approval'},
+        name='platform-submit-for-approval'
+    ),
+
+    # Approve platform
+    path(
+        'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/approve/',
+        PlatformAssignmentApprovalView.as_view(),
+        {'action': 'approve'},
+        name='platform-approve'
+    ),
+
+    # Reject platform
+    path(
+        'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/reject/',
+        PlatformAssignmentApprovalView.as_view(),
+        {'action': 'reject'},
+        name='platform-reject'
+    ),
+]
 
 # Add project string endpoints
 urlpatterns += [
