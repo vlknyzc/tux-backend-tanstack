@@ -8,6 +8,10 @@ from rest_framework.permissions import IsAuthenticated
 from django.shortcuts import get_object_or_404
 from django.core.paginator import Paginator
 from django.db.models import Q
+from django.http import HttpResponse
+from django.utils import timezone
+import csv
+import json
 
 from ..models import (
     Project, PlatformAssignment, ProjectString,
@@ -301,6 +305,111 @@ class ProjectStringUpdateView(WorkspaceValidationMixin, views.APIView):
             return False
 
 
+class ProjectStringUnlockView(WorkspaceValidationMixin, views.APIView):
+    """
+    Unlock an approved string for editing.
+
+    Endpoint: POST /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings/{string_id}/unlock
+
+    Allows editing/deleting approved strings by unlocking them.
+    Changes platform status back to draft and requires re-approval.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, workspace_id, project_id, platform_id, string_id):
+        """Unlock string for editing."""
+        # Validate workspace access
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Validate project exists and belongs to workspace
+        project = get_object_or_404(Project, id=project_id, workspace=workspace)
+
+        # Validate platform exists
+        platform = get_object_or_404(Platform, id=platform_id)
+
+        # Validate platform assignment exists and is approved
+        platform_assignment = get_object_or_404(
+            PlatformAssignment,
+            project=project,
+            platform=platform
+        )
+
+        if platform_assignment.approval_status != 'approved':
+            return Response(
+                {'error': 'Platform must be in approved status to unlock strings'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        # Validate string exists
+        project_string = get_object_or_404(
+            ProjectString,
+            id=string_id,
+            project=project,
+            platform=platform
+        )
+
+        # Validate user has permission
+        if not self.can_unlock_string(request.user, project, platform_assignment):
+            return Response(
+                {'error': 'You do not have permission to unlock strings for this platform'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get reason from request
+        reason = request.data.get('reason', '')
+
+        # Change platform status back to draft
+        old_status = platform_assignment.approval_status
+        platform_assignment.approval_status = 'draft'
+        platform_assignment.save(update_fields=['approval_status', 'last_updated'])
+
+        # Create activity
+        from ..models import ProjectActivity
+        ProjectActivity.objects.create(
+            project=project,
+            user=request.user,
+            type='status_changed',
+            description=f"unlocked platform {platform.name} for editing (was {old_status})",
+            metadata={
+                'platform_id': platform.id,
+                'string_id': string_id,
+                'reason': reason,
+                'old_status': old_status,
+                'new_status': 'draft'
+            }
+        )
+
+        return Response({
+            'string_id': string_id,
+            'unlocked_at': timezone.now(),
+            'unlocked_by': request.user.id,
+            'platform_status_changed': True,
+            'new_platform_status': 'draft',
+            'message': 'String unlocked successfully. Platform status changed to draft and requires re-approval.'
+        })
+
+    def can_unlock_string(self, user, project, platform_assignment):
+        """Check if user can unlock strings for this platform."""
+        if user.is_superuser:
+            return True
+
+        # Check if user is assigned to platform
+        if platform_assignment.assigned_members.filter(id=user.id).exists():
+            return True
+
+        # Check if user has owner/editor role in project
+        try:
+            member = ProjectMember.objects.get(project=project, user=user)
+            return member.role in ['owner', 'editor']
+        except ProjectMember.DoesNotExist:
+            return False
+
+
 class ProjectStringDeleteView(WorkspaceValidationMixin, views.APIView):
     """
     Delete a project string.
@@ -385,3 +494,250 @@ class ProjectStringDeleteView(WorkspaceValidationMixin, views.APIView):
             return member.role in ['owner', 'editor']
         except ProjectMember.DoesNotExist:
             return False
+
+
+class BulkUpdateProjectStringsView(WorkspaceValidationMixin, views.APIView):
+    """
+    Bulk update multiple project strings.
+
+    Endpoint: PUT /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings/bulk-update
+
+    Request body: List of string updates
+    """
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, workspace_id, project_id, platform_id):
+        """Bulk update project strings."""
+        from django.db import transaction
+        from ..serializers import ProjectStringUpdateSerializer
+
+        # Validate workspace access
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Validate project exists and belongs to workspace
+        project = get_object_or_404(Project, id=project_id, workspace=workspace)
+
+        # Validate platform exists
+        platform = get_object_or_404(Platform, id=platform_id)
+
+        # Validate platform assignment exists
+        platform_assignment = get_object_or_404(
+            PlatformAssignment,
+            project=project,
+            platform=platform
+        )
+
+        # Validate user has permission
+        if not self.can_update_strings(request.user, project, platform_assignment):
+            return Response(
+                {'error': 'You do not have permission to update strings for this platform'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get updates from request
+        updates = request.data.get('updates', [])
+
+        if not updates:
+            return Response(
+                {'error': 'No updates provided'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        updated_strings = []
+        errors = []
+
+        with transaction.atomic():
+            for update_data in updates:
+                string_id = update_data.get('id')
+
+                if not string_id:
+                    errors.append({'error': 'Missing string ID', 'data': update_data})
+                    continue
+
+                try:
+                    # Get string
+                    project_string = ProjectString.objects.get(
+                        id=string_id,
+                        project=project,
+                        platform=platform
+                    )
+
+                    # Update string
+                    serializer = ProjectStringUpdateSerializer(
+                        project_string,
+                        data=update_data,
+                        partial=True
+                    )
+
+                    if serializer.is_valid():
+                        updated_string = serializer.save()
+                        updated_strings.append(updated_string)
+                    else:
+                        errors.append({
+                            'string_id': string_id,
+                            'errors': serializer.errors
+                        })
+
+                except ProjectString.DoesNotExist:
+                    errors.append({
+                        'string_id': string_id,
+                        'error': 'String not found'
+                    })
+                except Exception as e:
+                    errors.append({
+                        'string_id': string_id,
+                        'error': str(e)
+                    })
+
+        # Create activity
+        from ..models import ProjectActivity
+        ProjectActivity.objects.create(
+            project=project,
+            user=request.user,
+            type='strings_generated',
+            description=f"bulk updated {len(updated_strings)} strings for {platform.name}",
+            metadata={
+                'platform_id': platform.id,
+                'updated_count': len(updated_strings),
+                'error_count': len(errors)
+            }
+        )
+
+        from ..serializers import ProjectStringReadSerializer
+        return Response({
+            'updated_count': len(updated_strings),
+            'error_count': len(errors),
+            'updated_strings': ProjectStringReadSerializer(updated_strings, many=True).data,
+            'errors': errors
+        })
+
+    def can_update_strings(self, user, project, platform_assignment):
+        """Check if user can update strings for this platform."""
+        if user.is_superuser:
+            return True
+
+        # Check if user is assigned to platform
+        if platform_assignment.assigned_members.filter(id=user.id).exists():
+            return True
+
+        # Check if user has owner/editor role in project
+        try:
+            member = ProjectMember.objects.get(project=project, user=user)
+            return member.role in ['owner', 'editor']
+        except ProjectMember.DoesNotExist:
+            return False
+
+
+class ExportProjectStringsView(WorkspaceValidationMixin, views.APIView):
+    """
+    Export project strings in various formats.
+
+    Endpoint: GET /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings/export
+
+    Query Parameters:
+    - format: csv, json (default: csv)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, workspace_id, project_id, platform_id):
+        """Export project strings."""
+        # Validate workspace access
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Validate project exists and belongs to workspace
+        project = get_object_or_404(Project, id=project_id, workspace=workspace)
+
+        # Validate platform exists
+        platform = get_object_or_404(Platform, id=platform_id)
+
+        # Get strings
+        strings = ProjectString.objects.filter(
+            project=project,
+            platform=platform
+        ).select_related(
+            'project', 'platform', 'field', 'rule', 'created_by'
+        ).prefetch_related('details__dimension', 'details__dimension_value')
+
+        # Get export format
+        export_format = request.query_params.get('format', 'csv').lower()
+
+        if export_format == 'csv':
+            return self.export_csv(project, platform, strings)
+        elif export_format == 'json':
+            return self.export_json(project, platform, strings)
+        else:
+            return Response(
+                {'error': 'Invalid format. Supported formats: csv, json'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def export_csv(self, project, platform, strings):
+        """Export strings as CSV."""
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="project_{project.id}_platform_{platform.id}_strings.csv"'
+
+        writer = csv.writer(response)
+
+        # Write header
+        writer.writerow([
+            'String ID', 'UUID', 'Project', 'Platform', 'Field', 'Field Level',
+            'Value', 'Parent UUID', 'Rule', 'Created By', 'Created', 'Last Updated'
+        ])
+
+        # Write data
+        for string in strings:
+            writer.writerow([
+                string.id,
+                str(string.string_uuid),
+                string.project.name,
+                string.platform.name,
+                string.field.name,
+                string.field.field_level,
+                string.value,
+                str(string.parent_uuid) if string.parent_uuid else '',
+                string.rule.name,
+                string.created_by.get_full_name() if string.created_by else '',
+                string.created.isoformat(),
+                string.last_updated.isoformat()
+            ])
+
+        return response
+
+    def export_json(self, project, platform, strings):
+        """Export strings as JSON."""
+        from ..serializers import ProjectStringReadSerializer
+
+        serializer = ProjectStringReadSerializer(strings, many=True)
+
+        export_data = {
+            'project': {
+                'id': project.id,
+                'name': project.name,
+                'slug': project.slug
+            },
+            'platform': {
+                'id': platform.id,
+                'name': platform.name
+            },
+            'exported_at': timezone.now().isoformat(),
+            'count': strings.count(),
+            'strings': serializer.data
+        }
+
+        response = HttpResponse(
+            json.dumps(export_data, indent=2),
+            content_type='application/json'
+        )
+        response['Content-Disposition'] = f'attachment; filename="project_{project.id}_platform_{platform.id}_strings.json"'
+
+        return response

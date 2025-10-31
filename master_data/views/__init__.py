@@ -25,6 +25,9 @@ from .project_string_views import (
     ProjectStringExpandedView,
     ProjectStringUpdateView,
     ProjectStringDeleteView,
+    ProjectStringUnlockView,
+    BulkUpdateProjectStringsView,
+    ExportProjectStringsView,
 )
 
 __all__ = [
@@ -61,6 +64,9 @@ __all__ = [
     'ProjectStringExpandedView',
     'ProjectStringUpdateView',
     'ProjectStringDeleteView',
+    'ProjectStringUnlockView',
+    'BulkUpdateProjectStringsView',
+    'ExportProjectStringsView',
 ]
 
 

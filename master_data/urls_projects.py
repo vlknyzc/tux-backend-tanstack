@@ -15,6 +15,9 @@ from .views import (
     ProjectStringExpandedView,
     ProjectStringUpdateView,
     ProjectStringDeleteView,
+    ProjectStringUnlockView,
+    BulkUpdateProjectStringsView,
+    ExportProjectStringsView,
 )
 
 
@@ -94,5 +97,27 @@ urlpatterns += [
         'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/strings/<int:string_id>/delete',
         ProjectStringDeleteView.as_view(),
         name='project-string-delete'
+    ),
+
+    # Phase 3 endpoints
+    # Unlock string
+    path(
+        'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/strings/<int:string_id>/unlock',
+        ProjectStringUnlockView.as_view(),
+        name='project-string-unlock'
+    ),
+
+    # Bulk update strings
+    path(
+        'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/strings/bulk-update',
+        BulkUpdateProjectStringsView.as_view(),
+        name='project-strings-bulk-update'
+    ),
+
+    # Export strings
+    path(
+        'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/strings/export',
+        ExportProjectStringsView.as_view(),
+        name='project-strings-export'
     ),
 ]
