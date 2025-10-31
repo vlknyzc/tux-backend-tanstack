@@ -93,6 +93,31 @@ from .bulk_operations import (
     BulkValidationResultSerializer,
     BulkOperationStatusSerializer,
 )
+from .project import (
+    ProjectListSerializer,
+    ProjectDetailSerializer,
+    ProjectCreateSerializer,
+    ProjectUpdateSerializer,
+    ProjectMemberReadSerializer,
+    ProjectMemberWriteSerializer,
+    PlatformAssignmentReadSerializer,
+    PlatformAssignmentWriteSerializer,
+    ProjectActivitySerializer,
+    ApprovalHistorySerializer,
+    SubmitForApprovalSerializer,
+    ApproveSerializer,
+    RejectSerializer,
+)
+from .project_string import (
+    ProjectStringReadSerializer,
+    ProjectStringExpandedSerializer,
+    ProjectStringWriteSerializer,
+    BulkProjectStringCreateSerializer,
+    ProjectStringUpdateSerializer,
+    ProjectStringDetailNestedSerializer,
+    ProjectStringDetailWriteSerializer,
+    ListProjectStringsSerializer,
+)
 
 
 __all__ = [
@@ -186,4 +211,29 @@ __all__ = [
     'BulkStringDeleteSerializer',
     'BulkValidationResultSerializer',
     'BulkOperationStatusSerializer',
+
+    # Project serializers
+    'ProjectListSerializer',
+    'ProjectDetailSerializer',
+    'ProjectCreateSerializer',
+    'ProjectUpdateSerializer',
+    'ProjectMemberReadSerializer',
+    'ProjectMemberWriteSerializer',
+    'PlatformAssignmentReadSerializer',
+    'PlatformAssignmentWriteSerializer',
+    'ProjectActivitySerializer',
+    'ApprovalHistorySerializer',
+    'SubmitForApprovalSerializer',
+    'ApproveSerializer',
+    'RejectSerializer',
+
+    # Project string serializers
+    'ProjectStringReadSerializer',
+    'ProjectStringExpandedSerializer',
+    'ProjectStringWriteSerializer',
+    'BulkProjectStringCreateSerializer',
+    'ProjectStringUpdateSerializer',
+    'ProjectStringDetailNestedSerializer',
+    'ProjectStringDetailWriteSerializer',
+    'ListProjectStringsSerializer',
 ]

@@ -18,6 +18,14 @@ from .propagation_views import (
     EnhancedStringDetailViewSet,
     PropagationSettingsViewSet,
 )
+from .project_views import ProjectViewSet
+from .project_string_views import (
+    BulkCreateProjectStringsView,
+    ListProjectStringsView,
+    ProjectStringExpandedView,
+    ProjectStringUpdateView,
+    ProjectStringDeleteView,
+)
 
 __all__ = [
     'DimensionViewSet',
@@ -45,6 +53,13 @@ __all__ = [
     'PropagationErrorViewSet',
     'EnhancedStringDetailViewSet',
     'PropagationSettingsViewSet',
+    # Project views
+    'ProjectViewSet',
+    'BulkCreateProjectStringsView',
+    'ListProjectStringsView',
+    'ProjectStringExpandedView',
+    'ProjectStringUpdateView',
+    'ProjectStringDeleteView',
 ]
 
 

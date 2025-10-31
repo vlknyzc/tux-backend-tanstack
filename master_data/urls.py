@@ -54,6 +54,9 @@ urlpatterns = [
     # Main RESTful API endpoints for submissions, strings, and string details
     path("", include('master_data.urls_main_api')),
 
+    # Project API endpoints
+    path("", include('master_data.urls_projects')),
+
     # API version and health endpoints
     path("version/", APIVersionView.as_view(), name="api-version"),
     path("health/", APIHealthView.as_view(), name="api-health"),

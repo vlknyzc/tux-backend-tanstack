@@ -272,3 +272,72 @@ admin.site.register(models.String, StringAdmin)
 admin.site.register(models.StringDetail, StringDetailAdmin)
 admin.site.register(models.Submission, SubmissionAdmin)
 admin.site.register(models.DimensionConstraint, DimensionConstraintAdmin)
+
+
+# Project models
+class ProjectAdmin(admin.ModelAdmin):
+    list_display = [
+        "name", "slug", "workspace", "status", "approval_status",
+        "owner", "created", "last_updated",
+    ]
+    list_filter = ["status", "approval_status", "created"]
+    search_fields = ["name", "slug", "description"]
+    readonly_fields = ["slug", "created", "last_updated"]
+    filter_horizontal = []
+
+
+class PlatformAssignmentAdmin(admin.ModelAdmin):
+    list_display = [
+        "project", "platform", "approval_status", "created", "last_updated",
+    ]
+    list_filter = ["approval_status", "created"]
+    search_fields = ["project__name", "platform__name"]
+    filter_horizontal = ["assigned_members"]
+
+
+class ProjectMemberAdmin(admin.ModelAdmin):
+    list_display = ["project", "user", "role", "created"]
+    list_filter = ["role", "created"]
+    search_fields = ["project__name", "user__email", "user__first_name", "user__last_name"]
+
+
+class ProjectActivityAdmin(admin.ModelAdmin):
+    list_display = ["project", "type", "user", "created"]
+    list_filter = ["type", "created"]
+    search_fields = ["project__name", "description"]
+    readonly_fields = ["created"]
+
+
+class ApprovalHistoryAdmin(admin.ModelAdmin):
+    list_display = ["project", "platform_assignment", "action", "user", "timestamp"]
+    list_filter = ["action", "timestamp"]
+    search_fields = ["comment"]
+    readonly_fields = ["timestamp"]
+
+
+class ProjectStringAdmin(admin.ModelAdmin):
+    list_display = [
+        "project", "platform", "field", "value", "string_uuid",
+        "created_by", "created", "last_updated",
+    ]
+    list_filter = ["platform", "field__field_level", "created"]
+    search_fields = ["value", "string_uuid", "project__name"]
+    readonly_fields = ["string_uuid", "created", "last_updated"]
+
+
+class ProjectStringDetailAdmin(admin.ModelAdmin):
+    list_display = [
+        "string", "dimension", "dimension_value", "dimension_value_freetext",
+        "is_inherited",
+    ]
+    list_filter = ["is_inherited", "dimension"]
+    search_fields = ["dimension__name", "dimension_value_freetext"]
+
+
+admin.site.register(models.Project, ProjectAdmin)
+admin.site.register(models.PlatformAssignment, PlatformAssignmentAdmin)
+admin.site.register(models.ProjectMember, ProjectMemberAdmin)
+admin.site.register(models.ProjectActivity, ProjectActivityAdmin)
+admin.site.register(models.ApprovalHistory, ApprovalHistoryAdmin)
+admin.site.register(models.ProjectString, ProjectStringAdmin)
+admin.site.register(models.ProjectStringDetail, ProjectStringDetailAdmin)

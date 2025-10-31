@@ -10,6 +10,19 @@ from .string import String, StringDetail
 from .submission import Submission
 from .audit import StringModification, StringInheritanceUpdate, StringUpdateBatch
 from .propagation import PropagationJob, PropagationError, PropagationSettings
+from .project import (
+    Project,
+    PlatformAssignment,
+    ProjectMember,
+    ProjectActivity,
+    ApprovalHistory,
+    ProjectStatusChoices,
+    ApprovalStatusChoices,
+    ProjectMemberRoleChoices,
+    ProjectActivityTypeChoices,
+    ApprovalActionChoices,
+)
+from .project_string import ProjectString, ProjectStringDetail
 
 # Import constants for external use
 from ..constants import (
@@ -43,6 +56,14 @@ __all__ = [
     'PropagationJob',
     'PropagationError',
     'PropagationSettings',
+    # Project models
+    'Project',
+    'PlatformAssignment',
+    'ProjectMember',
+    'ProjectActivity',
+    'ApprovalHistory',
+    'ProjectString',
+    'ProjectStringDetail',
 
     # Constants
     'StatusChoices',
@@ -50,6 +71,11 @@ __all__ = [
     'DimensionTypeChoices',
     'ConstraintTypeChoices',
     'CONSTRAINT_TYPES_REQUIRING_VALUE',
+    'ProjectStatusChoices',
+    'ApprovalStatusChoices',
+    'ProjectMemberRoleChoices',
+    'ProjectActivityTypeChoices',
+    'ApprovalActionChoices',
     'STANDARD_NAME_LENGTH',
     'SLUG_LENGTH',
     'DESCRIPTION_LENGTH',

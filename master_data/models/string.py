@@ -111,6 +111,14 @@ class String(TimeStampModel, WorkspaceMixin):
         blank=True,
         help_text="UUID of parent string for hierarchical linking"
     )
+    created_by = models.ForeignKey(
+        "users.UserAccount",
+        on_delete=models.SET_NULL,
+        null=True,
+        blank=True,
+        related_name="created_strings",
+        help_text="User who created this string"
+    )
     is_auto_generated = models.BooleanField(
         default=False,
         help_text="Whether this string was automatically generated"
