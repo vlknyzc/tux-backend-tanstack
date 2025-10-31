@@ -24,13 +24,13 @@ class ProjectStringDetailNestedSerializer(serializers.ModelSerializer):
         model = models.ProjectStringDetail
         fields = [
             'id', 'dimension', 'dimension_name', 'dimension_type',
-            'dimension_value_id', 'dimension_value', 'dimension_value_freetext',
+            'dimension_value_id', 'dimension_value_freetext',
             'dimension_value_display', 'dimension_value_label',
             'is_inherited'
         ]
         extra_kwargs = {
             'id': {'read_only': True},
-            'dimension_value_id': {'source': 'dimension_value.id', 'read_only': True}
+            'dimension_value_id': {'read_only': True}
         }
 
     def get_dimension_value_display(self, obj):
