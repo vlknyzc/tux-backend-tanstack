@@ -34,7 +34,7 @@ class BulkCreateProjectStringsView(WorkspaceValidationMixin, views.APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, workspace_id, project_id, platform_id):
+    def post(self, request, workspace_id, project_id, platform_id, version=None):
         """Create multiple project strings in bulk."""
         # Validate workspace access
         workspace = get_object_or_404(Workspace, id=workspace_id)
@@ -119,7 +119,7 @@ class ListProjectStringsView(WorkspaceValidationMixin, views.APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, workspace_id, project_id, platform_id):
+    def get(self, request, workspace_id, project_id, platform_id, version=None):
         """List project strings with filtering and pagination."""
         # Validate workspace access
         workspace = get_object_or_404(Workspace, id=workspace_id)
@@ -195,7 +195,7 @@ class ProjectStringExpandedView(WorkspaceValidationMixin, views.APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, workspace_id, project_id, platform_id, string_id):
+    def get(self, request, workspace_id, project_id, platform_id, string_id, version=None):
         """Get expanded project string."""
         # Validate workspace access
         workspace = get_object_or_404(Workspace, id=workspace_id)
@@ -233,7 +233,7 @@ class ProjectStringUpdateView(WorkspaceValidationMixin, views.APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, workspace_id, project_id, platform_id, string_id):
+    def put(self, request, workspace_id, project_id, platform_id, string_id, version=None):
         """Update project string."""
         # Validate workspace access
         workspace = get_object_or_404(Workspace, id=workspace_id)
@@ -316,7 +316,7 @@ class ProjectStringUnlockView(WorkspaceValidationMixin, views.APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, workspace_id, project_id, platform_id, string_id):
+    def post(self, request, workspace_id, project_id, platform_id, string_id, version=None):
         """Unlock string for editing."""
         # Validate workspace access
         workspace = get_object_or_404(Workspace, id=workspace_id)
@@ -420,7 +420,7 @@ class ProjectStringDeleteView(WorkspaceValidationMixin, views.APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def delete(self, request, workspace_id, project_id, platform_id, string_id):
+    def delete(self, request, workspace_id, project_id, platform_id, string_id, version=None):
         """Delete project string."""
         # Validate workspace access
         workspace = get_object_or_404(Workspace, id=workspace_id)
@@ -506,7 +506,7 @@ class BulkUpdateProjectStringsView(WorkspaceValidationMixin, views.APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def put(self, request, workspace_id, project_id, platform_id):
+    def put(self, request, workspace_id, project_id, platform_id, version=None):
         """Bulk update project strings."""
         from django.db import transaction
         from ..serializers import ProjectStringUpdateSerializer
@@ -644,7 +644,7 @@ class ExportProjectStringsView(WorkspaceValidationMixin, views.APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def get(self, request, workspace_id, project_id, platform_id):
+    def get(self, request, workspace_id, project_id, platform_id, version=None):
         """Export project strings."""
         # Validate workspace access
         workspace = get_object_or_404(Workspace, id=workspace_id)

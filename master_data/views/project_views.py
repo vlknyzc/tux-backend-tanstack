@@ -358,7 +358,7 @@ class PlatformAssignmentApprovalView(WorkspaceValidationMixin, views.APIView):
     """
     permission_classes = [IsAuthenticated]
 
-    def post(self, request, workspace_id, project_id, platform_id, action):
+    def post(self, request, workspace_id, project_id, platform_id, action, version=None):
         """Handle platform approval actions."""
         # Validate workspace access
         workspace = get_object_or_404(Workspace, id=workspace_id)
