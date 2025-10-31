@@ -240,8 +240,19 @@ def main():
         logger.error("❌ Platform seeding failed. Deployment failed.")
         sys.exit(1)
     
-    # Step 5: Create default workspace (allow this to fail gracefully)
-    logger.info("✅ STEP 5: Default Workspace Creation")
+    # Step 5: Create initial superuser (optional, controlled by env var)
+    logger.info("✅ STEP 5: Initial Superuser Creation")
+    if os.environ.get('CREATE_SUPERUSER', '').lower() in ['true', '1', 'yes']:
+        if not run_command_with_retry([
+            'python', 'manage.py', 'create_initial_superuser', '--skip-existing'
+        ], max_retries=3, retry_delay=10):
+            logger.warning("⚠ Superuser creation failed, but this may be expected if it already exists.")
+            logger.info("📝 This is not a critical failure for deployment")
+    else:
+        logger.info("⏭️  Skipping superuser creation (set CREATE_SUPERUSER=true to enable)")
+    
+    # Step 6: Create default workspace (allow this to fail gracefully)
+    logger.info("✅ STEP 6: Default Workspace Creation")
     if not run_command_with_retry([
         'python', 'manage.py', 'create_workspace', 'Default Workspace', 
         '--admin-email', 'demo@tuxonomy.com', '--create-admin', '--skip-existing'
