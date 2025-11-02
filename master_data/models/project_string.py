@@ -129,14 +129,26 @@ class ProjectString(TimeStampModel, WorkspaceMixin):
     class Meta:
         verbose_name = "Project String"
         verbose_name_plural = "Project Strings"
-        # Unique per workspace and parent - allows same value across different parents
-        unique_together = [('workspace', 'project', 'platform', 'field', 'parent', 'value')]
         ordering = ['workspace', 'project', 'field__field_level', 'value']
         indexes = [
             models.Index(fields=['workspace', 'project', 'platform']),
             models.Index(fields=['workspace', 'string_uuid']),
             models.Index(fields=['workspace', 'parent_uuid']),
             models.Index(fields=['project', 'platform', 'field']),
+        ]
+        constraints = [
+            # Unique constraint for strings WITH a parent
+            models.UniqueConstraint(
+                fields=['workspace', 'project', 'platform', 'field', 'parent', 'value'],
+                name='unique_with_parent',
+                condition=models.Q(parent__isnull=False)
+            ),
+            # Unique constraint for strings WITHOUT a parent (handles NULL properly)
+            models.UniqueConstraint(
+                fields=['workspace', 'project', 'platform', 'field', 'value'],
+                name='unique_without_parent',
+                condition=models.Q(parent__isnull=True)
+            ),
         ]
 
     def __str__(self):
@@ -156,13 +168,9 @@ class ProjectString(TimeStampModel, WorkspaceMixin):
                 raise ValidationError(
                     "Rule and field must belong to the same platform")
 
-        # Validate platform belongs to project (via PlatformAssignment)
+        # Validate platform is assigned to project
         if self.project_id and self.platform_id:
-            from .project import PlatformAssignment
-            if not PlatformAssignment.objects.filter(
-                project=self.project,
-                platform=self.platform
-            ).exists():
+            if not self.project.platforms.filter(id=self.platform_id).exists():
                 raise ValidationError(
                     "Platform must be assigned to this project")
 

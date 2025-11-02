@@ -102,40 +102,7 @@ class BulkStringDetailUpdateSerializer(serializers.Serializer):
         return {'details': updated_details}
 
 
-class BulkSubmissionCreateSerializer(serializers.Serializer):
-    """Serializer for bulk submission creation."""
-
-    submissions = serializers.ListField(
-        child=serializers.DictField(),
-        help_text="List of submission creation data"
-    )
-
-    def validate_submissions(self, value):
-        """Validate that submissions list is not empty."""
-        if not value:
-            raise serializers.ValidationError(
-                "At least one submission must be provided")
-        return value
-
-    @transaction.atomic
-    def create(self, validated_data):
-        """Create multiple submissions atomically."""
-        submissions_data = validated_data['submissions']
-        created_submissions = []
-
-        # Import here to avoid circular import
-        from .submission import SubmissionWithStringsSerializer
-
-        for submission_data in submissions_data:
-            submission_serializer = SubmissionWithStringsSerializer(
-                data=submission_data,
-                context=self.context
-            )
-            submission_serializer.is_valid(raise_exception=True)
-            submission = submission_serializer.save()
-            created_submissions.append(submission)
-
-        return {'submissions': created_submissions}
+# DEPRECATED: BulkSubmissionCreateSerializer removed - use BulkProjectCreateSerializer instead
 
 
 class BulkStringDeleteSerializer(serializers.Serializer):

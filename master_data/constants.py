@@ -23,14 +23,6 @@ class StatusChoices(models.TextChoices):
     ACTIVE = "active", "Active"
     INACTIVE = "inactive", "Inactive"
 
-# Submission-specific status choices
-
-
-class SubmissionStatusChoices(models.TextChoices):
-    SUBMITTED = "submitted", "Submitted"
-    DRAFT = "draft", "Draft"
-    APPROVED = "approved", "Approved"
-    REJECTED = "rejected", "Rejected"
 
 # Dimension type choices
 

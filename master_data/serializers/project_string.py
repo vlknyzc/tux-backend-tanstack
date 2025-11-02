@@ -82,7 +82,7 @@ class ProjectStringReadSerializer(serializers.ModelSerializer):
     field_level = serializers.IntegerField(source='field.field_level', read_only=True)
     rule_name = serializers.CharField(source='rule.name', read_only=True)
     created_by_name = serializers.SerializerMethodField()
-    details = ProjectStringDetailNestedSerializer(many=True, read_only=True)
+    details = serializers.SerializerMethodField(read_only=True)
 
     class Meta:
         model = models.ProjectString
@@ -93,12 +93,21 @@ class ProjectStringReadSerializer(serializers.ModelSerializer):
             'created_by', 'created_by_name', 'created', 'last_updated',
             'details'
         ]
+        extra_kwargs = {
+            'created_by': {'read_only': True},
+        }
 
     def get_created_by_name(self, obj):
         """Get creator name."""
         if obj.created_by:
             return obj.created_by.get_full_name()
         return None
+
+    def get_details(self, obj):
+        """Get details for this project string."""
+        # Explicitly call .all() to convert Manager to QuerySet
+        details = obj.details.all()
+        return ProjectStringDetailNestedSerializer(details, many=True).data
 
 
 class ProjectStringExpandedSerializer(ProjectStringReadSerializer):

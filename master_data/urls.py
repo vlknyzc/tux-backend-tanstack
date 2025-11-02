@@ -51,10 +51,10 @@ router.register("propagation-settings", PropagationSettingsViewSet, basename="pr
 urlpatterns = [
     path("", include(router.urls)),
 
-    # Main RESTful API endpoints for submissions, strings, and string details
+    # Main RESTful API endpoints for strings and string details
     path("", include('master_data.urls_main_api')),
 
-    # Project API endpoints
+    # Project API endpoints (replaces submissions)
     path("", include('master_data.urls_projects')),
 
     # API version and health endpoints

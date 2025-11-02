@@ -2,6 +2,9 @@
 """
 Migration testing script for StringDetail constraint fix.
 Run this script to test the migration before production deployment.
+
+NOTE: This test uses deprecated Submission model for backward compatibility testing.
+For new tests, use the Project model instead.
 """
 
 import os

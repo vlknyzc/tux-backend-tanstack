@@ -1,5 +1,8 @@
 """
 Submission model for the master_data app.
+
+DEPRECATED: Submissions have been replaced by Projects.
+This model is kept for backward compatibility and data preservation only.
 """
 
 from django.db import models
@@ -7,16 +10,27 @@ from django.urls import reverse
 from django.conf import settings
 
 from .base import TimeStampModel, WorkspaceMixin
-from ..constants import STANDARD_NAME_LENGTH, DESCRIPTION_LENGTH, SLUG_LENGTH, SubmissionStatusChoices
+from ..constants import STANDARD_NAME_LENGTH, DESCRIPTION_LENGTH, SLUG_LENGTH
 from master_data.utils import generate_unique_slug
+
+
+# Status choices for legacy Submission model
+class SubmissionStatusChoices(models.TextChoices):
+    SUBMITTED = "submitted", "Submitted"
+    DRAFT = "draft", "Draft"
+    APPROVED = "approved", "Approved"
+    REJECTED = "rejected", "Rejected"
 
 
 class Submission(TimeStampModel, WorkspaceMixin):
     """
-    Represents a submission for naming convention generation.
+    [DEPRECATED] Represents a submission for naming convention generation.
 
-    A submission contains the configuration and rules needed to generate
-    naming strings according to platform-specific conventions.
+    This model has been replaced by the Project model which provides enhanced
+    functionality including platform-specific assignments and team collaboration.
+
+    Kept for backward compatibility and data preservation only.
+    New implementations should use the Project model instead.
     """
 
     # Relationships

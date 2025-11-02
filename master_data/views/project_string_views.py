@@ -14,7 +14,7 @@ import csv
 import json
 
 from ..models import (
-    Project, PlatformAssignment, ProjectString,
+    Project, ProjectString,
     ProjectMember, Workspace, Platform
 )
 from ..serializers import (
@@ -50,15 +50,8 @@ class BulkCreateProjectStringsView(WorkspaceValidationMixin, views.APIView):
         # Validate platform exists
         platform = get_object_or_404(Platform, id=platform_id)
 
-        # Validate platform assignment exists
-        platform_assignment = get_object_or_404(
-            PlatformAssignment,
-            project=project,
-            platform=platform
-        )
-
-        # Validate user has permission (assigned to platform or owner/editor)
-        if not self.can_create_strings(request.user, project, platform_assignment):
+        # Validate user has permission (owner/editor)
+        if not self.can_create_strings(request.user, project):
             return Response(
                 {'error': 'You do not have permission to create strings for this platform'},
                 status=status.HTTP_403_FORBIDDEN
@@ -86,13 +79,9 @@ class BulkCreateProjectStringsView(WorkspaceValidationMixin, views.APIView):
             'strings': ProjectStringReadSerializer(created_strings, many=True).data
         }, status=status.HTTP_201_CREATED)
 
-    def can_create_strings(self, user, project, platform_assignment):
-        """Check if user can create strings for this platform."""
+    def can_create_strings(self, user, project):
+        """Check if user can create strings for this project."""
         if user.is_superuser:
-            return True
-
-        # Check if user is assigned to platform
-        if platform_assignment.assigned_members.filter(id=user.id).exists():
             return True
 
         # Check if user has owner/editor role in project
@@ -134,9 +123,6 @@ class ListProjectStringsView(WorkspaceValidationMixin, views.APIView):
 
         # Validate platform exists
         platform = get_object_or_404(Platform, id=platform_id)
-
-        # Validate platform assignment exists
-        get_object_or_404(PlatformAssignment, project=project, platform=platform)
 
         # Base queryset
         queryset = ProjectString.objects.filter(
@@ -249,13 +235,6 @@ class ProjectStringUpdateView(WorkspaceValidationMixin, views.APIView):
         # Validate platform exists
         platform = get_object_or_404(Platform, id=platform_id)
 
-        # Validate platform assignment exists
-        platform_assignment = get_object_or_404(
-            PlatformAssignment,
-            project=project,
-            platform=platform
-        )
-
         # Validate string exists
         project_string = get_object_or_404(
             ProjectString,
@@ -265,7 +244,7 @@ class ProjectStringUpdateView(WorkspaceValidationMixin, views.APIView):
         )
 
         # Validate user has permission
-        if not self.can_update_string(request.user, project, platform_assignment):
+        if not self.can_update_string(request.user, project):
             return Response(
                 {'error': 'You do not have permission to update strings for this platform'},
                 status=status.HTTP_403_FORBIDDEN
@@ -288,13 +267,9 @@ class ProjectStringUpdateView(WorkspaceValidationMixin, views.APIView):
             ProjectStringExpandedSerializer(updated_string).data
         )
 
-    def can_update_string(self, user, project, platform_assignment):
-        """Check if user can update strings for this platform."""
+    def can_update_string(self, user, project):
+        """Check if user can update strings for this project."""
         if user.is_superuser:
-            return True
-
-        # Check if user is assigned to platform
-        if platform_assignment.assigned_members.filter(id=user.id).exists():
             return True
 
         # Check if user has owner/editor role in project
@@ -332,19 +307,6 @@ class ProjectStringUnlockView(WorkspaceValidationMixin, views.APIView):
         # Validate platform exists
         platform = get_object_or_404(Platform, id=platform_id)
 
-        # Validate platform assignment exists and is approved
-        platform_assignment = get_object_or_404(
-            PlatformAssignment,
-            project=project,
-            platform=platform
-        )
-
-        if platform_assignment.approval_status != 'approved':
-            return Response(
-                {'error': 'Platform must be in approved status to unlock strings'},
-                status=status.HTTP_400_BAD_REQUEST
-            )
-
         # Validate string exists
         project_string = get_object_or_404(
             ProjectString,
@@ -354,19 +316,14 @@ class ProjectStringUnlockView(WorkspaceValidationMixin, views.APIView):
         )
 
         # Validate user has permission
-        if not self.can_unlock_string(request.user, project, platform_assignment):
+        if not self.can_unlock_string(request.user, project):
             return Response(
-                {'error': 'You do not have permission to unlock strings for this platform'},
+                {'error': 'You do not have permission to unlock strings for this project'},
                 status=status.HTTP_403_FORBIDDEN
             )
 
         # Get reason from request
         reason = request.data.get('reason', '')
-
-        # Change platform status back to draft
-        old_status = platform_assignment.approval_status
-        platform_assignment.approval_status = 'draft'
-        platform_assignment.save(update_fields=['approval_status', 'last_updated'])
 
         # Create activity
         from ..models import ProjectActivity
@@ -374,13 +331,11 @@ class ProjectStringUnlockView(WorkspaceValidationMixin, views.APIView):
             project=project,
             user=request.user,
             type='status_changed',
-            description=f"unlocked platform {platform.name} for editing (was {old_status})",
+            description=f"unlocked string in platform {platform.name} for editing",
             metadata={
                 'platform_id': platform.id,
                 'string_id': string_id,
-                'reason': reason,
-                'old_status': old_status,
-                'new_status': 'draft'
+                'reason': reason
             }
         )
 
@@ -388,18 +343,12 @@ class ProjectStringUnlockView(WorkspaceValidationMixin, views.APIView):
             'string_id': string_id,
             'unlocked_at': timezone.now(),
             'unlocked_by': request.user.id,
-            'platform_status_changed': True,
-            'new_platform_status': 'draft',
-            'message': 'String unlocked successfully. Platform status changed to draft and requires re-approval.'
+            'message': 'String unlocked successfully.'
         })
 
-    def can_unlock_string(self, user, project, platform_assignment):
-        """Check if user can unlock strings for this platform."""
+    def can_unlock_string(self, user, project):
+        """Check if user can unlock strings for this project."""
         if user.is_superuser:
-            return True
-
-        # Check if user is assigned to platform
-        if platform_assignment.assigned_members.filter(id=user.id).exists():
             return True
 
         # Check if user has owner/editor role in project
@@ -436,13 +385,6 @@ class ProjectStringDeleteView(WorkspaceValidationMixin, views.APIView):
         # Validate platform exists
         platform = get_object_or_404(Platform, id=platform_id)
 
-        # Validate platform assignment exists
-        platform_assignment = get_object_or_404(
-            PlatformAssignment,
-            project=project,
-            platform=platform
-        )
-
         # Validate string exists
         project_string = get_object_or_404(
             ProjectString,
@@ -452,7 +394,7 @@ class ProjectStringDeleteView(WorkspaceValidationMixin, views.APIView):
         )
 
         # Validate user has permission
-        if not self.can_delete_string(request.user, project, platform_assignment):
+        if not self.can_delete_string(request.user, project):
             return Response(
                 {'error': 'You do not have permission to delete strings for this platform'},
                 status=status.HTTP_403_FORBIDDEN
@@ -479,13 +421,9 @@ class ProjectStringDeleteView(WorkspaceValidationMixin, views.APIView):
 
         return Response(status=status.HTTP_204_NO_CONTENT)
 
-    def can_delete_string(self, user, project, platform_assignment):
-        """Check if user can delete strings for this platform."""
+    def can_delete_string(self, user, project):
+        """Check if user can delete strings for this project."""
         if user.is_superuser:
-            return True
-
-        # Check if user is assigned to platform
-        if platform_assignment.assigned_members.filter(id=user.id).exists():
             return True
 
         # Check if user has owner/editor role in project
@@ -525,15 +463,8 @@ class BulkUpdateProjectStringsView(WorkspaceValidationMixin, views.APIView):
         # Validate platform exists
         platform = get_object_or_404(Platform, id=platform_id)
 
-        # Validate platform assignment exists
-        platform_assignment = get_object_or_404(
-            PlatformAssignment,
-            project=project,
-            platform=platform
-        )
-
         # Validate user has permission
-        if not self.can_update_strings(request.user, project, platform_assignment):
+        if not self.can_update_strings(request.user, project):
             return Response(
                 {'error': 'You do not have permission to update strings for this platform'},
                 status=status.HTTP_403_FORBIDDEN
@@ -616,13 +547,9 @@ class BulkUpdateProjectStringsView(WorkspaceValidationMixin, views.APIView):
             'errors': errors
         })
 
-    def can_update_strings(self, user, project, platform_assignment):
-        """Check if user can update strings for this platform."""
+    def can_update_strings(self, user, project):
+        """Check if user can update strings for this project."""
         if user.is_superuser:
-            return True
-
-        # Check if user is assigned to platform
-        if platform_assignment.assigned_members.filter(id=user.id).exists():
             return True
 
         # Check if user has owner/editor role in project

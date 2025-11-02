@@ -58,11 +58,10 @@ from .string import (
     WorkspaceValidationMixin,
 )
 from .workspace import WorkspaceSerializer
-from .submission import (
-    # New main_api serializers
-    SubmissionWithStringsSerializer,
-    SubmissionWithStringsReadSerializer,
-)
+# from .submission import (  # DEPRECATED: Use Projects instead
+#     SubmissionWithStringsSerializer,
+#     SubmissionWithStringsReadSerializer,
+# )
 from .batch_operations import (
     StringBatchUpdateRequestSerializer,
     StringBatchUpdateResponseSerializer,
@@ -88,7 +87,7 @@ from .propagation import (
 from .bulk_operations import (
     BulkStringCreateSerializer,
     BulkStringDetailUpdateSerializer,
-    BulkSubmissionCreateSerializer,
+    # BulkSubmissionCreateSerializer,  # DEPRECATED
     BulkStringDeleteSerializer,
     BulkValidationResultSerializer,
     BulkOperationStatusSerializer,
@@ -100,8 +99,6 @@ from .project import (
     ProjectUpdateSerializer,
     ProjectMemberReadSerializer,
     ProjectMemberWriteSerializer,
-    PlatformAssignmentReadSerializer,
-    PlatformAssignmentWriteSerializer,
     ProjectActivitySerializer,
     ApprovalHistorySerializer,
     SubmitForApprovalSerializer,
@@ -201,13 +198,13 @@ __all__ = [
     'StringDetailReadSerializer',
     'StringDetailWriteSerializer',
     'WorkspaceValidationMixin',
-    'SubmissionWithStringsSerializer',
-    'SubmissionWithStringsReadSerializer',
+    # 'SubmissionWithStringsSerializer',  # DEPRECATED
+    # 'SubmissionWithStringsReadSerializer',  # DEPRECATED
 
     # Bulk operations
     'BulkStringCreateSerializer',
     'BulkStringDetailUpdateSerializer',
-    'BulkSubmissionCreateSerializer',
+    # 'BulkSubmissionCreateSerializer',  # DEPRECATED
     'BulkStringDeleteSerializer',
     'BulkValidationResultSerializer',
     'BulkOperationStatusSerializer',
@@ -219,8 +216,6 @@ __all__ = [
     'ProjectUpdateSerializer',
     'ProjectMemberReadSerializer',
     'ProjectMemberWriteSerializer',
-    'PlatformAssignmentReadSerializer',
-    'PlatformAssignmentWriteSerializer',
     'ProjectActivitySerializer',
     'ApprovalHistorySerializer',
     'SubmitForApprovalSerializer',

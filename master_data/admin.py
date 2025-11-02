@@ -219,21 +219,6 @@ class StringDetailAdmin(admin.ModelAdmin):
     # ]
 
 
-class SubmissionAdminForm(forms.ModelForm):
-
-    class Meta:
-        model = models.Submission
-        fields = "__all__"
-
-
-class SubmissionAdmin(admin.ModelAdmin):
-    form = SubmissionAdminForm
-    list_display = [
-        "name",
-
-    ]
-
-
 class DimensionConstraintAdminForm(forms.ModelForm):
 
     class Meta:
@@ -270,7 +255,7 @@ admin.site.register(models.Rule, RuleAdmin)
 admin.site.register(models.RuleDetail, RuleDetailAdmin)
 admin.site.register(models.String, StringAdmin)
 admin.site.register(models.StringDetail, StringDetailAdmin)
-admin.site.register(models.Submission, SubmissionAdmin)
+# admin.site.register(models.Submission, SubmissionAdmin)  # DEPRECATED: Use Projects instead
 admin.site.register(models.DimensionConstraint, DimensionConstraintAdmin)
 
 
@@ -284,15 +269,6 @@ class ProjectAdmin(admin.ModelAdmin):
     search_fields = ["name", "slug", "description"]
     readonly_fields = ["slug", "created", "last_updated"]
     filter_horizontal = []
-
-
-class PlatformAssignmentAdmin(admin.ModelAdmin):
-    list_display = [
-        "project", "platform", "approval_status", "created", "last_updated",
-    ]
-    list_filter = ["approval_status", "created"]
-    search_fields = ["project__name", "platform__name"]
-    filter_horizontal = ["assigned_members"]
 
 
 class ProjectMemberAdmin(admin.ModelAdmin):
@@ -309,7 +285,7 @@ class ProjectActivityAdmin(admin.ModelAdmin):
 
 
 class ApprovalHistoryAdmin(admin.ModelAdmin):
-    list_display = ["project", "platform_assignment", "action", "user", "timestamp"]
+    list_display = ["project", "action", "user", "timestamp"]
     list_filter = ["action", "timestamp"]
     search_fields = ["comment"]
     readonly_fields = ["timestamp"]
@@ -335,7 +311,6 @@ class ProjectStringDetailAdmin(admin.ModelAdmin):
 
 
 admin.site.register(models.Project, ProjectAdmin)
-admin.site.register(models.PlatformAssignment, PlatformAssignmentAdmin)
 admin.site.register(models.ProjectMember, ProjectMemberAdmin)
 admin.site.register(models.ProjectActivity, ProjectActivityAdmin)
 admin.site.register(models.ApprovalHistory, ApprovalHistoryAdmin)

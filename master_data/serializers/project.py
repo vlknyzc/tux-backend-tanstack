@@ -21,6 +21,18 @@ class UserBasicSerializer(serializers.Serializer):
 
 
 # =============================================================================
+# PLATFORM SERIALIZERS
+# =============================================================================
+
+class PlatformBasicSerializer(serializers.Serializer):
+    """Basic platform info for nested representations."""
+    id = serializers.IntegerField()
+    name = serializers.CharField()
+    slug = serializers.CharField()
+    platform_type = serializers.CharField()
+
+
+# =============================================================================
 # PROJECT MEMBER SERIALIZERS
 # =============================================================================
 
@@ -40,79 +52,6 @@ class ProjectMemberWriteSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.ProjectMember
         fields = ['user_id', 'role']
-
-
-# =============================================================================
-# PLATFORM ASSIGNMENT SERIALIZERS
-# =============================================================================
-
-class PlatformAssignmentReadSerializer(serializers.ModelSerializer):
-    """Serializer for reading platform assignments."""
-    platform_id = serializers.IntegerField(source='platform.id')
-    platform_name = serializers.CharField(source='platform.name')
-    platform_slug = serializers.CharField(source='platform.slug')
-    assigned_members = serializers.SerializerMethodField()
-    string_count = serializers.SerializerMethodField()
-    approval_history = serializers.SerializerMethodField()
-
-    class Meta:
-        model = models.PlatformAssignment
-        fields = [
-            'id', 'platform_id', 'platform_name', 'platform_slug',
-            'assigned_members', 'string_count', 'last_updated',
-            'approval_status', 'approved_by', 'approved_at',
-            'rejected_by', 'rejected_at', 'rejection_reason',
-            'approval_history', 'created'
-        ]
-
-    def get_assigned_members(self, obj):
-        """Get IDs of assigned members."""
-        return list(obj.assigned_members.values_list('id', flat=True))
-
-    def get_string_count(self, obj):
-        """Get count of strings for this platform assignment."""
-        return models.ProjectString.objects.filter(
-            project=obj.project,
-            platform=obj.platform
-        ).count()
-
-    def get_approval_history(self, obj):
-        """Get approval history for this platform assignment."""
-        history = models.ApprovalHistory.objects.filter(
-            platform_assignment=obj
-        ).order_by('-timestamp')[:5]  # Last 5 entries
-        return ApprovalHistorySerializer(history, many=True).data
-
-
-class PlatformAssignmentWriteSerializer(serializers.ModelSerializer):
-    """Serializer for creating/updating platform assignments."""
-    platform_id = serializers.IntegerField()
-    assigned_members = serializers.ListField(
-        child=serializers.IntegerField(),
-        required=False,
-        default=list
-    )
-
-    class Meta:
-        model = models.PlatformAssignment
-        fields = ['platform_id', 'assigned_members', 'approval_status']
-
-    def create(self, validated_data):
-        assigned_members = validated_data.pop('assigned_members', [])
-        platform_id = validated_data.pop('platform_id')
-        platform = models.Platform.objects.get(id=platform_id)
-
-        assignment = models.PlatformAssignment.objects.create(
-            platform=platform,
-            **validated_data
-        )
-
-        if assigned_members:
-            from users.models import UserAccount
-            members = UserAccount.objects.filter(id__in=assigned_members)
-            assignment.assigned_members.set(members)
-
-        return assignment
 
 
 # =============================================================================
@@ -162,8 +101,8 @@ class ApprovalHistorySerializer(serializers.ModelSerializer):
 class ProjectListSerializer(serializers.ModelSerializer):
     """Serializer for listing projects (minimal data)."""
     owner_name = serializers.CharField(source='owner.get_full_name')
-    platform_assignments = PlatformAssignmentReadSerializer(many=True, read_only=True)
-    team_members = ProjectMemberReadSerializer(many=True, read_only=True)
+    platforms = PlatformBasicSerializer(many=True, read_only=True)
+    team_members = serializers.SerializerMethodField()
     stats = serializers.SerializerMethodField()
 
     class Meta:
@@ -171,14 +110,19 @@ class ProjectListSerializer(serializers.ModelSerializer):
         fields = [
             'id', 'name', 'slug', 'description', 'status',
             'start_date', 'end_date', 'owner_id', 'owner_name',
-            'workspace', 'platform_assignments', 'team_members',
+            'workspace', 'platforms', 'team_members',
             'stats', 'created', 'last_updated', 'approval_status'
         ]
+
+    def get_team_members(self, obj):
+        """Get team members for this project."""
+        members = obj.team_members.all().select_related('user')
+        return ProjectMemberReadSerializer(members, many=True).data
 
     def get_stats(self, obj):
         """Get project statistics."""
         total_strings = models.ProjectString.objects.filter(project=obj).count()
-        platforms_count = obj.platform_assignments.count()
+        platforms_count = obj.platforms.count()
         team_members_count = obj.team_members.count()
 
         # Get last activity
@@ -196,7 +140,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
 class ProjectDetailSerializer(ProjectListSerializer):
     """Serializer for project detail with full data."""
     strings = serializers.SerializerMethodField()
-    activities = ProjectActivitySerializer(many=True, read_only=True)
+    activities = serializers.SerializerMethodField()
     approval_history = serializers.SerializerMethodField()
 
     class Meta(ProjectListSerializer.Meta):
@@ -205,10 +149,19 @@ class ProjectDetailSerializer(ProjectListSerializer):
     def get_strings(self, obj):
         """Get strings for this project (using ProjectStringReadSerializer)."""
         from .project_string import ProjectStringReadSerializer
-        strings = models.ProjectString.objects.filter(project=obj).select_related(
+        # Use for_workspace to explicitly filter by the project's workspace
+        # This ensures we get strings for the correct workspace
+        strings = models.ProjectString.objects.for_workspace(obj.workspace_id).filter(
+            project=obj
+        ).select_related(
             'platform', 'field', 'rule', 'created_by'
         ).prefetch_related('details')
         return ProjectStringReadSerializer(strings, many=True).data
+
+    def get_activities(self, obj):
+        """Get activities for this project."""
+        activities = obj.activities.all().select_related('user').order_by('-created')
+        return ProjectActivitySerializer(activities, many=True).data
 
     def get_approval_history(self, obj):
         """Get approval history for this project."""
@@ -220,14 +173,18 @@ class ProjectDetailSerializer(ProjectListSerializer):
 
 class ProjectCreateSerializer(serializers.ModelSerializer):
     """Serializer for creating projects."""
-    platform_assignments = PlatformAssignmentWriteSerializer(many=True, required=False)
+    platforms = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=models.Platform.objects.all(),
+        required=False
+    )
     team_members = ProjectMemberWriteSerializer(many=True, required=False)
 
     class Meta:
         model = models.Project
         fields = [
             'name', 'description', 'status', 'start_date', 'end_date',
-            'workspace', 'platform_assignments', 'team_members'
+            'workspace', 'platforms', 'team_members'
         ]
 
     def validate(self, attrs):
@@ -252,7 +209,7 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def create(self, validated_data):
         """Create project with related data."""
-        platform_assignments_data = validated_data.pop('platform_assignments', [])
+        platforms = validated_data.pop('platforms', [])
         team_members_data = validated_data.pop('team_members', [])
 
         # Get current user from context
@@ -263,31 +220,9 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
         # Create project
         project = models.Project.objects.create(**validated_data)
 
-        # Create platform assignments
-        for assignment_data in platform_assignments_data:
-            assigned_members = assignment_data.pop('assigned_members', [])
-            platform_id = assignment_data.pop('platform_id')
-            platform = models.Platform.objects.get(id=platform_id)
-
-            assignment = models.PlatformAssignment.objects.create(
-                project=project,
-                platform=platform,
-                workspace=project.workspace,
-                **assignment_data
-            )
-
-            if assigned_members:
-                from users.models import UserAccount
-                members = UserAccount.objects.filter(id__in=assigned_members)
-                assignment.assigned_members.set(members)
-
-            # Create activity
-            models.ProjectActivity.objects.create(
-                project=project,
-                user=request.user if request and hasattr(request, 'user') else None,
-                type='platform_added',
-                description=f"added platform {platform.name}"
-            )
+        # Assign platforms
+        if platforms:
+            project.platforms.set(platforms)
 
         # Create team members
         for member_data in team_members_data:
@@ -320,14 +255,18 @@ class ProjectCreateSerializer(serializers.ModelSerializer):
 
 class ProjectUpdateSerializer(serializers.ModelSerializer):
     """Serializer for updating projects."""
-    platform_assignments = PlatformAssignmentWriteSerializer(many=True, required=False)
+    platforms = serializers.PrimaryKeyRelatedField(
+        many=True,
+        queryset=models.Platform.objects.all(),
+        required=False
+    )
     team_members = ProjectMemberWriteSerializer(many=True, required=False)
 
     class Meta:
         model = models.Project
         fields = [
             'name', 'description', 'status', 'start_date', 'end_date',
-            'platform_assignments', 'team_members'
+            'platforms', 'team_members'
         ]
 
     def validate(self, attrs):
@@ -349,7 +288,7 @@ class ProjectUpdateSerializer(serializers.ModelSerializer):
     @transaction.atomic
     def update(self, instance, validated_data):
         """Update project with related data."""
-        platform_assignments_data = validated_data.pop('platform_assignments', None)
+        platforms = validated_data.pop('platforms', None)
         team_members_data = validated_data.pop('team_members', None)
 
         request = self.context.get('request')
@@ -362,28 +301,9 @@ class ProjectUpdateSerializer(serializers.ModelSerializer):
             setattr(instance, attr, value)
         instance.save()
 
-        # Update platform assignments if provided
-        if platform_assignments_data is not None:
-            # Clear existing assignments
-            instance.platform_assignments.all().delete()
-
-            # Create new assignments
-            for assignment_data in platform_assignments_data:
-                assigned_members = assignment_data.pop('assigned_members', [])
-                platform_id = assignment_data.pop('platform_id')
-                platform = models.Platform.objects.get(id=platform_id)
-
-                assignment = models.PlatformAssignment.objects.create(
-                    project=instance,
-                    platform=platform,
-                    workspace=instance.workspace,
-                    **assignment_data
-                )
-
-                if assigned_members:
-                    from users.models import UserAccount
-                    members = UserAccount.objects.filter(id__in=assigned_members)
-                    assignment.assigned_members.set(members)
+        # Update platforms if provided
+        if platforms is not None:
+            instance.platforms.set(platforms)
 
         # Update team members if provided
         if team_members_data is not None:

@@ -86,8 +86,10 @@ class String(TimeStampModel, WorkspaceMixin):
     submission = models.ForeignKey(
         "master_data.Submission",
         on_delete=models.CASCADE,
+        null=True,
+        blank=True,
         related_name="submission_strings",
-        help_text="Submission that generated this string"
+        help_text="[DEPRECATED] Submission that generated this string. Use projects instead."
     )
     rule = models.ForeignKey(
         "master_data.Rule",
@@ -174,7 +176,7 @@ class String(TimeStampModel, WorkspaceMixin):
 
     def save(self, *args, **kwargs):
         """Enhanced save with auto-generation and validation."""
-        # Auto-set rule from submission
+        # Auto-set rule from submission (legacy support)
         if not self.rule_id and self.submission_id:
             self.rule = self.submission.rule
 

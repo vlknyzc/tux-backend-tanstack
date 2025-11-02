@@ -18,7 +18,7 @@ from .propagation_views import (
     EnhancedStringDetailViewSet,
     PropagationSettingsViewSet,
 )
-from .project_views import ProjectViewSet, PlatformAssignmentApprovalView
+from .project_views import ProjectViewSet
 from .project_string_views import (
     BulkCreateProjectStringsView,
     ListProjectStringsView,
@@ -58,7 +58,6 @@ __all__ = [
     'PropagationSettingsViewSet',
     # Project views
     'ProjectViewSet',
-    'PlatformAssignmentApprovalView',
     'BulkCreateProjectStringsView',
     'ListProjectStringsView',
     'ProjectStringExpandedView',

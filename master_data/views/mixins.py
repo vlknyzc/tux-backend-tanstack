@@ -4,6 +4,7 @@ Shared mixins for view classes.
 
 from django.core.exceptions import PermissionDenied
 from master_data import models
+from master_data.models.base import set_current_workspace, _thread_locals
 
 
 class WorkspaceValidationMixin:
@@ -31,6 +32,15 @@ class WorkspaceValidationMixin:
 
             # Set workspace context for the request
             request.workspace_id = workspace_id
+            
+            # Set workspace context for thread-local storage (used by custom managers)
+            set_current_workspace(workspace_id)
+            
+            # Set superuser context for thread-local storage
+            if hasattr(request, 'user') and request.user.is_authenticated:
+                _thread_locals.is_superuser = request.user.is_superuser
+            else:
+                _thread_locals.is_superuser = False
 
         return super().dispatch(request, *args, **kwargs)
 

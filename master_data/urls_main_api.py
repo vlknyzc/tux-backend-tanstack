@@ -1,16 +1,14 @@
 """
-URL patterns for main RESTful API endpoints (submissions, strings, string details).
+URL patterns for main RESTful API endpoints (strings, string details).
 Implements the design patterns from restful-api-design.md
 All endpoints require workspace context for security and isolation.
+
+NOTE: Submission endpoints have been deprecated in favor of Projects.
 """
 
 from django.urls import path, include
 from rest_framework.routers import DefaultRouter
 
-from .views.submission_views import (
-    SubmissionViewSet,
-    SubmissionStringViewSet
-)
 from .views.string_views import StringViewSet
 from .views.string_detail_views import (
     StringDetailViewSet,
@@ -22,12 +20,6 @@ from .views.multi_operations_views import MultiOperationsViewSet
 router = DefaultRouter()
 
 # Core resources (require workspace context)
-router.register(
-    r'workspaces/(?P<workspace_id>[^/.]+)/submissions',
-    SubmissionViewSet,
-    basename='submissions'
-)
-
 router.register(
     r'workspaces/(?P<workspace_id>[^/.]+)/strings',
     StringViewSet,
@@ -50,13 +42,6 @@ router.register(
 # Separate router for nested resources
 nested_router = DefaultRouter()
 
-# Nested resources for submission strings
-nested_router.register(
-    r'workspaces/(?P<workspace_id>[^/.]+)/submissions/(?P<submission_id>[^/.]+)/strings',
-    SubmissionStringViewSet,
-    basename='nested-submission-strings'
-)
-
 # Nested resources for string details
 nested_router.register(
     r'workspaces/(?P<workspace_id>[^/.]+)/strings/(?P<string_id>[^/.]+)/details',
@@ -68,7 +53,7 @@ nested_router.register(
 urlpatterns = [
     # Main API endpoints
     path('', include(router.urls)),
-    
+
     # Nested endpoints
     path('', include(nested_router.urls)),
 ]
@@ -77,13 +62,6 @@ urlpatterns = [
 This creates the following URL patterns:
 
 Core Resource Endpoints:
-- GET    /api/v1/workspaces/{workspace_id}/submissions/
-- POST   /api/v1/workspaces/{workspace_id}/submissions/
-- GET    /api/v1/workspaces/{workspace_id}/submissions/{id}/
-- PATCH  /api/v1/workspaces/{workspace_id}/submissions/{id}/
-- PUT    /api/v1/workspaces/{workspace_id}/submissions/{id}/
-- DELETE /api/v1/workspaces/{workspace_id}/submissions/{id}/
-
 - GET    /api/v1/workspaces/{workspace_id}/strings/
 - POST   /api/v1/workspaces/{workspace_id}/strings/
 - GET    /api/v1/workspaces/{workspace_id}/strings/{id}/
@@ -100,11 +78,6 @@ Core Resource Endpoints:
 - POST   /api/v1/workspaces/{workspace_id}/multi-operations/validate/
 
 Nested Resource Endpoints:
-- GET    /api/v1/workspaces/{workspace_id}/submissions/{id}/strings/
-- POST   /api/v1/workspaces/{workspace_id}/submissions/{id}/strings/
-- GET    /api/v1/workspaces/{workspace_id}/submissions/{id}/strings/{string_id}/
-- DELETE /api/v1/workspaces/{workspace_id}/submissions/{id}/strings/{string_id}/
-
 - GET    /api/v1/workspaces/{workspace_id}/strings/{id}/details/
 - POST   /api/v1/workspaces/{workspace_id}/strings/{id}/details/
 - GET    /api/v1/workspaces/{workspace_id}/strings/{id}/details/{detail_id}/
@@ -117,6 +90,6 @@ Bulk Operations:
 - PATCH  /api/v1/workspaces/{workspace_id}/string-details/bulk/
 - DELETE /api/v1/workspaces/{workspace_id}/string-details/bulk/
 
-- POST   /api/v1/workspaces/{workspace_id}/submissions/{id}/strings/bulk/
-- DELETE /api/v1/workspaces/{workspace_id}/submissions/{id}/strings/bulk/
+NOTE: Submission endpoints have been removed. Use Project endpoints instead:
+- For submissions → /api/v1/workspaces/{workspace_id}/projects/
 """

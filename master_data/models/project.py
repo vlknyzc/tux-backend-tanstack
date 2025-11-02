@@ -36,8 +36,6 @@ class ProjectMemberRoleChoices(models.TextChoices):
 
 class ProjectActivityTypeChoices(models.TextChoices):
     PROJECT_CREATED = 'project_created', 'Project Created'
-    PLATFORM_ADDED = 'platform_added', 'Platform Added'
-    PLATFORM_REMOVED = 'platform_removed', 'Platform Removed'
     MEMBER_ASSIGNED = 'member_assigned', 'Member Assigned'
     MEMBER_UNASSIGNED = 'member_unassigned', 'Member Unassigned'
     STRINGS_GENERATED = 'strings_generated', 'Strings Generated'
@@ -101,6 +99,12 @@ class Project(TimeStampModel, WorkspaceMixin):
         on_delete=models.CASCADE,
         related_name="owned_projects",
         help_text="Project owner"
+    )
+    platforms = models.ManyToManyField(
+        "master_data.Platform",
+        related_name="projects",
+        blank=True,
+        help_text="Platforms assigned to this project"
     )
 
     # Approval fields
@@ -171,92 +175,6 @@ class Project(TimeStampModel, WorkspaceMixin):
         if self.start_date and self.end_date:
             if self.end_date < self.start_date:
                 raise ValidationError("End date must be after start date")
-
-
-class PlatformAssignment(TimeStampModel, WorkspaceMixin):
-    """
-    Represents a platform assignment within a project.
-
-    Links a platform to a project and tracks platform-specific approval status.
-    """
-
-    # Relationships
-    project = models.ForeignKey(
-        Project,
-        on_delete=models.CASCADE,
-        related_name="platform_assignments",
-        help_text="Project this platform is assigned to"
-    )
-    platform = models.ForeignKey(
-        "master_data.Platform",
-        on_delete=models.CASCADE,
-        related_name="project_assignments",
-        help_text="Platform assigned to this project"
-    )
-    assigned_members = models.ManyToManyField(
-        settings.AUTH_USER_MODEL,
-        related_name="platform_assignments",
-        blank=True,
-        help_text="Users assigned to work on this platform"
-    )
-
-    # Approval fields
-    approval_status = models.CharField(
-        max_length=STANDARD_NAME_LENGTH,
-        choices=ApprovalStatusChoices.choices,
-        default=ApprovalStatusChoices.DRAFT,
-        help_text="Approval status of this platform assignment"
-    )
-    approved_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="approved_platform_assignments",
-        help_text="User who approved this platform assignment"
-    )
-    approved_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="When this platform assignment was approved"
-    )
-    rejected_by = models.ForeignKey(
-        settings.AUTH_USER_MODEL,
-        on_delete=models.SET_NULL,
-        null=True,
-        blank=True,
-        related_name="rejected_platform_assignments",
-        help_text="User who rejected this platform assignment"
-    )
-    rejected_at = models.DateTimeField(
-        null=True,
-        blank=True,
-        help_text="When this platform assignment was rejected"
-    )
-    rejection_reason = models.TextField(
-        null=True,
-        blank=True,
-        help_text="Reason for rejection"
-    )
-
-    class Meta:
-        verbose_name = "Platform Assignment"
-        verbose_name_plural = "Platform Assignments"
-        unique_together = [('project', 'platform')]  # One platform per project
-        ordering = ['project', 'platform']
-        indexes = [
-            models.Index(fields=['project', 'platform']),
-            models.Index(fields=['workspace', 'approval_status']),
-        ]
-
-    def __str__(self):
-        return f"{self.project.name} - {self.platform.name}"
-
-    def save(self, *args, **kwargs):
-        """Override save to auto-set workspace from project."""
-        if not self.workspace_id and self.project_id:
-            self.workspace = self.project.workspace
-        super().save(*args, **kwargs)
 
 
 class ProjectMember(TimeStampModel):
@@ -346,25 +264,15 @@ class ProjectActivity(TimeStampModel):
 
 class ApprovalHistory(TimeStampModel):
     """
-    Tracks approval history for projects and platform assignments.
+    Tracks approval history for projects.
     """
 
-    # Relationships (either project OR platform_assignment, not both)
+    # Relationships
     project = models.ForeignKey(
         Project,
         on_delete=models.CASCADE,
-        null=True,
-        blank=True,
         related_name="approval_history",
-        help_text="Project this approval relates to (for project-level approval)"
-    )
-    platform_assignment = models.ForeignKey(
-        PlatformAssignment,
-        on_delete=models.CASCADE,
-        null=True,
-        blank=True,
-        related_name="approval_history",
-        help_text="Platform assignment this approval relates to (for platform-level approval)"
+        help_text="Project this approval relates to"
     )
     user = models.ForeignKey(
         settings.AUTH_USER_MODEL,
@@ -396,23 +304,7 @@ class ApprovalHistory(TimeStampModel):
         ordering = ['-timestamp']
         indexes = [
             models.Index(fields=['project', '-timestamp']),
-            models.Index(fields=['platform_assignment', '-timestamp']),
         ]
 
     def __str__(self):
-        target = self.project or self.platform_assignment
-        return f"{target} - {self.action} by {self.user} ({self.timestamp})"
-
-    def clean(self):
-        """Validate that either project OR platform_assignment is set, not both."""
-        super().clean()
-
-        if self.project and self.platform_assignment:
-            raise ValidationError(
-                "Cannot specify both project and platform_assignment"
-            )
-
-        if not self.project and not self.platform_assignment:
-            raise ValidationError(
-                "Must specify either project or platform_assignment"
-            )
+        return f"{self.project} - {self.action} by {self.user} ({self.timestamp})"

@@ -202,6 +202,14 @@ class StringGenerationService:
         """
         Create a new String with auto-generated value and associated StringDetails.
 
+        DEPRECATED: The 'submission' parameter is deprecated. Use Projects instead.
+        This method is kept for backward compatibility with existing code.
+
+        Args:
+            submission: [DEPRECATED] Submission instance (use Projects instead)
+            field: Field instance
+            dimension_values: Dict of dimension values
+
         Returns:
             Created String instance
         """
@@ -226,9 +234,9 @@ class StringGenerationService:
         if any('already exists' in conflict for conflict in conflicts):
             raise NamingConventionError(conflicts[0])
 
-        # Create the String
+        # Create the String (submission is optional now)
         string = String.objects.create(
-            submission=submission,
+            submission=submission,  # Legacy support
             field=field,
             rule=rule,
             value=generated_value,

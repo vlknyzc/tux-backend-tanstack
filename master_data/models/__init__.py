@@ -7,12 +7,11 @@ from .dimension import Dimension, DimensionValue
 from .dimension_constraint import DimensionConstraint, ConstraintTypeChoices, CONSTRAINT_TYPES_REQUIRING_VALUE
 from .rule import Rule, RuleDetail
 from .string import String, StringDetail
-from .submission import Submission
+from .submission import Submission, SubmissionStatusChoices
 from .audit import StringModification, StringInheritanceUpdate, StringUpdateBatch
 from .propagation import PropagationJob, PropagationError, PropagationSettings
 from .project import (
     Project,
-    PlatformAssignment,
     ProjectMember,
     ProjectActivity,
     ApprovalHistory,
@@ -27,7 +26,6 @@ from .project_string import ProjectString, ProjectStringDetail
 # Import constants for external use
 from ..constants import (
     StatusChoices,
-    SubmissionStatusChoices,
     DimensionTypeChoices,
     STANDARD_NAME_LENGTH,
     SLUG_LENGTH,
@@ -58,7 +56,6 @@ __all__ = [
     'PropagationSettings',
     # Project models
     'Project',
-    'PlatformAssignment',
     'ProjectMember',
     'ProjectActivity',
     'ApprovalHistory',
