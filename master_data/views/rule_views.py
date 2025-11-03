@@ -1,3 +1,4 @@
+import logging
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -16,6 +17,8 @@ from .. import models
 from ..services import NamingPatternValidator
 from ..permissions import IsAuthenticatedOrDebugReadOnly
 from .mixins import WorkspaceValidationMixin
+
+logger = logging.getLogger(__name__)
 
 
 class RuleFilter(filters.FilterSet):
@@ -157,8 +160,19 @@ class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
                     status=status.HTTP_404_NOT_FOUND
                 )
             except Exception as e:
+                # SECURITY: Log detailed error but return generic message
+                logger.error(
+                    f'Preview generation failed for rule {rule.id}: {str(e)}',
+                    exc_info=True,
+                    extra={
+                        'user_id': request.user.id if request.user.is_authenticated else None,
+                        'workspace_id': rule.workspace_id,
+                        'rule_id': rule.id,
+                        'field_id': serializer.validated_data.get('field')
+                    }
+                )
                 return Response(
-                    {'error': f'Preview generation failed: {str(e)}'},
+                    {'error': 'Preview generation failed. Please try again or contact support.'},
                     status=status.HTTP_500_INTERNAL_SERVER_ERROR
                 )
 
@@ -199,8 +213,19 @@ class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
                 })
 
         except Exception as e:
+            # SECURITY: Log detailed error but return generic message
+            logger.error(
+                f'Failed to set default rule {rule.id}: {str(e)}',
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': rule.workspace_id,
+                    'rule_id': rule.id,
+                    'platform_id': rule.platform_id
+                }
+            )
             return Response(
-                {'error': f'Failed to set default rule: {str(e)}'},
+                {'error': 'Failed to set default rule. Please try again or contact support.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 
@@ -504,7 +529,18 @@ class RuleNestedViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
                 return Response(serializer.data, status=status.HTTP_201_CREATED)
 
         except Exception as e:
+            # SECURITY: Log detailed error but return generic message
+            logger.error(
+                f'Failed to clone rule {original_rule.id}: {str(e)}',
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': original_rule.workspace_id,
+                    'original_rule_id': original_rule.id,
+                    'requested_name': new_name
+                }
+            )
             return Response(
-                {'error': f'Failed to clone rule: {str(e)}'},
+                {'error': 'Failed to clone rule. Please try again or contact support.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

@@ -101,7 +101,6 @@ class RuleService:
         """
         field_template = self.field_template.get_template_for_field(
             rule.id, field.id)
-        inheritance_info = self.inheritance_matrix.get_inheritance_for_dimension
 
         # Get inheritance information for all dimensions in this field
         dimension_inheritance = {}

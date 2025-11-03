@@ -5,7 +5,7 @@ from rest_framework.response import Response
 from rest_framework import status
 from rest_framework.decorators import api_view
 from rest_framework.decorators import permission_classes
-from rest_framework.permissions import AllowAny
+from rest_framework.permissions import AllowAny, IsAdminUser
 from rest_framework.exceptions import ValidationError
 
 from rest_framework_simplejwt.views import (
@@ -221,46 +221,43 @@ class LogoutView(APIView):
 
 
 @api_view(['GET'])
-@permission_classes([AllowAny])
+@permission_classes([IsAdminUser])  # SECURITY: Restricted to admin users only
 def debug_auth_status(request):
-    """Debug endpoint to check authentication system status."""
+    """
+    Debug endpoint to check authentication system status.
+
+    SECURITY:
+    - Restricted to admin users only
+    - Disabled in production
+    - Minimal information exposure
+    """
     import logging
-    from django.contrib.auth import get_user_model
-    
+
     logger = logging.getLogger(__name__)
-    logger.info("Debug auth status endpoint called")
-    
+
+    # SECURITY: Disable in production
+    if not settings.DEBUG:
+        logger.warning(
+            f"Debug endpoint access attempt in production by user {request.user.email}"
+        )
+        return Response(
+            {'error': 'Not available in production'},
+            status=status.HTTP_404_NOT_FOUND
+        )
+
+    logger.info(f"Debug auth status endpoint accessed by admin: {request.user.email}")
+
     try:
-        User = get_user_model()
-        user_count = User.objects.count()
-        
-        # Test JWT token generation
-        from rest_framework_simplejwt.tokens import RefreshToken
-        
-        if user_count > 0:
-            sample_user = User.objects.first()
-            try:
-                refresh = RefreshToken.for_user(sample_user)
-                access = refresh.access_token
-                jwt_test = "✅ JWT generation works"
-            except Exception as jwt_error:
-                jwt_test = f"❌ JWT generation failed: {str(jwt_error)}"
-        else:
-            jwt_test = "⚠️ No users available for JWT test"
-        
+        # Minimal information exposure - only essential debug info
         return Response({
             'status': 'ok',
             'auth_system': 'ready',
-            'user_count': user_count,
-            'jwt_test': jwt_test,
-            'user_model': str(User),
-            'secret_key_length': len(settings.SECRET_KEY) if hasattr(settings, 'SECRET_KEY') else 0,
+            'message': 'Authentication system is operational'
         })
-        
+
     except Exception as e:
         logger.error(f"Debug auth status error: {str(e)}")
         return Response({
             'status': 'error',
-            'error': str(e),
             'auth_system': 'failed'
-        }, status=500)
+        }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)

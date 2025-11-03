@@ -1,5 +1,6 @@
 # myapp/api/views.py
 
+import logging
 from rest_framework import viewsets, permissions, status
 from rest_framework.decorators import action
 from rest_framework.response import Response
@@ -16,6 +17,8 @@ from .. import serializers
 from .. import models
 from ..permissions import IsAuthenticatedOrDebugReadOnly
 from .mixins import WorkspaceValidationMixin, QueryParamMixin
+
+logger = logging.getLogger(__name__)
 
 
 class WorkspaceMixin:
@@ -222,9 +225,17 @@ class DimensionViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
                     created[obj.name] = obj
                     results.append(self.get_serializer(obj).data)
             except Exception as e:
+                # SECURITY: Log detailed error, return generic message to user
+                logger.warning(
+                    f"Dimension creation failed for '{dim.get('name', 'Unknown')}': {str(e)}",
+                    extra={
+                        'dimension_name': dim.get('name'),
+                        'workspace_id': workspace_obj.id
+                    }
+                )
                 errors.append({
                     'dimension_name': dim.get('name', 'Unknown'),
-                    'error': str(e)
+                    'error': 'Failed to create dimension'
                 })
 
         # 2) create children
@@ -242,9 +253,17 @@ class DimensionViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
                     created[obj.name] = obj
                     results.append(self.get_serializer(obj).data)
             except Exception as e:
+                # SECURITY: Log detailed error, return generic message to user
+                logger.warning(
+                    f"Dimension creation failed for '{dim.get('name', 'Unknown')}': {str(e)}",
+                    extra={
+                        'dimension_name': dim.get('name'),
+                        'workspace_id': workspace_obj.id
+                    }
+                )
                 errors.append({
                     'dimension_name': dim.get('name', 'Unknown'),
-                    'error': str(e)
+                    'error': 'Failed to create dimension'
                 })
 
         return results, errors
@@ -421,10 +440,19 @@ class DimensionValueViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
                         dv = models.DimensionValue.objects.create(**data)
                         results.append(self.get_serializer(dv).data)
                     except Exception as e:
+                        # SECURITY: Log detailed error, return generic message to user
+                        logger.warning(
+                            f"Dimension value creation failed at index {i}: {str(e)}",
+                            extra={
+                                'value': data.get('value'),
+                                'workspace_id': workspace_id,
+                                'index': i
+                            }
+                        )
                         errors.append({
                             'index': i,
                             'value': data.get('value', 'Unknown'),
-                            'error': str(e)
+                            'error': 'Failed to create dimension value'
                         })
 
                 return Response({
@@ -434,7 +462,17 @@ class DimensionValueViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
                     'errors': errors
                 })
         except Exception as e:
+            # SECURITY: Log detailed error but return generic message
+            logger.error(
+                f'Bulk dimension value creation failed for workspace {workspace_id}: {str(e)}',
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'values_count': len(values_data)
+                }
+            )
             return Response(
-                {'error': f'Bulk creation failed: {str(e)}'},
+                {'error': 'Bulk creation failed. Please try again or contact support.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )

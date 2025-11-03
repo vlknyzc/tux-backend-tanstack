@@ -3,6 +3,7 @@ Multi-operation viewset for executing multiple operations atomically.
 Provides create, update, and delete operations across different models in a single transaction.
 """
 
+import logging
 import uuid
 from rest_framework import viewsets, status
 from rest_framework.decorators import action
@@ -13,6 +14,8 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 
 from ..serializers.batch_operations import MultiOperationSerializer
 from .mixins import WorkspaceValidationMixin
+
+logger = logging.getLogger(__name__)
 
 
 @extend_schema(tags=['Multi-Operations'])
@@ -224,12 +227,24 @@ class MultiOperationsViewSet(WorkspaceValidationMixin, viewsets.ViewSet):
             result = serializer.execute(workspace_id, user)
             
             return Response(result, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
+            # SECURITY: Log detailed error but return generic message
             # This will cause the entire transaction to rollback
+            transaction_id = str(uuid.uuid4())
+            logger.error(
+                f"Multi-operation transaction failed: {str(e)}",
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': kwargs.get('workspace_id'),
+                    'transaction_id': transaction_id,
+                    'operation_count': len(request.data.get('operations', []))
+                }
+            )
             return Response({
-                'error': f'Multi-operation transaction failed: {str(e)}',
-                'transaction_id': str(uuid.uuid4()),
+                'error': 'Multi-operation transaction failed. Please check your operations and try again.',
+                'transaction_id': transaction_id,
                 'status': 'failed'
             }, status=status.HTTP_400_BAD_REQUEST)
     
@@ -320,10 +335,19 @@ class MultiOperationsViewSet(WorkspaceValidationMixin, viewsets.ViewSet):
                 'total_operations': len(serializer.validated_data['operations']),
                 'message': 'All operations are valid and ready for execution'
             }, status=status.HTTP_200_OK)
-            
+
         except Exception as e:
+            # SECURITY: Log detailed error but return generic message
+            logger.warning(
+                f"Operation validation failed: {str(e)}",
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': kwargs.get('workspace_id'),
+                    'operation_count': len(request.data.get('operations', []))
+                }
+            )
             return Response({
                 'status': 'invalid',
-                'error': str(e),
+                'error': 'Operation validation failed. Please check your operations and try again.',
                 'total_operations': 0
             }, status=status.HTTP_200_OK)  # Use 200 for validation results

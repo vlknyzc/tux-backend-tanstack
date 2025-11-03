@@ -271,125 +271,196 @@ class RuleNestedReadSerializer(serializers.ModelSerializer):
     def get_field_details(self, obj) -> List[Dict[str, Any]]:
         """
         Get comprehensive field details including dimension values for frontend.
-        This groups rule details by field and includes all dimension information.
+        This orchestrates the process of grouping rule details by field.
         """
-        # Get all rule details for this rule with optimized queries
-        rule_details = obj.rule_details.select_related(
+        # Get optimized queryset
+        rule_details = self._get_optimized_rule_details(obj)
+
+        # Build lookup table for parent-child relationships
+        rule_detail_lookup = self._build_rule_detail_lookup(rule_details)
+
+        # Group details by field and add dimension information
+        grouped_details = self._group_details_by_field(
+            obj, rule_details, rule_detail_lookup
+        )
+
+        # Add computed information to each field group
+        self._add_computed_field_info(obj, grouped_details)
+
+        # Convert to sorted list
+        return self._convert_to_sorted_list(grouped_details)
+
+    def _get_optimized_rule_details(self, obj):
+        """Get rule details with optimized database queries."""
+        return obj.rule_details.select_related(
             'field', 'dimension', 'dimension__parent'
         ).prefetch_related(
             'dimension__dimension_values'
         ).all()
 
-        # Create a dictionary to group by field
+    def _build_rule_detail_lookup(self, rule_details) -> Dict:
+        """
+        Build lookup table for parent-child relationships.
+        Key: (rule, dimension, field_level), Value: rule_detail
+        """
+        return {
+            (detail.rule, detail.dimension, detail.field.field_level): detail
+            for detail in rule_details
+        }
+
+    def _group_details_by_field(
+        self, obj, rule_details, rule_detail_lookup: Dict
+    ) -> Dict:
+        """Group rule details by field and add dimension information."""
         grouped_details = {}
-
-        # Create a lookup for parent-child relationships
-        # Key: (rule, dimension, field_level), Value: rule_detail
-        rule_detail_lookup = {}
-
-        # First pass: build the lookup table
-        for detail in rule_details:
-            key = (detail.rule, detail.dimension,
-                   detail.field.field_level)
-            rule_detail_lookup[key] = detail
 
         for detail in rule_details:
             field = detail.field
 
+            # Initialize field group if not exists
             if field not in grouped_details:
-                # Initialize the field group with field information
-                grouped_details[field] = {
-                    'field': field.id,
-                    'field_name': detail.field.name,
-                    'field_level': detail.field.field_level,
-                    'next_field': detail.field.next_field.id if detail.field.next_field else None,
-                    'can_generate': obj.can_generate_for_field(detail.field),
-                    'dimensions': []
-                }
+                grouped_details[field] = self._init_field_group(obj, detail)
 
-            # Check for parent-child relationship
-            parent_rule_detail = None
-            inherits_from_parent = False
+            # Find parent rule detail
+            parent_info = self._find_parent_rule_detail(
+                detail, rule_detail_lookup
+            )
 
-            # Look for a rule detail with same rule and dimension but smaller field_level
-            current_field_level = detail.field.field_level
-            for check_field_level in range(1, current_field_level):
-                parent_key = (detail.rule, detail.dimension,
-                              check_field_level)
-                if parent_key in rule_detail_lookup:
-                    parent_rule_detail = rule_detail_lookup[parent_key]
-                    parent_rule_detail = parent_rule_detail.id
-                    inherits_from_parent = True
-                    break  # Found the parent (smallest field_level)
-
-            # Add comprehensive dimension information
-            dimension_info = {
-                'id': detail.id,
-                'dimension': detail.dimension.id,
-                'dimension_name': detail.dimension.name,
-                'dimension_type': detail.dimension.type,
-                'dimension_description': detail.dimension.description or '',
-                'dimension_order': detail.dimension_order,
-                'is_required': detail.is_required,
-                'prefix': detail.prefix or '',
-                'suffix': detail.suffix or '',
-                'delimiter': detail.delimiter or '',
-                'effective_delimiter': detail.get_effective_delimiter(),
-                'parent_dimension_name': (detail.dimension.parent.name
-                                          if detail.dimension.parent else None),
-                'parent_dimension': detail.dimension.parent.id if detail.dimension.parent else None,
-                # New parent-child relationship fields
-                'inherits_from_parent': inherits_from_parent,
-                'parent_rule_detail': parent_rule_detail,
-                'dimension_values': [
-                    {
-                        'id': value.id,
-                        'value': value.value,
-                        'label': value.label,
-                        'utm': value.utm,
-                        'description': value.description or '',
-                        'is_active': getattr(value, 'is_active', True),
-                    } for value in detail.dimension.dimension_values.all()
-                ],
-                'dimension_value_count': detail.dimension.dimension_values.count(),
-                'allows_freetext': detail.dimension.type == 'text',
-                'is_dropdown': detail.dimension.type == 'list',
-            }
+            # Build dimension info
+            dimension_info = self._build_dimension_info(detail, parent_info)
 
             grouped_details[field]['dimensions'].append(dimension_info)
 
-        # Process each field group to add computed information
+        return grouped_details
+
+    def _init_field_group(self, obj, detail) -> Dict[str, Any]:
+        """Initialize a field group with basic field information."""
+        field = detail.field
+        return {
+            'field': field.id,
+            'field_name': field.name,
+            'field_level': field.field_level,
+            'next_field': field.next_field.id if field.next_field else None,
+            'can_generate': obj.can_generate_for_field(field),
+            'dimensions': []
+        }
+
+    def _find_parent_rule_detail(
+        self, detail, rule_detail_lookup: Dict
+    ) -> Dict[str, Any]:
+        """
+        Find parent rule detail if exists.
+        Returns dict with 'parent_rule_detail' and 'inherits_from_parent'.
+        """
+        current_field_level = detail.field.field_level
+
+        for check_field_level in range(1, current_field_level):
+            parent_key = (detail.rule, detail.dimension, check_field_level)
+
+            if parent_key in rule_detail_lookup:
+                parent_detail = rule_detail_lookup[parent_key]
+                return {
+                    'parent_rule_detail': parent_detail.id,
+                    'inherits_from_parent': True
+                }
+
+        return {
+            'parent_rule_detail': None,
+            'inherits_from_parent': False
+        }
+
+    def _build_dimension_info(
+        self, detail, parent_info: Dict[str, Any]
+    ) -> Dict[str, Any]:
+        """Build comprehensive dimension information."""
+        dimension = detail.dimension
+
+        return {
+            'id': detail.id,
+            'dimension': dimension.id,
+            'dimension_name': dimension.name,
+            'dimension_type': dimension.type,
+            'dimension_description': dimension.description or '',
+            'dimension_order': detail.dimension_order,
+            'is_required': detail.is_required,
+            'prefix': detail.prefix or '',
+            'suffix': detail.suffix or '',
+            'delimiter': detail.delimiter or '',
+            'effective_delimiter': detail.get_effective_delimiter(),
+            'parent_dimension_name': (
+                dimension.parent.name if dimension.parent else None
+            ),
+            'parent_dimension': (
+                dimension.parent.id if dimension.parent else None
+            ),
+            'inherits_from_parent': parent_info['inherits_from_parent'],
+            'parent_rule_detail': parent_info['parent_rule_detail'],
+            'dimension_values': self._get_dimension_values(dimension),
+            'dimension_value_count': dimension.dimension_values.count(),
+            'allows_freetext': dimension.type == 'text',
+            'is_dropdown': dimension.type == 'list',
+        }
+
+    def _get_dimension_values(self, dimension) -> List[Dict[str, Any]]:
+        """Get formatted dimension values."""
+        return [
+            {
+                'id': value.id,
+                'value': value.value,
+                'label': value.label,
+                'utm': value.utm,
+                'description': value.description or '',
+                'is_active': getattr(value, 'is_active', True),
+            }
+            for value in dimension.dimension_values.all()
+        ]
+
+    def _add_computed_field_info(self, obj, grouped_details: Dict):
+        """Add computed information to each field group."""
         for field, field_data in grouped_details.items():
             # Sort dimensions by order
             field_data['dimensions'].sort(key=lambda x: x['dimension_order'])
 
-            # Generate field rule preview
-            dimension_preview_parts = []
-            for dim in field_data['dimensions']:
-                part = (dim.get('prefix', '') or '') + \
-                    f"[{dim.get('dimension_name', '')}]" + \
-                       (dim.get('suffix', '') or '') + \
-                       (dim.get('delimiter', '') or '')
-                dimension_preview_parts.append(part)
-
-            field_data['field_rule_preview'] = ''.join(dimension_preview_parts)
+            # Add preview and counts
+            field_data['field_rule_preview'] = self._generate_field_rule_preview(
+                field_data['dimensions']
+            )
             field_data['dimension_count'] = len(field_data['dimensions'])
             field_data['required_dimension_count'] = sum(
-                1 for d in field_data['dimensions'] if d.get('is_required'))
+                1 for d in field_data['dimensions'] if d.get('is_required')
+            )
 
-            # Get required dimensions for this field
-            field_obj = Field.objects.get(id=field.id)
-            required_dims = obj.get_required_dimensions(field_obj)
-            # Convert to list of dimension IDs if they're model instances
-            if required_dims:
-                field_data['required_dimensions'] = [
-                    dim.id if hasattr(dim, 'id') else dim for dim in required_dims
-                ]
-            else:
-                field_data['required_dimensions'] = []
+            # Add required dimensions
+            field_data['required_dimensions'] = self._get_required_dimension_ids(
+                obj, field
+            )
 
-        # Convert dictionary to list and sort by field level
+    def _generate_field_rule_preview(self, dimensions: List[Dict]) -> str:
+        """Generate field rule preview string."""
+        parts = [
+            f"{dim.get('prefix', '')}"
+            f"[{dim.get('dimension_name', '')}]"
+            f"{dim.get('suffix', '')}"
+            f"{dim.get('delimiter', '')}"
+            for dim in dimensions
+        ]
+        return ''.join(parts)
+
+    def _get_required_dimension_ids(self, obj, field) -> List[int]:
+        """Get list of required dimension IDs for a field."""
+        field_obj = Field.objects.get(id=field.id)
+        required_dims = obj.get_required_dimensions(field_obj)
+
+        if not required_dims:
+            return []
+
+        return [
+            dim.id if hasattr(dim, 'id') else dim
+            for dim in required_dims
+        ]
+
+    def _convert_to_sorted_list(self, grouped_details: Dict) -> List[Dict]:
+        """Convert grouped details dict to sorted list."""
         result = list(grouped_details.values())
         result.sort(key=lambda x: x['field_level'])
-
         return result

@@ -94,6 +94,13 @@ AUTH_USER_MODEL = "users.UserAccount"
 AUTH_COOKIE = "access"
 
 # ────────────────────────────────────────────────────────────────
+# Request Size Limits (DoS Prevention)
+# ────────────────────────────────────────────────────────────────
+# Limit request body size to prevent DoS attacks via large payloads
+DATA_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB - Maximum size for request body
+FILE_UPLOAD_MAX_MEMORY_SIZE = 5242880  # 5MB - Maximum size for uploaded files
+
+# ────────────────────────────────────────────────────────────────
 # Installed apps / middleware
 # ────────────────────────────────────────────────────────────────
 INSTALLED_APPS = [
@@ -283,6 +290,10 @@ REST_FRAMEWORK = {
         'registration': '3/hour',  # Registration: 3 per hour
         'login_attempt': '5/minute',  # Per-user login attempts: 5 per minute
     },
+
+    # Pagination (DoS Prevention)
+    'DEFAULT_PAGINATION_CLASS': 'master_data.pagination.StandardResultsSetPagination',
+    'PAGE_SIZE': 100,  # Default page size
 }
 
 # DJOSER settings

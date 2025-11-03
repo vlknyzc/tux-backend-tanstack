@@ -128,10 +128,28 @@ class LightweightRuleView(APIView, WorkspaceScopedRuleViewMixin):
         except Rule.DoesNotExist:
             return Response({'error': 'Rule not found'}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+            # SECURITY: Log detailed error but return generic message
+            logger.warning(
+                f"Invalid value in {self.__class__.__name__}: {str(e)}",
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'rule_id': rule_id
+                }
+            )
+            return Response({'error': 'Invalid request parameters'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"Error in {self.__class__.__name__}: {str(e)}")
-            return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # SECURITY: Log detailed error but return generic message
+            logger.error(
+                f"Error in {self.__class__.__name__}: {str(e)}",
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'rule_id': rule_id
+                }
+            )
+            return Response({'error': 'Failed to retrieve rule data. Please try again or contact support.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class FieldSpecificRuleView(APIView, WorkspaceScopedRuleViewMixin):
@@ -180,10 +198,30 @@ class FieldSpecificRuleView(APIView, WorkspaceScopedRuleViewMixin):
         except Rule.DoesNotExist:
             return Response({'error': 'Rule not found'}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+            # SECURITY: Log detailed error but return generic message
+            logger.warning(
+                f"Invalid value in {self.__class__.__name__}: {str(e)}",
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'rule_id': rule_id,
+                    'field_id': field_id
+                }
+            )
+            return Response({'error': 'Invalid request parameters'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"Error in {self.__class__.__name__}: {str(e)}")
-            return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # SECURITY: Log detailed error but return generic message
+            logger.error(
+                f"Error in {self.__class__.__name__}: {str(e)}",
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'rule_id': rule_id,
+                    'field_id': field_id
+                }
+            )
+            return Response({'error': 'Failed to retrieve field data. Please try again or contact support.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class RuleValidationView(APIView, WorkspaceScopedRuleViewMixin):
@@ -232,10 +270,28 @@ class RuleValidationView(APIView, WorkspaceScopedRuleViewMixin):
         except Rule.DoesNotExist:
             return Response({'error': 'Rule not found'}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+            # SECURITY: Log detailed error but return generic message
+            logger.warning(
+                f"Invalid value in {self.__class__.__name__}: {str(e)}",
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'rule_id': rule_id
+                }
+            )
+            return Response({'error': 'Invalid request parameters'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"Error in {self.__class__.__name__}: {str(e)}")
-            return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # SECURITY: Log detailed error but return generic message
+            logger.error(
+                f"Error in {self.__class__.__name__}: {str(e)}",
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'rule_id': rule_id
+                }
+            )
+            return Response({'error': 'Failed to retrieve validation data. Please try again or contact support.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class GenerationPreviewView(APIView, WorkspaceScopedRuleViewMixin):
@@ -294,10 +350,30 @@ class GenerationPreviewView(APIView, WorkspaceScopedRuleViewMixin):
         except Rule.DoesNotExist:
             return Response({'error': 'Rule not found'}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+            # SECURITY: Log detailed error but return generic message
+            logger.warning(
+                f"Invalid value in {self.__class__.__name__}: {str(e)}",
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'rule_id': rule_id,
+                    'field': field
+                }
+            )
+            return Response({'error': 'Invalid request parameters'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            logger.error(f"Error in {self.__class__.__name__}: {str(e)}")
-            return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # SECURITY: Log detailed error but return generic message
+            logger.error(
+                f"Error in {self.__class__.__name__}: {str(e)}",
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'rule_id': rule_id,
+                    'field': field
+                }
+            )
+            return Response({'error': 'Failed to generate preview. Please try again or contact support.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class CacheManagementView(APIView, WorkspaceScopedRuleViewMixin):
@@ -360,7 +436,17 @@ class CacheManagementView(APIView, WorkspaceScopedRuleViewMixin):
         except PermissionDenied as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
         except Exception as e:
-            return Response({'error': f'Cache invalidation failed: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # SECURITY: Log detailed error but return generic message
+            logger.error(
+                f"Cache invalidation failed: {str(e)}",
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'rule_ids': rule_ids
+                }
+            )
+            return Response({'error': 'Cache invalidation failed. Please try again or contact support.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     @extend_schema(tags=["Rule Configuration"])
     def get(self, request, workspace_id, rule_id, version=None):
@@ -382,7 +468,17 @@ class CacheManagementView(APIView, WorkspaceScopedRuleViewMixin):
         except PermissionDenied as e:
             return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
         except Exception as e:
-            return Response({'error': f'Internal server error: {str(e)}'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            # SECURITY: Log detailed error but return generic message
+            logger.error(
+                f"Failed to retrieve performance metrics: {str(e)}",
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'rule_id': rule_id
+                }
+            )
+            return Response({'error': 'Failed to retrieve metrics. Please try again or contact support.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class RuleConfigurationView(APIView, WorkspaceScopedRuleViewMixin):
@@ -561,10 +657,27 @@ class RuleConfigurationView(APIView, WorkspaceScopedRuleViewMixin):
         except Rule.DoesNotExist:
             return Response({'error': 'Rule not found'}, status=status.HTTP_404_NOT_FOUND)
         except ValueError as e:
-            return Response({'error': str(e)}, status=status.HTTP_404_NOT_FOUND)
+            # SECURITY: Log detailed error but return generic message
+            logger.warning(
+                f"Invalid value in rule configuration endpoint: {str(e)}",
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'rule_id': rule_id
+                }
+            )
+            return Response({'error': 'Invalid request parameters'}, status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
+            # SECURITY: Log detailed error but return generic message
             logger.error(
-                f"Unexpected error in rule configuration endpoint: {str(e)}")
+                f"Unexpected error in rule configuration endpoint: {str(e)}",
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'rule_id': rule_id
+                }
+            )
 
             # Clear cache on unexpected errors
             try:
@@ -573,7 +686,7 @@ class RuleConfigurationView(APIView, WorkspaceScopedRuleViewMixin):
                 pass  # Don't let cache clearing errors affect the main error response
 
             return Response(
-                {'error': 'Internal server error'},
+                {'error': 'Failed to retrieve rule configuration. Please try again or contact support.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
 

@@ -193,9 +193,18 @@ class PropagationErrorViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
             })
 
         except Exception as e:
-            logger.error(f"Retry failed for error {error.id}: {str(e)}")
+            # SECURITY: Log detailed error but return generic message
+            logger.error(
+                f"Retry failed for error {error.id}: {str(e)}",
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'error_id': error.id,
+                    'retry_count': error.retry_count
+                }
+            )
             return Response({
-                'error': f'Retry failed: {str(e)}'
+                'error': 'Retry operation failed. Please try again or contact support.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
@@ -303,10 +312,18 @@ class EnhancedStringDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSe
                 return Response(response_data)
 
         except Exception as e:
+            # SECURITY: Log detailed error but return generic message
             logger.error(
-                f"Enhanced update failed for StringDetail {instance.id}: {str(e)}")
+                f"Enhanced update failed for StringDetail {instance.id}: {str(e)}",
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'string_detail_id': instance.id,
+                    'workspace_id': workspace.id
+                }
+            )
             return Response({
-                'error': f'Update failed: {str(e)}'
+                'error': 'Update operation failed. Please try again or contact support.'
             }, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
     def _handle_dry_run(self, instance, validated_data, max_depth, workspace):
@@ -330,8 +347,17 @@ class EnhancedStringDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSe
             })
 
         except PropagationError as e:
+            # SECURITY: Log detailed error but return generic message
+            logger.warning(
+                f"Impact analysis failed for StringDetail {instance.id}: {str(e)}",
+                extra={
+                    'string_detail_id': instance.id,
+                    'workspace_id': workspace.id,
+                    'max_depth': max_depth
+                }
+            )
             return Response({
-                'error': f'Impact analysis failed: {str(e)}'
+                'error': 'Impact analysis failed. Please check your input and try again.'
             }, status=status.HTTP_400_BAD_REQUEST)
 
     @action(detail=False, methods=['post'])
@@ -362,8 +388,17 @@ class EnhancedStringDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSe
                 return Response(response_serializer.data)
 
             except PropagationError as e:
+                # SECURITY: Log detailed error but return generic message
+                logger.warning(
+                    f"Impact analysis failed: {str(e)}",
+                    extra={
+                        'user_id': request.user.id if request.user.is_authenticated else None,
+                        'workspace_id': workspace.id,
+                        'max_depth': max_depth
+                    }
+                )
                 return Response({
-                    'error': str(e)
+                    'error': 'Impact analysis failed. Please check your input and try again.'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
@@ -397,8 +432,17 @@ class EnhancedStringDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSe
                 return Response(response_serializer.data)
 
             except PropagationError as e:
+                # SECURITY: Log detailed error but return generic message
+                logger.warning(
+                    f"Batch update failed: {str(e)}",
+                    extra={
+                        'user_id': request.user.id if request.user.is_authenticated else None,
+                        'workspace_id': workspace.id,
+                        'update_count': len(updates)
+                    }
+                )
                 return Response({
-                    'error': str(e)
+                    'error': 'Batch update failed. Please check your input and try again.'
                 }, status=status.HTTP_400_BAD_REQUEST)
 
         return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
