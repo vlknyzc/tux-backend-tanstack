@@ -19,11 +19,6 @@ class DimensionAdmin(admin.ModelAdmin):
         "description",
         "type",
     ]
-    # readonly_fields = [
-    #     "definition",
-    #     "type",
-    #     "name",
-    # ]
 
 
 class DimensionValueAdminForm(forms.ModelForm):
@@ -44,15 +39,6 @@ class DimensionValueAdmin(admin.ModelAdmin):
         "label",
         "utm",
     ]
-    # readonly_fields = [
-    #     "dimension_value_code",
-    #     "valid_from",
-    #     "definition",
-    #     "dimension_value",
-    #     "valid_until",
-    #     "dimension_value_label",
-    #     "dimension_value_utm",
-    # ]
 
 
 class WorkspaceAdminForm(forms.ModelForm):
@@ -93,11 +79,6 @@ class PlatformAdmin(admin.ModelAdmin):
         "name",
 
     ]
-    # readonly_fields = [
-    #     "platform_type",
-    #     "name",
-    #     "platform_field",
-    # ]
 
 
 class FieldAdminForm(forms.ModelForm):
@@ -113,30 +94,6 @@ class FieldAdmin(admin.ModelAdmin):
         "name",
         "platform",
     ]
-    # readonly_fields = [
-    #     "name",
-    #     "field_type",
-    #     "platform",
-    # ]
-
-
-# class ConventionAdminForm(forms.ModelForm):
-
-#     class Meta:
-#         model = models.Convention
-#         fields = "__all__"
-
-
-# class ConventionAdmin(admin.ModelAdmin):
-#     form = ConventionAdminForm
-#     list_display = [
-#         "name",
-#         # "workspace",
-#     ]
-    # readonly_fields = [
-    #     "name",
-    #     "workspace",
-    # ]
 
 
 class RuleAdminForm(forms.ModelForm):
@@ -153,11 +110,6 @@ class RuleAdmin(admin.ModelAdmin):
 
 
     ]
-    # readonly_fields = [
-    #     "delimeter_after_dimension",
-    #     "delimeter_before_dimension",
-    #     "dimension_order",
-    # ]
 
 
 class RuleDetailAdminForm(forms.ModelForm):
@@ -175,10 +127,6 @@ class RuleDetailAdmin(admin.ModelAdmin):
         "field",
         "dimension",
     ]
-    # readonly_fields = [
-    #     "rule",
-    #     "dimension",
-    # ]
 
 
 class StringAdminForm(forms.ModelForm):
@@ -213,10 +161,6 @@ class StringDetailAdmin(admin.ModelAdmin):
         "dimension_value_freetext",
         # "rule",
     ]
-    # readonly_fields = [
-    #     "string",
-    #     "rule",
-    # ]
 
 
 class DimensionConstraintAdminForm(forms.ModelForm):

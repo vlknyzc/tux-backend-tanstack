@@ -3,13 +3,14 @@ from django.core.cache import cache
 from django.utils import timezone
 from django.db.models import QuerySet, Prefetch
 from ..models import Rule, RuleDetail, Dimension, DimensionValue
+from .constants import CACHE_TIMEOUT_DEFAULT
 
 
 class DimensionCatalogService:
     """Service for generating optimized dimension catalogs"""
 
     def __init__(self):
-        self.cache_timeout = 30 * 60  # 30 minutes
+        self.cache_timeout = CACHE_TIMEOUT_DEFAULT
 
     def get_catalog_for_rule(self, rule: int) -> Dict:
         """Main method to get complete catalog for a rule"""

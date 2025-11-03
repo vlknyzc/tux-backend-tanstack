@@ -116,7 +116,6 @@ class DimensionViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         """Get dimensions filtered by workspace from URL path."""
         workspace_id = self.kwargs.get('workspace_id')
-        # WorkspaceValidationMixin already validated access in dispatch()
         if workspace_id:
             return models.Dimension.objects.filter(
                 workspace_id=workspace_id
@@ -168,8 +167,7 @@ class DimensionViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         """
         if not workspace_id:
             workspace_id = self.kwargs.get('workspace_id')
-        # WorkspaceValidationMixin already validated access in dispatch()
-        
+
         if not workspace_id:
             return Response(
                 {'error': 'Workspace ID is required in URL path'},
@@ -322,8 +320,7 @@ class DimensionValueViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         """Get dimension values filtered by workspace from URL path."""
         workspace_id = self.kwargs.get('workspace_id')
-        # WorkspaceValidationMixin already validated access in dispatch()
-        
+
         if workspace_id:
             queryset = models.DimensionValue.objects.filter(workspace_id=workspace_id)
         else:
@@ -346,7 +343,6 @@ class DimensionValueViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
             raise PermissionDenied("No workspace context available")
         
         workspace = models.Workspace.objects.get(id=workspace_id)
-        # WorkspaceValidationMixin already validated access in dispatch()
 
         # Validate against dimension constraints
         dimension = serializer.validated_data.get('dimension')
@@ -407,8 +403,7 @@ class DimensionValueViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         """
         if not workspace_id:
             workspace_id = self.kwargs.get('workspace_id')
-        # WorkspaceValidationMixin already validated access in dispatch()
-        
+
         if not workspace_id:
             return Response(
                 {'error': 'Workspace ID is required in URL path'},

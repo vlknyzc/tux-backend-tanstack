@@ -14,6 +14,13 @@ from django.conf import settings
 from ..models import (
     String, StringDetail, StringModification, StringInheritanceUpdate
 )
+from .constants import (
+    PROPAGATION_WARNING_THRESHOLD,
+    PROPAGATION_HIGH_SEVERITY_THRESHOLD,
+    BASE_TIME_PER_STRING_SECONDS,
+    DEPTH_MULTIPLIER_PER_LEVEL,
+    SECONDS_PER_MINUTE,
+)
 
 User = get_user_model()
 logger = logging.getLogger(__name__)
@@ -292,12 +299,12 @@ class PropagationService:
 
         # Check for large number of children
         child_count = children.count()
-        if child_count > 50:
+        if child_count > PROPAGATION_WARNING_THRESHOLD:
             impact_data['warnings'].append({
                 'string_id': root_string.id,
                 'type': 'many_children',
                 'message': f'String has {child_count} children - large propagation impact',
-                'severity': 'medium' if child_count < 100 else 'high'
+                'severity': 'medium' if child_count < PROPAGATION_HIGH_SEVERITY_THRESHOLD else 'high'
             })
 
         return children
@@ -478,17 +485,17 @@ class PropagationService:
         background_threshold = config.get('BACKGROUND_PROCESSING_THRESHOLD', 100)
         
         # Base processing time estimates (in seconds)
-        base_time_per_string = 0.1
-        depth_multiplier = 1 + (max_depth * 0.1)
-        
+        base_time_per_string = BASE_TIME_PER_STRING_SECONDS
+        depth_multiplier = 1 + (max_depth * DEPTH_MULTIPLIER_PER_LEVEL)
+
         estimated_seconds = total_affected * base_time_per_string * depth_multiplier
-        
+
         # Format duration
-        if estimated_seconds < 60:
+        if estimated_seconds < SECONDS_PER_MINUTE:
             duration = f"{estimated_seconds:.1f}s"
         else:
-            minutes = int(estimated_seconds // 60)
-            seconds = int(estimated_seconds % 60)
+            minutes = int(estimated_seconds // SECONDS_PER_MINUTE)
+            seconds = int(estimated_seconds % SECONDS_PER_MINUTE)
             duration = f"{minutes}m {seconds}s"
         
         # Determine processing method

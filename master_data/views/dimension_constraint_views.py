@@ -51,7 +51,6 @@ class DimensionConstraintViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet
     def get_queryset(self):
         """Filter queryset by workspace from URL path."""
         workspace_id = self.kwargs.get('workspace_id')
-        # WorkspaceValidationMixin already validated access in dispatch()
         
         if workspace_id:
             return models.DimensionConstraint.objects.filter(

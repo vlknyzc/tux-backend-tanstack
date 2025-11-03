@@ -7,6 +7,7 @@ from .rule_validation_service import RuleValidationService
 from .rule_metrics_service import RuleMetricsService
 from .string_generation_service import StringGenerationService, NamingConventionError
 from .naming_pattern_validator import NamingPatternValidator
+from . import constants
 
 __all__ = [
     'DimensionCatalogService',
@@ -19,4 +20,5 @@ __all__ = [
     'StringGenerationService',
     'NamingConventionError',
     'NamingPatternValidator',
+    'constants',
 ]

@@ -8,6 +8,7 @@ from .field_template_service import FieldTemplateService
 from .rule_cache_service import RuleCacheService
 from .rule_validation_service import RuleValidationService
 from .rule_metrics_service import RuleMetricsService
+from .constants import CACHE_TIMEOUT_DEFAULT
 from ..models import Rule, Field
 
 logger = logging.getLogger(__name__)
@@ -40,7 +41,7 @@ class RuleService:
         self.validation = RuleValidationService()
         self.metrics = RuleMetricsService()
 
-        self.cache_timeout = 30 * 60  # 30 minutes
+        self.cache_timeout = CACHE_TIMEOUT_DEFAULT
 
     def _calculate_performance_metrics(self, field_templates, dimension_catalog):
         """

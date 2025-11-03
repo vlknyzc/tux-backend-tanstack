@@ -46,7 +46,6 @@ class PropagationJobViewSet(WorkspaceValidationMixin, viewsets.ReadOnlyModelView
     def get_queryset(self):
         """Get propagation jobs filtered by workspace from URL path."""
         workspace_id = self.kwargs.get('workspace_id')
-        # WorkspaceValidationMixin already validated access in dispatch()
         
         if workspace_id:
             return models.PropagationJob.objects.filter(
@@ -135,7 +134,6 @@ class PropagationErrorViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         """Get propagation errors filtered by workspace from URL path."""
         workspace_id = self.kwargs.get('workspace_id')
-        # WorkspaceValidationMixin already validated access in dispatch()
         
         if workspace_id:
             return models.PropagationError.objects.filter(
@@ -264,7 +262,6 @@ class EnhancedStringDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSe
     def get_queryset(self):
         """Get string details filtered by workspace from URL path."""
         workspace_id = self.kwargs.get('workspace_id')
-        # WorkspaceValidationMixin already validated access in dispatch()
         
         if workspace_id:
             return models.StringDetail.objects.filter(
@@ -481,7 +478,6 @@ class PropagationSettingsViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet
     def get_queryset(self):
         """Get propagation settings filtered by workspace from URL path."""
         workspace_id = self.kwargs.get('workspace_id')
-        # WorkspaceValidationMixin already validated access in dispatch()
         
         if workspace_id:
             # Users can only see their own settings
@@ -499,7 +495,6 @@ class PropagationSettingsViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet
             raise PermissionDenied("No workspace context available")
         
         workspace = models.Workspace.objects.get(id=workspace_id)
-        # WorkspaceValidationMixin already validated access in dispatch()
         
         serializer.save(user=self.request.user, workspace=workspace)
 

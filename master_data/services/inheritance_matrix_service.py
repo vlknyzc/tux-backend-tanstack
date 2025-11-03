@@ -3,13 +3,14 @@ from django.db.models import QuerySet
 from django.utils import timezone
 from django.core.cache import cache
 from typing import Dict, List, Optional, Tuple
+from .constants import CACHE_TIMEOUT_DEFAULT
 
 
 class InheritanceMatrixService:
     """Service for building inheritance matrices and analyzing parent-child relationships"""
 
     def __init__(self):
-        self.cache_timeout = 30 * 60  # 30 minutes
+        self.cache_timeout = CACHE_TIMEOUT_DEFAULT
 
     def get_matrix_for_rule(self, rule: Rule) -> Dict:
         """Get inheritance matrix for a rule"""

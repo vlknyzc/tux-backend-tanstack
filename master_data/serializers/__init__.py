@@ -57,10 +57,6 @@ from .string import (
     StringDetailWriteSerializer,
 )
 from .workspace import WorkspaceSerializer
-# from .submission import (  # DEPRECATED: Use Projects instead
-#     SubmissionWithStringsSerializer,
-#     SubmissionWithStringsReadSerializer,
-# )
 from .batch_operations import (
     StringBatchUpdateRequestSerializer,
     StringBatchUpdateResponseSerializer,

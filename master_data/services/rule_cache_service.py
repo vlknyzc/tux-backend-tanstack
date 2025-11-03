@@ -12,6 +12,7 @@ from business logic.
 from typing import List, Optional, Any
 from django.core.cache import cache
 import logging
+from .constants import CACHE_TIMEOUT_DEFAULT
 
 logger = logging.getLogger(__name__)
 
@@ -32,7 +33,7 @@ class RuleCacheService:
 
     def __init__(self):
         """Initialize cache service."""
-        self.cache_timeout = 30 * 60  # 30 minutes default
+        self.cache_timeout = CACHE_TIMEOUT_DEFAULT
 
     def invalidate_all_caches(self, rule):
         """

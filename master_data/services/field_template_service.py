@@ -3,13 +3,14 @@ from django.core.cache import cache
 from django.utils import timezone
 from django.db.models import QuerySet, Q
 from ..models import Rule, RuleDetail, Field, Dimension
+from .constants import CACHE_TIMEOUT_DEFAULT
 
 
 class FieldTemplateService:
     """Service for building field templates and managing field-level operations"""
 
     def __init__(self):
-        self.cache_timeout = 30 * 60  # 30 minutes
+        self.cache_timeout = CACHE_TIMEOUT_DEFAULT
 
     def get_templates_for_rule(self, rule: Rule) -> List[Dict]:
         """Get field templates for a rule with comprehensive field data"""

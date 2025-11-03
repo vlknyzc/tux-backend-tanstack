@@ -516,20 +516,6 @@ def log_string_generation(sender, instance, created, **kwargs):
         )
 
 
-# Legacy signal handler - disabled in favor of enhanced version in signals/string_propagation.py
-# @receiver(post_save, sender=StringDetail)
-def auto_regenerate_string_on_detail_update_legacy(sender, instance, created, **kwargs):
-    """
-    LEGACY: Automatically regenerate parent string when StringDetail is updated.
-    
-    This handler has been replaced by the enhanced version in 
-    master_data.signals.string_propagation.enhanced_auto_regenerate_string_on_detail_update
-    
-    Only triggers on updates, not creation.
-    """
-    pass  # Disabled - using enhanced handler instead
-
-
 def _propagate_to_child_strings(parent_string, config, logger, current_depth=0):
     """
     Propagate string regeneration to child strings in the hierarchy.

@@ -1,7 +1,6 @@
 from .base import TimeStampModel, default_workspace_logo, WorkspaceMixin
 from .workspace import Workspace
 from .platform import Platform
-# from .convention import Convention, ConventionPlatform
 from .field import Field
 from .dimension import Dimension, DimensionValue
 from .dimension_constraint import DimensionConstraint, ConstraintTypeChoices, CONSTRAINT_TYPES_REQUIRING_VALUE

@@ -57,6 +57,29 @@ class WorkspaceValidationMixin:
 
         return queryset
 
+    def get_validated_workspace(self):
+        """
+        Get workspace from URL after validation.
+
+        WorkspaceValidationMixin ensures user has access in dispatch().
+        This method provides a clean way to retrieve the validated workspace.
+
+        Returns:
+            Workspace instance
+
+        Raises:
+            PermissionDenied: If workspace doesn't exist or no workspace_id in URL
+        """
+        workspace_id = self.kwargs.get('workspace_id') or getattr(self.request, 'workspace_id', None)
+
+        if not workspace_id:
+            raise PermissionDenied("No workspace context available")
+
+        try:
+            return models.Workspace.objects.get(id=workspace_id)
+        except models.Workspace.DoesNotExist:
+            raise PermissionDenied(f"Workspace {workspace_id} does not exist")
+
     def perform_create(self, serializer):
         """Set workspace when creating objects."""
         workspace_id = getattr(self.request, 'workspace_id', None)

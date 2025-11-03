@@ -92,7 +92,6 @@ class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         """Get rules filtered by workspace from URL path."""
         workspace_id = self.kwargs.get('workspace_id')
-        # WorkspaceValidationMixin already validated access in dispatch()
 
         if workspace_id:
             return models.Rule.objects.filter(
@@ -120,7 +119,6 @@ class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
             raise PermissionDenied("No workspace context available")
         
         workspace = models.Workspace.objects.get(id=workspace_id)
-        # WorkspaceValidationMixin already validated access in dispatch()
         
         kwargs = {'workspace': workspace}
         if self.request.user.is_authenticated:
@@ -334,7 +332,6 @@ class RuleDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         """Get rule details filtered by workspace from URL path."""
         workspace_id = self.kwargs.get('workspace_id')
-        # WorkspaceValidationMixin already validated access in dispatch()
 
         if workspace_id:
             # Subquery to check if dimension exists in parent field
@@ -374,7 +371,6 @@ class RuleDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
             raise PermissionDenied("No workspace context available")
         
         workspace = models.Workspace.objects.get(id=workspace_id)
-        # WorkspaceValidationMixin already validated access in dispatch()
         
         kwargs = {'workspace': workspace}
         if self.request.user.is_authenticated:
@@ -457,7 +453,6 @@ class RuleNestedViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     def get_queryset(self):
         """Get rules with nested details filtered by workspace from URL path."""
         workspace_id = self.kwargs.get('workspace_id')
-        # WorkspaceValidationMixin already validated access in dispatch()
         
         if workspace_id:
             return models.Rule.objects.filter(
@@ -479,7 +474,6 @@ class RuleNestedViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
             raise PermissionDenied("No workspace context available")
         
         workspace = models.Workspace.objects.get(id=workspace_id)
-        # WorkspaceValidationMixin already validated access in dispatch()
         
         kwargs = {'workspace': workspace}
         if self.request.user.is_authenticated:
