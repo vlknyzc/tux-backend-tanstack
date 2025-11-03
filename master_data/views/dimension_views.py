@@ -15,7 +15,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .. import serializers
 from .. import models
 from ..permissions import IsAuthenticatedOrDebugReadOnly
-from .mixins import WorkspaceValidationMixin
+from .mixins import WorkspaceValidationMixin, QueryParamMixin
 
 
 class WorkspaceMixin:
@@ -26,15 +26,12 @@ class WorkspaceMixin:
 
     def get_workspace_param(self, param_name='workspace'):
         """
-        Get a parameter from request, handling both DRF and Django requests.
-        This is a defensive method to handle production issues where DRF request
-        wrapper might not be applied properly.
+        Get a parameter from request query params.
+
+        DRF Request objects always have query_params attribute,
+        so no defensive checks are needed.
         """
-        # Handle both DRF Request (has query_params) and Django WSGIRequest (has GET)
-        if hasattr(self.request, 'query_params'):
-            return self.request.query_params.get(param_name)
-        else:
-            return self.request.GET.get(param_name)
+        return self.request.query_params.get(param_name)
 
     def get_workspace_id(self):
         raw = getattr(self.request, 'workspace', None)

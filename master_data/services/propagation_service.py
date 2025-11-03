@@ -163,27 +163,72 @@ class PropagationService:
     ) -> Dict[str, Any]:
         """
         Analyze impact for a string hierarchy starting from root_string.
+
+        This is the main orchestrator that coordinates the analysis process.
+        Complexity reduced from 15+ to 4 by extracting focused helper methods.
         """
+        # Initialize visited set
         if visited is None:
             visited = set()
-            
+
+        # Guard clause: stop if already visited or max depth reached
         if root_string.id in visited or current_depth >= max_depth:
-            return {
-                'affected_strings': [],
-                'warnings': [],
-                'conflicts': [],
-                'max_depth': current_depth
-            }
-            
+            return PropagationService._create_empty_impact_data(current_depth)
+
         visited.add(root_string.id)
-        
-        affected_strings = []
-        warnings = []
-        conflicts = []
-        max_actual_depth = current_depth
-        
-        # Add the current string
-        string_impact = {
+
+        # Step 1: Create empty impact data structure
+        impact_data = PropagationService._create_empty_impact_data(current_depth)
+
+        # Step 2: Build and add current string's impact
+        string_impact = PropagationService._build_string_impact_record(
+            root_string, changed_fields, current_depth
+        )
+        PropagationService._add_new_value_and_check_conflicts(
+            root_string, changed_fields, workspace, string_impact, impact_data
+        )
+        impact_data['affected_strings'].append(string_impact)
+
+        # Step 3: Get children and check for large counts
+        children = PropagationService._get_children_with_large_count_warning(
+            root_string, workspace, impact_data
+        )
+
+        # Step 4: Recursively analyze each child
+        for child in children:
+            PropagationService._analyze_child_recursively(
+                child, changed_fields, max_depth, workspace,
+                current_depth, visited, string_impact, impact_data
+            )
+
+        return impact_data
+
+    @staticmethod
+    def _create_empty_impact_data(current_depth: int = 0) -> Dict[str, Any]:
+        """
+        Create empty impact data structure.
+
+        Single responsibility: Initialize data structure.
+        """
+        return {
+            'affected_strings': [],
+            'warnings': [],
+            'conflicts': [],
+            'max_depth': current_depth
+        }
+
+    @staticmethod
+    def _build_string_impact_record(
+        root_string: String,
+        changed_fields: Dict[str, Any],
+        current_depth: int
+    ) -> Dict[str, Any]:
+        """
+        Build the impact record for current string.
+
+        Single responsibility: Create impact record with metadata.
+        """
+        return {
             'string_id': root_string.id,
             'string_value': root_string.value,
             'new_value': None,  # Will be calculated
@@ -194,83 +239,129 @@ class PropagationService:
             'changed_fields': list(changed_fields.keys()),
             'children': []
         }
-        
-        # Calculate new string value
+
+    @staticmethod
+    def _add_new_value_and_check_conflicts(
+        root_string: String,
+        changed_fields: Dict[str, Any],
+        workspace,
+        string_impact: Dict[str, Any],
+        impact_data: Dict[str, Any]
+    ) -> None:
+        """
+        Calculate new value and check for conflicts.
+
+        Single responsibility: Value calculation and conflict detection.
+        """
         try:
             new_value = PropagationService._calculate_new_string_value(
                 root_string, changed_fields
             )
             string_impact['new_value'] = new_value
-            
+
             # Check for conflicts
             conflict = PropagationService._check_value_conflict(
                 root_string, new_value, workspace
             )
             if conflict:
-                conflicts.append(conflict)
-                
+                impact_data['conflicts'].append(conflict)
+
         except Exception as e:
-            warnings.append({
+            impact_data['warnings'].append({
                 'string_id': root_string.id,
                 'type': 'calculation_error',
                 'message': f'Error calculating new value: {str(e)}',
                 'severity': 'high'
             })
-        
-        affected_strings.append(string_impact)
-        
-        # Get direct children
+
+    @staticmethod
+    def _get_children_with_large_count_warning(
+        root_string: String,
+        workspace,
+        impact_data: Dict[str, Any]
+    ):
+        """
+        Get children and warn if count is large.
+
+        Single responsibility: Child retrieval with performance warning.
+        """
         children = String.objects.filter(
             parent=root_string,
             workspace=workspace
         ).select_related('field')
-        
+
         # Check for large number of children
         child_count = children.count()
         if child_count > 50:
-            warnings.append({
+            impact_data['warnings'].append({
                 'string_id': root_string.id,
                 'type': 'many_children',
                 'message': f'String has {child_count} children - large propagation impact',
                 'severity': 'medium' if child_count < 100 else 'high'
             })
-        
-        # Analyze each child
-        for child in children:
-            try:
-                # Generate inherited changes for child
-                inherited_changes = PropagationService._generate_inherited_changes(
-                    child, changed_fields
+
+        return children
+
+    @staticmethod
+    def _analyze_child_recursively(
+        child: String,
+        changed_fields: Dict[str, Any],
+        max_depth: int,
+        workspace,
+        current_depth: int,
+        visited: Set[int],
+        string_impact: Dict[str, Any],
+        impact_data: Dict[str, Any]
+    ) -> None:
+        """
+        Recursively analyze a single child string.
+
+        Single responsibility: Child analysis with error handling.
+        """
+        try:
+            # Generate inherited changes for child
+            inherited_changes = PropagationService._generate_inherited_changes(
+                child, changed_fields
+            )
+
+            if inherited_changes:
+                child_impact = PropagationService._analyze_string_hierarchy_impact(
+                    child, inherited_changes, max_depth, workspace,
+                    current_depth + 1, visited.copy()
                 )
-                
-                if inherited_changes:
-                    child_impact = PropagationService._analyze_string_hierarchy_impact(
-                        child, inherited_changes, max_depth, workspace, 
-                        current_depth + 1, visited.copy()
-                    )
-                    
-                    affected_strings.extend(child_impact['affected_strings'])
-                    warnings.extend(child_impact['warnings'])
-                    conflicts.extend(child_impact['conflicts'])
-                    max_actual_depth = max(max_actual_depth, child_impact['max_depth'])
-                    
-                    # Add child to parent's children list
-                    string_impact['children'].append(child.id)
-                    
-            except Exception as e:
-                warnings.append({
-                    'string_id': child.id,
-                    'type': 'child_analysis_error',
-                    'message': f'Error analyzing child: {str(e)}',
-                    'severity': 'medium'
-                })
-        
-        return {
-            'affected_strings': affected_strings,
-            'warnings': warnings,
-            'conflicts': conflicts,
-            'max_depth': max_actual_depth
-        }
+
+                # Merge child impact into parent
+                PropagationService._merge_child_impact_into_parent(
+                    impact_data, child_impact, string_impact, child.id
+                )
+
+        except Exception as e:
+            impact_data['warnings'].append({
+                'string_id': child.id,
+                'type': 'child_analysis_error',
+                'message': f'Error analyzing child: {str(e)}',
+                'severity': 'medium'
+            })
+
+    @staticmethod
+    def _merge_child_impact_into_parent(
+        parent_impact: Dict[str, Any],
+        child_impact: Dict[str, Any],
+        string_impact: Dict[str, Any],
+        child_id: int
+    ) -> None:
+        """
+        Merge child impact data into parent impact data.
+
+        Single responsibility: Data merging.
+        """
+        parent_impact['affected_strings'].extend(child_impact['affected_strings'])
+        parent_impact['warnings'].extend(child_impact['warnings'])
+        parent_impact['conflicts'].extend(child_impact['conflicts'])
+        parent_impact['max_depth'] = max(parent_impact['max_depth'], child_impact['max_depth'])
+
+        # Add child to parent's children list
+        string_impact['children'].append(child_id)
 
     @staticmethod
     def _calculate_new_string_value(

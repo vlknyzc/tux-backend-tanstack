@@ -228,13 +228,16 @@ class DimensionBulkCreateSerializer(serializers.Serializer):
 
         # First pass: collect all dimension names from the batch
         dimension_names_in_batch = {
-            dim.get('name') for dim in value if dim.get('name')}
+            dimension_data.get('name')
+            for dimension_data in value
+            if dimension_data.get('name')
+        }
 
         # Get existing dimensions for parent resolution - map names to instances
         # SECURITY: Filter by workspace to prevent cross-workspace information disclosure
         existing_dimensions = {
-            dim.name: dim
-            for dim in models.Dimension.objects.filter(workspace=workspace)
+            dimension.name: dimension
+            for dimension in models.Dimension.objects.filter(workspace=workspace)
         }
 
         validated_dimensions = []
@@ -269,7 +272,7 @@ class DimensionBulkCreateSerializer(serializers.Serializer):
                     )
 
             # Handle parent resolution
-            validated_dim = dimension.copy()
+            validated_dimension_data = dimension.copy()
 
             # Check for parent_name field
             if 'parent_name' in dimension and dimension['parent_name']:
@@ -278,21 +281,21 @@ class DimensionBulkCreateSerializer(serializers.Serializer):
                 # Look for parent in existing dimensions
                 if parent_name in existing_dimensions:
                     # Assign the actual Dimension instance, not the ID
-                    validated_dim['parent'] = existing_dimensions[parent_name]
+                    validated_dimension_data['parent'] = existing_dimensions[parent_name]
                 elif parent_name in dimension_names_in_batch:
                     # Parent is in the same batch - this creates a dependency
                     # We'll handle this in the view by processing parents first
                     # Keep for later resolution
-                    validated_dim['_parent_name'] = parent_name
+                    validated_dimension_data['_parent_name'] = parent_name
                 else:
                     raise serializers.ValidationError(
                         f"Dimension at index {i}: Parent dimension '{parent_name}' not found"
                     )
 
                 # Remove parent_name from the data
-                validated_dim.pop('parent_name', None)
+                validated_dimension_data.pop('parent_name', None)
 
-            validated_dimensions.append(validated_dim)
+            validated_dimensions.append(validated_dimension_data)
 
         return validated_dimensions
 
@@ -318,83 +321,83 @@ class DimensionValueBulkCreateSerializer(serializers.Serializer):
         # Get existing dimensions and dimension values for reference resolution - map to instances
         # SECURITY: Filter by workspace to prevent cross-workspace information disclosure
         existing_dimensions = {
-            dim.name: dim
-            for dim in models.Dimension.objects.filter(workspace=workspace)
+            dimension.name: dimension
+            for dimension in models.Dimension.objects.filter(workspace=workspace)
         }
 
         existing_values = {}
-        for val in models.DimensionValue.objects.filter(workspace=workspace).select_related('dimension'):
-            key = f"{val.dimension.name}:{val.value}"
-            existing_values[key] = val
+        for dimension_value in models.DimensionValue.objects.filter(workspace=workspace).select_related('dimension'):
+            key = f"{dimension_value.dimension.name}:{dimension_value.value}"
+            existing_values[key] = dimension_value
 
         validated_values = []
 
-        for i, dim_value in enumerate(value):
+        for i, dimension_value_data in enumerate(value):
             # Check required fields
             for field in required_fields:
-                if field not in dim_value:
+                if field not in dimension_value_data:
                     raise serializers.ValidationError(
                         f"Dimension value at index {i}: '{field}' is required"
                     )
 
-            validated_val = dim_value.copy()
+            validated_value_data = dimension_value_data.copy()
 
             # Resolve dimension reference
-            if 'dimension_name' in dim_value:
-                dimension_name = dim_value['dimension_name'].strip()
+            if 'dimension_name' in dimension_value_data:
+                dimension_name = dimension_value_data['dimension_name'].strip()
                 if dimension_name in existing_dimensions:
                     # Assign the actual Dimension instance, not the ID
-                    validated_val['dimension'] = existing_dimensions[dimension_name]
-                    validated_val.pop('dimension_name', None)
+                    validated_value_data['dimension'] = existing_dimensions[dimension_name]
+                    validated_value_data.pop('dimension_name', None)
                 else:
                     raise serializers.ValidationError(
                         f"Dimension value at index {i}: Dimension '{dimension_name}' not found"
                     )
-            elif 'dimension' not in dim_value:
+            elif 'dimension' not in dimension_value_data:
                 raise serializers.ValidationError(
                     f"Dimension value at index {i}: Either 'dimension' (ID) or 'dimension_name' is required"
                 )
 
             # Resolve parent value reference
-            if 'parent_dimension_name' in dim_value and 'parent_value' in dim_value:
-                parent_dim_name = dim_value['parent_dimension_name'].strip()
-                parent_value = dim_value['parent_value'].strip()
-                parent_key = f"{parent_dim_name}:{parent_value}"
+            if 'parent_dimension_name' in dimension_value_data and 'parent_value' in dimension_value_data:
+                parent_dimension_name = dimension_value_data['parent_dimension_name'].strip()
+                parent_value = dimension_value_data['parent_value'].strip()
+                parent_key = f"{parent_dimension_name}:{parent_value}"
 
                 if parent_key in existing_values:
                     # Assign the actual DimensionValue instance, not the ID
-                    validated_val['parent'] = existing_values[parent_key]
+                    validated_value_data['parent'] = existing_values[parent_key]
                 else:
                     raise serializers.ValidationError(
-                        f"Dimension value at index {i}: Parent value '{parent_value}' in dimension '{parent_dim_name}' not found"
+                        f"Dimension value at index {i}: Parent value '{parent_value}' in dimension '{parent_dimension_name}' not found"
                     )
 
                 # Remove parent reference fields
-                validated_val.pop('parent_dimension_name', None)
-                validated_val.pop('parent_value', None)
+                validated_value_data.pop('parent_dimension_name', None)
+                validated_value_data.pop('parent_value', None)
 
             # Validate dimension exists (for ID-based reference)
-            if 'dimension' in validated_val and isinstance(validated_val['dimension'], int):
+            if 'dimension' in validated_value_data and isinstance(validated_value_data['dimension'], int):
                 try:
                     dimension_instance = models.Dimension.objects.get(
-                        id=validated_val['dimension'])
-                    validated_val['dimension'] = dimension_instance
+                        id=validated_value_data['dimension'])
+                    validated_value_data['dimension'] = dimension_instance
                 except models.Dimension.DoesNotExist:
                     raise serializers.ValidationError(
-                        f"Dimension value at index {i}: Dimension with id {validated_val['dimension']} does not exist"
+                        f"Dimension value at index {i}: Dimension with id {validated_value_data['dimension']} does not exist"
                     )
 
             # Validate parent exists if provided (for ID-based reference)
-            if 'parent' in validated_val and validated_val['parent'] and isinstance(validated_val['parent'], int):
+            if 'parent' in validated_value_data and validated_value_data['parent'] and isinstance(validated_value_data['parent'], int):
                 try:
                     parent_instance = models.DimensionValue.objects.get(
-                        id=validated_val['parent'])
-                    validated_val['parent'] = parent_instance
+                        id=validated_value_data['parent'])
+                    validated_value_data['parent'] = parent_instance
                 except models.DimensionValue.DoesNotExist:
                     raise serializers.ValidationError(
-                        f"Dimension value at index {i}: Parent dimension value with id {validated_val['parent']} does not exist"
+                        f"Dimension value at index {i}: Parent dimension value with id {validated_value_data['parent']} does not exist"
                     )
 
-            validated_values.append(validated_val)
+            validated_values.append(validated_value_data)
 
         return validated_values

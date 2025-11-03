@@ -3,6 +3,7 @@ Shared mixins for view classes.
 """
 
 from django.core.exceptions import PermissionDenied
+from rest_framework.exceptions import ValidationError
 from master_data import models
 from master_data.models.base import set_current_workspace, _thread_locals
 
@@ -74,3 +75,116 @@ class WorkspaceValidationMixin:
             kwargs['created_by'] = self.request.user
 
         serializer.save(**kwargs)
+
+
+class QueryParamMixin:
+    """
+    Mixin for consistent and standardized query parameter handling.
+
+    This mixin provides helper methods to access query parameters with
+    type conversion, validation, and default values. Use this to standardize
+    parameter access across all views.
+
+    DRF Request objects always have query_params attribute, so no defensive
+    checks are needed.
+    """
+
+    def get_query_param(self, param_name, default=None, required=False):
+        """
+        Get query parameter with validation.
+
+        Args:
+            param_name: Name of query parameter
+            default: Default value if not provided
+            required: Raise ValidationError if not provided
+
+        Returns:
+            Parameter value or default
+
+        Raises:
+            ValidationError: If required parameter is missing
+        """
+        value = self.request.query_params.get(param_name, default)
+
+        if required and value is None:
+            raise ValidationError(
+                {param_name: f"Required parameter '{param_name}' not provided"}
+            )
+
+        return value
+
+    def get_int_query_param(self, param_name, default=None, required=False):
+        """
+        Get integer query parameter with type conversion.
+
+        Args:
+            param_name: Name of query parameter
+            default: Default value if not provided
+            required: Raise ValidationError if not provided
+
+        Returns:
+            Integer value or default
+
+        Raises:
+            ValidationError: If parameter cannot be converted to integer
+        """
+        value = self.get_query_param(param_name, default, required)
+
+        if value is not None and value != default:
+            try:
+                return int(value)
+            except (ValueError, TypeError):
+                raise ValidationError(
+                    {param_name: f"Parameter '{param_name}' must be an integer"}
+                )
+
+        return value
+
+    def get_bool_query_param(self, param_name, default=False):
+        """
+        Get boolean query parameter with smart conversion.
+
+        Converts common boolean representations:
+        - true, 1, yes, on → True
+        - false, 0, no, off → False
+
+        Args:
+            param_name: Name of query parameter
+            default: Default value if not provided (defaults to False)
+
+        Returns:
+            Boolean value
+        """
+        value = self.get_query_param(param_name)
+
+        if value is None:
+            return default
+
+        # Handle string boolean values
+        if isinstance(value, str):
+            return value.lower() in ('true', '1', 'yes', 'on')
+
+        # Handle actual boolean values (shouldn't happen with query params but just in case)
+        return bool(value)
+
+    def get_list_query_param(self, param_name, default=None, separator=','):
+        """
+        Get list query parameter split by separator.
+
+        Useful for comma-separated lists like: ?ids=1,2,3
+
+        Args:
+            param_name: Name of query parameter
+            default: Default value if not provided
+            separator: Character to split on (default: comma)
+
+        Returns:
+            List of values or default
+        """
+        value = self.get_query_param(param_name)
+
+        if value is None:
+            return default if default is not None else []
+
+        # Split and strip whitespace
+        return [item.strip() for item in value.split(separator) if item.strip()]

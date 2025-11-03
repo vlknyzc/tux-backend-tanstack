@@ -249,11 +249,8 @@ class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         active_rules = models.Rule.objects.active()
 
         # Filter by platform if provided
-        # Handle both DRF Request (has query_params) and Django WSGIRequest (has GET)
-        if hasattr(request, 'query_params'):
-            platform_id = request.query_params.get('platform_id')
-        else:
-            platform_id = request.GET.get('platform_id')
+        # DRF Request objects always have query_params attribute
+        platform_id = request.query_params.get('platform_id')
         if platform_id:
             active_rules = active_rules.filter(platform_id=platform_id)
 

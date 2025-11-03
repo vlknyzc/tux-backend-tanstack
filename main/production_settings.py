@@ -116,6 +116,7 @@ INSTALLED_APPS = [
 MIDDLEWARE = [
     "corsheaders.middleware.CorsMiddleware",
     "django.middleware.security.SecurityMiddleware",
+    "csp.middleware.CSPMiddleware",  # Content Security Policy middleware
     "whitenoise.middleware.WhiteNoiseMiddleware",
     "django.contrib.sessions.middleware.SessionMiddleware",
     "django.middleware.common.CommonMiddleware",
@@ -425,6 +426,35 @@ SECURE_SSL_REDIRECT = True
 SECURE_REDIRECT_EXEMPT = [r'^health/$']  # Exempt health check from SSL redirect
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+
+# ────────────────────────────────────────────────────────────────
+# Security Headers
+# ────────────────────────────────────────────────────────────────
+# X-Content-Type-Options: nosniff (prevent MIME type sniffing)
+SECURE_CONTENT_TYPE_NOSNIFF = True
+
+# X-XSS-Protection: 1; mode=block (legacy XSS protection)
+SECURE_BROWSER_XSS_FILTER = True
+
+# X-Frame-Options: DENY (prevent clickjacking)
+X_FRAME_OPTIONS = 'DENY'
+
+# HSTS (HTTP Strict Transport Security)
+SECURE_HSTS_SECONDS = 31536000  # 1 year
+SECURE_HSTS_INCLUDE_SUBDOMAINS = True
+SECURE_HSTS_PRELOAD = True
+
+# Content Security Policy (CSP)
+# Configured via django-csp middleware (see MIDDLEWARE configuration)
+CSP_DEFAULT_SRC = ("'self'",)
+CSP_SCRIPT_SRC = ("'self'",)
+CSP_STYLE_SRC = ("'self'", "'unsafe-inline'")  # unsafe-inline needed for some admin styles
+CSP_IMG_SRC = ("'self'", "data:", "https:")
+CSP_FONT_SRC = ("'self'",)
+CSP_CONNECT_SRC = ("'self'",)
+CSP_FRAME_ANCESTORS = ("'none'",)  # Equivalent to X-Frame-Options: DENY
+CSP_BASE_URI = ("'self'",)
+CSP_FORM_ACTION = ("'self'",)
 
 # ────────────────────────────────────────────────────────────────
 # Internationalisation

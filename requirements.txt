@@ -37,5 +37,6 @@ social-auth-core==4.6.1
 sqlparse==0.5.3
 typing_extensions==4.13.2
 uritemplate==4.1.1
-urllib3==1.26.20
+urllib3>=2.0.0,<3.0.0
 whitenoise==6.9.0
+django-csp==3.8

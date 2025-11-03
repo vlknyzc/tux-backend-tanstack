@@ -5,10 +5,14 @@ This module contains serializers responsible for creating and updating
 rules and rule details with nested structures.
 """
 
+import logging
 from rest_framework import serializers
 from typing import Optional
+from django.core.exceptions import ObjectDoesNotExist
 from ...models import Rule, RuleDetail, Field, Platform, Workspace
 from ..base import WorkspaceOwnedSerializer
+
+logger = logging.getLogger(__name__)
 
 
 class RuleDetailCreateSerializer(serializers.ModelSerializer):
@@ -271,9 +275,29 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                         } for value in detail.dimension.dimension_values.all()
                         if value is not None  # Extra safety check
                     ]
-                except Exception:
-                    # If there's any error getting dimension values, use empty list
+                except (AttributeError, ObjectDoesNotExist) as e:
+                    # Log expected errors when accessing dimension values
+                    logger.warning(
+                        f'Error getting dimension values for dimension {detail.dimension.id}: {e}',
+                        extra={
+                            'dimension_id': detail.dimension.id,
+                            'detail_id': detail.id,
+                            'rule_id': obj.id
+                        }
+                    )
                     dimension_info['dimension_values'] = []
+                except Exception as e:
+                    # Log unexpected errors and re-raise
+                    logger.error(
+                        f'Unexpected error getting dimension values: {e}',
+                        exc_info=True,
+                        extra={
+                            'dimension_id': detail.dimension.id if detail.dimension else None,
+                            'detail_id': detail.id,
+                            'rule_id': obj.id
+                        }
+                    )
+                    raise
 
             grouped_details[field]['dimensions'].append(dimension_info)
 
@@ -292,9 +316,28 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                 ]
                 field_rule = ''.join(dimension_names)
                 grouped_details[field]['field_rule'] = field_rule
-            except Exception:
-                # If there's any error forming the field_rule, use empty string
+            except (AttributeError, KeyError, TypeError) as e:
+                # Log expected errors when forming field_rule
+                logger.warning(
+                    f'Error forming field_rule for field {field}: {e}',
+                    extra={
+                        'field_id': field,
+                        'rule_id': obj.id,
+                        'dimensions_count': len(grouped_details[field]['dimensions'])
+                    }
+                )
                 grouped_details[field]['field_rule'] = ''
+            except Exception as e:
+                # Log unexpected errors and re-raise
+                logger.error(
+                    f'Unexpected error forming field_rule: {e}',
+                    exc_info=True,
+                    extra={
+                        'field_id': field,
+                        'rule_id': obj.id
+                    }
+                )
+                raise
 
         # Convert dictionary to list
         return list(grouped_details.values())
