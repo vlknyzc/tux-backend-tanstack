@@ -55,7 +55,6 @@ from .string import (
     StringDetailExpandedSerializer,
     StringDetailReadSerializer,
     StringDetailWriteSerializer,
-    WorkspaceValidationMixin,
 )
 from .workspace import WorkspaceSerializer
 # from .submission import (  # DEPRECATED: Use Projects instead
@@ -197,7 +196,6 @@ __all__ = [
     'StringDetailExpandedSerializer',
     'StringDetailReadSerializer',
     'StringDetailWriteSerializer',
-    'WorkspaceValidationMixin',
     # 'SubmissionWithStringsSerializer',  # DEPRECATED
     # 'SubmissionWithStringsReadSerializer',  # DEPRECATED
 

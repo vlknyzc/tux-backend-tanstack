@@ -1,27 +1,14 @@
 from rest_framework import serializers
 from django.db import transaction
 from .. import models
-
-
-# =============================================================================
-# UTILITY MIXINS
-# =============================================================================
-
-class WorkspaceValidationMixin:
-    """Mixin for workspace validation in API endpoints."""
-
-    def validate_workspace_access(self, workspace_id, user):
-        """Validate user has access to workspace."""
-        if not user.is_superuser and not user.has_workspace_access(workspace_id):
-            raise serializers.ValidationError(
-                f"Access denied to workspace {workspace_id}")
+from .base import WorkspaceOwnedSerializer
 
 
 # =============================================================================
 # WRITE SERIALIZERS (for creating/updating data)
 # =============================================================================
 
-class StringDetailNestedSerializer(serializers.ModelSerializer, WorkspaceValidationMixin):
+class StringDetailNestedSerializer(serializers.ModelSerializer):
     """Serializer for string details when nested in string creation/updates."""
 
     # Add these as SerializerMethodField to access dimension_value properties
@@ -82,7 +69,7 @@ class StringDetailNestedSerializer(serializers.ModelSerializer, WorkspaceValidat
         return attrs
 
 
-class StringWithDetailsSerializer(serializers.ModelSerializer):
+class StringWithDetailsSerializer(WorkspaceOwnedSerializer):
     """
     Serializer for creating/updating strings with embedded details.
     Implements the details-first approach from the design document.
@@ -94,29 +81,43 @@ class StringWithDetailsSerializer(serializers.ModelSerializer):
         help_text="Field this string belongs to"
     )
     submission = serializers.PrimaryKeyRelatedField(
-        queryset=models.Submission.objects.all(),
+        queryset=models.Submission.objects.none(),  # Filtered in __init__
         required=False,
         help_text="Submission that generated this string"
     )
     parent = serializers.PrimaryKeyRelatedField(
-        queryset=models.String.objects.all(),
+        queryset=models.String.objects.none(),  # Filtered in __init__
         required=False,
         allow_null=True,
         help_text="Parent string for hierarchical relationships"
     )
 
-    class Meta:
+    def __init__(self, *args, **kwargs):
+        """Initialize serializer and filter querysets by workspace."""
+        super().__init__(*args, **kwargs)
+
+        # Get workspace from context
+        workspace = self.context.get('workspace')
+        if workspace:
+            # Filter submission and parent querysets by workspace
+            self.fields['submission'].queryset = models.Submission.objects.filter(
+                workspace=workspace
+            )
+            self.fields['parent'].queryset = models.String.objects.filter(
+                workspace=workspace
+            )
+
+    class Meta(WorkspaceOwnedSerializer.Meta):
         model = models.String
         fields = [
             'id', 'submission', 'field', 'parent', 'string_uuid', 'parent_uuid',
             'is_auto_generated', 'generation_metadata', 'version', 'workspace',
             'created', 'last_updated', 'details', 'created_by', 'value'
         ]
-        read_only_fields = ['id', 'created',
-                            'last_updated', 'version', 'created_by']
+        # Extend parent read_only_fields with additional auto-generated fields
+        read_only_fields = WorkspaceOwnedSerializer.Meta.read_only_fields + ['version']
         extra_kwargs = {
             'string_uuid': {'required': False},
-            'workspace': {'required': False},
             'value': {'required': False}
         }
 
@@ -191,7 +192,7 @@ class StringWithDetailsSerializer(serializers.ModelSerializer):
         return instance
 
 
-class StringDetailWriteSerializer(serializers.ModelSerializer, WorkspaceValidationMixin):
+class StringDetailWriteSerializer(serializers.ModelSerializer):
     """
     Workspace-scoped string detail serializer for write operations.
     Updates to string details trigger automatic string regeneration.
@@ -322,7 +323,7 @@ class StringWithDetailsReadSerializer(serializers.ModelSerializer):
         return None
 
 
-class StringDetailReadSerializer(serializers.ModelSerializer, WorkspaceValidationMixin):
+class StringDetailReadSerializer(serializers.ModelSerializer):
     """
     Workspace-scoped string detail serializer for read operations.
     """

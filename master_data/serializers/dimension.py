@@ -1,16 +1,17 @@
 from rest_framework import serializers
 from typing import Optional
 from .. import models
+from .base import WorkspaceOwnedSerializer
 
 
-class DimensionSerializer(serializers.ModelSerializer):
+class DimensionSerializer(WorkspaceOwnedSerializer):
     parent_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
     workspace_name = serializers.SerializerMethodField()
     slug = serializers.SlugField(required=False, read_only=True,
                                  help_text='URL-friendly version of the name (auto-generated)')
 
-    class Meta:
+    class Meta(WorkspaceOwnedSerializer.Meta):
         model = models.Dimension
         fields = [
             "id",
@@ -29,10 +30,11 @@ class DimensionSerializer(serializers.ModelSerializer):
             "last_updated",
         ]
 
+        # Extend parent read_only_fields with slug (auto-generated)
+        read_only_fields = WorkspaceOwnedSerializer.Meta.read_only_fields + ['slug']
+
         extra_kwargs = {
             'type': {'required': True, 'allow_null': False},
-            'workspace': {'required': True, 'allow_null': False, "help_text": "ID of the workspace this dimension belongs to"},
-            'slug': {'required': False, 'allow_blank': True, 'help_text': 'URL-friendly version of the name (auto-generated)'},
         }
 
     def get_parent_name(self, obj) -> Optional[str]:
@@ -51,8 +53,78 @@ class DimensionSerializer(serializers.ModelSerializer):
             return obj.workspace.name
         return None
 
+    def validate(self, data):
+        """Validate dimension data including parent relationships."""
+        # Get workspace - it can come from data or context
+        workspace = data.get('workspace') or self.context.get('workspace')
 
-class DimensionValueSerializer(serializers.ModelSerializer):
+        if not workspace:
+            raise serializers.ValidationError(
+                "Workspace is required for dimension validation"
+            )
+
+        # Validate parent dimension if provided
+        parent = data.get('parent')
+        if parent:
+            self._validate_parent_dimension(parent, workspace)
+
+        return data
+
+    def _validate_parent_dimension(self, parent, workspace):
+        """
+        Validate parent dimension.
+
+        Checks:
+        1. Parent exists in the same workspace
+        2. No circular reference would be created
+        """
+        # Check workspace match
+        if parent.workspace != workspace:
+            raise serializers.ValidationError({
+                'parent': 'Parent dimension must be in the same workspace'
+            })
+
+        # Check circular reference (only when updating existing dimension)
+        if self.instance:
+            if self._would_create_circular_reference(self.instance, parent):
+                raise serializers.ValidationError({
+                    'parent': 'This would create a circular reference in the dimension hierarchy'
+                })
+
+    def _would_create_circular_reference(self, dimension, new_parent):
+        """
+        Check if setting new_parent would create a circular reference.
+
+        Traverses up the parent chain to see if we encounter the dimension
+        we're trying to update.
+
+        Args:
+            dimension: The dimension being updated
+            new_parent: The proposed new parent
+
+        Returns:
+            True if circular reference would be created, False otherwise
+        """
+        current = new_parent
+        visited = set()
+
+        while current:
+            # If we've seen this dimension before, we have a cycle
+            if current.id in visited:
+                # This is a cycle but not involving our dimension
+                return False
+
+            # If we encounter the dimension we're updating, that's a circular reference
+            if current.id == dimension.id:
+                return True
+
+            visited.add(current.id)
+            current = current.parent
+
+        return False
+
+
+class DimensionValueSerializer(WorkspaceOwnedSerializer):
     dimension_name = serializers.SerializerMethodField()
     dimension_parent_name = serializers.SerializerMethodField()
     parent_name = serializers.SerializerMethodField()
@@ -61,7 +133,7 @@ class DimensionValueSerializer(serializers.ModelSerializer):
     created_by_name = serializers.SerializerMethodField()
     workspace_name = serializers.SerializerMethodField()
 
-    class Meta:
+    class Meta(WorkspaceOwnedSerializer.Meta):
         model = models.DimensionValue
         fields = [
             "id",
@@ -85,6 +157,8 @@ class DimensionValueSerializer(serializers.ModelSerializer):
             "created",
             "last_updated",
         ]
+        # Inherit read_only_fields from WorkspaceOwnedSerializer
+        read_only_fields = WorkspaceOwnedSerializer.Meta.read_only_fields
 
     def validate_dimension(self, value):
         if value is not None:
@@ -143,6 +217,13 @@ class DimensionBulkCreateSerializer(serializers.Serializer):
 
     def validate_dimensions(self, value):
         """Validate each dimension in the list and resolve parent references."""
+        # Require workspace context for validation
+        workspace = self.context.get('workspace')
+        if not workspace:
+            raise serializers.ValidationError(
+                "Workspace context is required for dimension validation"
+            )
+
         required_fields = ['name', 'type']
 
         # First pass: collect all dimension names from the batch
@@ -150,9 +231,10 @@ class DimensionBulkCreateSerializer(serializers.Serializer):
             dim.get('name') for dim in value if dim.get('name')}
 
         # Get existing dimensions for parent resolution - map names to instances
+        # SECURITY: Filter by workspace to prevent cross-workspace information disclosure
         existing_dimensions = {
             dim.name: dim
-            for dim in models.Dimension.objects.all()
+            for dim in models.Dimension.objects.filter(workspace=workspace)
         }
 
         validated_dimensions = []
@@ -224,16 +306,24 @@ class DimensionValueBulkCreateSerializer(serializers.Serializer):
 
     def validate_dimension_values(self, value):
         """Validate each dimension value in the list and resolve references."""
+        # Require workspace context for validation
+        workspace = self.context.get('workspace')
+        if not workspace:
+            raise serializers.ValidationError(
+                "Workspace context is required for dimension value validation"
+            )
+
         required_fields = ['value', 'label', 'utm']
 
         # Get existing dimensions and dimension values for reference resolution - map to instances
+        # SECURITY: Filter by workspace to prevent cross-workspace information disclosure
         existing_dimensions = {
             dim.name: dim
-            for dim in models.Dimension.objects.all()
+            for dim in models.Dimension.objects.filter(workspace=workspace)
         }
 
         existing_values = {}
-        for val in models.DimensionValue.objects.select_related('dimension').all():
+        for val in models.DimensionValue.objects.filter(workspace=workspace).select_related('dimension'):
             key = f"{val.dimension.name}:{val.value}"
             existing_values[key] = val
 

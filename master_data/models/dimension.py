@@ -4,6 +4,7 @@ Dimension models for the master_data app.
 
 from django.db import models
 from django.urls import reverse
+from django.core.exceptions import ValidationError
 
 from .base import TimeStampModel, WorkspaceMixin
 from ..constants import (
@@ -69,10 +70,65 @@ class Dimension(TimeStampModel, WorkspaceMixin):
             ('workspace', 'slug'),  # Slug unique per workspace
         ]
 
+    def clean(self):
+        """
+        Model-level validation for dimension.
+
+        Validates:
+        1. Parent dimension is in the same workspace
+        2. No circular reference in parent hierarchy
+        """
+        super().clean()
+
+        if self.parent:
+            # Validate workspace match
+            if self.workspace_id and self.parent.workspace_id != self.workspace_id:
+                raise ValidationError({
+                    'parent': 'Parent dimension must be in the same workspace'
+                })
+
+            # Validate no circular reference
+            if self.pk and self._would_create_circular_reference(self.parent):
+                raise ValidationError({
+                    'parent': 'This would create a circular reference in the dimension hierarchy'
+                })
+
+    def _would_create_circular_reference(self, new_parent):
+        """
+        Check if setting new_parent would create a circular reference.
+
+        Traverses up the parent chain to see if we encounter this dimension.
+
+        Args:
+            new_parent: The proposed new parent
+
+        Returns:
+            True if circular reference would be created, False otherwise
+        """
+        current = new_parent
+        visited = set()
+
+        while current:
+            # If we've seen this dimension before, we have a cycle
+            if current.id in visited:
+                # This is a cycle but not involving our dimension
+                return False
+
+            # If we encounter this dimension, that's a circular reference
+            if current.id == self.id:
+                return True
+
+            visited.add(current.id)
+            current = current.parent
+
+        return False
+
     def save(self, *args, **kwargs):
-        """Override save to generate slug automatically."""
+        """Override save to generate slug and run validation."""
         if not self.slug:
             self.slug = generate_unique_slug(self, 'name', 'slug', SLUG_LENGTH)
+        # Run validation before saving
+        self.full_clean()
         super().save(*args, **kwargs)
 
     def __str__(self):

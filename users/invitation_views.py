@@ -173,61 +173,103 @@ class InvitationViewSet(ModelViewSet):
 )
 class InvitationValidateView(APIView):
     """
-    View for validating invitation tokens
+    View for validating invitation tokens with constant-time response
+    to prevent token enumeration attacks.
     """
     permission_classes = [permissions.AllowAny]
-    
+
+    def get_throttles(self):
+        """Apply rate limiting to prevent token enumeration"""
+        from .throttles import InvitationValidationThrottle
+        return [InvitationValidationThrottle()]
+
     def get(self, request, token, version=None):
-        """Validate invitation token"""
+        """
+        Validate invitation token with constant-time response.
+
+        Security: All failure cases return the same status code (400) and
+        generic message to prevent token enumeration via response discrepancy.
+        Performs dummy operation when token doesn't exist to maintain constant
+        timing and prevent timing attacks.
+        """
+        import secrets
         import logging
-        logger = logging.getLogger(__name__)
-        logger.info(f"Validating invitation token: {token} from {request.META.get('HTTP_ORIGIN', 'unknown origin')}")
-        
+
+        # Convert UUID to string for logging
+        token_str = str(token)
+
+        # Security logger for monitoring validation attempts
+        security_logger = logging.getLogger('security')
+        security_logger.info(
+            f'Invitation validation attempt - '
+            f'token_prefix={token_str[:8]}... '
+            f'ip={request.META.get("REMOTE_ADDR", "unknown")} '
+            f'user_agent={request.META.get("HTTP_USER_AGENT", "unknown")}'
+        )
+
+        invitation_found = False
+        is_valid = False
+        response_data = {}
+
         try:
             invitation = Invitation.objects.select_related('invitor', 'workspace').get(token=token)
+            invitation_found = True
+
+            # Check if invitation is expired and update status if needed
+            if invitation.is_expired and invitation.status == 'pending':
+                invitation.mark_as_expired()
+
+            # Check if invitation is valid
+            is_valid = invitation.is_valid
+
+            if is_valid:
+                # Only return detailed info for valid invitations
+                response_data = {
+                    "valid": True,
+                    "email": invitation.email,
+                    "invitor_name": invitation.invitor.get_full_name(),
+                    "workspace_name": invitation.workspace.name if invitation.workspace else None,
+                    "role": invitation.role,
+                    "expires_at": invitation.expires_at,
+                    "message": "Invitation is valid"
+                }
+
+                security_logger.info(
+                    f'Valid invitation validated - '
+                    f'token_prefix={token_str[:8]}... '
+                    f'email={invitation.email} '
+                    f'workspace={invitation.workspace.name if invitation.workspace else None}'
+                )
+            else:
+                # Invalid invitation - use generic response
+                security_logger.warning(
+                    f'Invalid invitation validation attempt - '
+                    f'token_prefix={token_str[:8]}... '
+                    f'status={invitation.status}'
+                )
+
         except Invitation.DoesNotExist:
+            # Token doesn't exist - perform dummy operation to maintain constant time
+            # This prevents timing attacks by ensuring similar execution time
+            _ = secrets.compare_digest(token_str, "dummy_token_for_constant_time_comparison_padding")
+
+            security_logger.warning(
+                f'Non-existent invitation validation attempt - '
+                f'token_prefix={token_str[:8]}...'
+            )
+
+        # Return response based on validation result
+        if is_valid:
+            return Response(response_data, status=status.HTTP_200_OK)
+        else:
+            # All failure cases return the same response (prevents enumeration)
             return Response(
                 {
                     "valid": False,
-                    "status": "not_found",
-                    "message": "Invitation not found"
+                    "message": "Invalid or expired invitation"
                 },
-                status=status.HTTP_404_NOT_FOUND
+                status=status.HTTP_400_BAD_REQUEST
             )
-        
-        # Check if invitation is expired and update status if needed
-        if invitation.is_expired and invitation.status == 'pending':
-            invitation.mark_as_expired()
-        
-        # Prepare response data
-        response_data = {
-            "valid": invitation.is_valid,
-            "status": invitation.status,
-            "email": invitation.email,
-            "invitor_name": invitation.invitor.get_full_name(),
-            "workspace_name": invitation.workspace.name if invitation.workspace else None,
-            "role": invitation.role,
-            "expires_at": invitation.expires_at,
-        }
-        
-        # Add appropriate message
-        if invitation.is_valid:
-            response_data["message"] = "Invitation is valid"
-        elif invitation.status == 'used':
-            response_data["message"] = "Invitation has already been used"
-        elif invitation.status == 'expired' or invitation.is_expired:
-            response_data["message"] = "Invitation has expired"
-        elif invitation.status == 'revoked':
-            response_data["message"] = "Invitation has been revoked"
-        else:
-            response_data["message"] = "Invitation is not valid"
-        
-        serializer = InvitationValidationSerializer(response_data)
-        
-        return Response(
-            serializer.data,
-            status=status.HTTP_200_OK if invitation.is_valid else status.HTTP_400_BAD_REQUEST
-        )
 
 
 @extend_schema(

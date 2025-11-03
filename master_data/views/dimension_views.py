@@ -118,30 +118,56 @@ class DimensionViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         workspace_id = self.kwargs.get('workspace_id')
         # WorkspaceValidationMixin already validated access in dispatch()
         if workspace_id:
-            return models.Dimension.objects.filter(workspace_id=workspace_id)
+            return models.Dimension.objects.filter(
+                workspace_id=workspace_id
+            ).select_related(
+                'parent',
+                'created_by',
+                'workspace'
+            ).prefetch_related(
+                'dimension_values'
+            )
         return models.Dimension.objects.none()
 
-    def perform_create(self, serializer):
-        """Set workspace from URL path when creating objects."""
-        # WorkspaceValidationMixin.perform_create() handles workspace assignment
-        # But we still need to check if serializer has workspace field
+    def get_serializer_context(self):
+        """Add workspace to serializer context for validation."""
+        context = super().get_serializer_context()
         workspace_id = self.kwargs.get('workspace_id')
         if workspace_id:
+            try:
+                workspace = models.Workspace.objects.get(id=workspace_id)
+                context['workspace'] = workspace
+            except models.Workspace.DoesNotExist:
+                pass
+        return context
+
+    def perform_create(self, serializer):
+        """Set workspace and created_by when creating objects."""
+        # Get workspace from URL path
+        workspace_id = self.kwargs.get('workspace_id')
+        kwargs = {}
+
+        if workspace_id:
             workspace = models.Workspace.objects.get(id=workspace_id)
-            serializer.save(workspace=workspace)
-        else:
-            super().perform_create(serializer)
+            kwargs['workspace'] = workspace
+
+        # Set created_by if user is authenticated
+        if hasattr(self.request, 'user') and self.request.user.is_authenticated:
+            kwargs['created_by'] = self.request.user
+
+        serializer.save(**kwargs)
 
     @extend_schema(tags=["Dimensions"])
     @action(detail=False, methods=['post'])
-    def bulk_create(self, request, version=None):
+    def bulk_create(self, request, workspace_id=None, version=None):
         """
         POST /api/v1/workspaces/{workspace_id}/dimensions/bulk_create/
         with body { "dimensions": [ {name, type, …}, … ] }
-        
+
         Workspace ID comes from URL path.
         """
-        workspace_id = self.kwargs.get('workspace_id')
+        if not workspace_id:
+            workspace_id = self.kwargs.get('workspace_id')
         # WorkspaceValidationMixin already validated access in dispatch()
         
         if not workspace_id:
@@ -153,8 +179,11 @@ class DimensionViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         # fetch the Workspace instance once
         workspace_obj = models.Workspace.objects.get(pk=workspace_id)
 
+        # Pass workspace context to serializer for validation
         serializer = serializers.DimensionBulkCreateSerializer(
-            data=request.data)
+            data=request.data,
+            context={'workspace': workspace_obj}
+        )
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
@@ -353,14 +382,15 @@ class DimensionValueViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
 
     @extend_schema(tags=["Dimensions"])
     @action(detail=False, methods=['post'])
-    def bulk_create(self, request, version=None):
+    def bulk_create(self, request, workspace_id=None, version=None):
         """
         POST /api/v1/workspaces/{workspace_id}/dimension-values/bulk_create/
         with body { "dimension_values": [ {...}, ... ] }
-        
+
         Workspace ID comes from URL path.
         """
-        workspace_id = self.kwargs.get('workspace_id')
+        if not workspace_id:
+            workspace_id = self.kwargs.get('workspace_id')
         # WorkspaceValidationMixin already validated access in dispatch()
         
         if not workspace_id:
@@ -371,8 +401,11 @@ class DimensionValueViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
 
         workspace_obj = models.Workspace.objects.get(pk=workspace_id)
 
+        # Pass workspace context to serializer for validation
         serializer = serializers.DimensionValueBulkCreateSerializer(
-            data=request.data)
+            data=request.data,
+            context={'workspace': workspace_obj}
+        )
         if not serializer.is_valid():
             return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 

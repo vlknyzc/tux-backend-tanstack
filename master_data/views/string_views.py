@@ -74,10 +74,30 @@ class StringViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         if not hasattr(queryset, 'model'):
             queryset = models.String.objects.all()
 
-        return queryset.select_related('field', 'submission', 'rule', 'workspace').prefetch_related(
+        return queryset.select_related(
+            'field',
+            'field__platform',  # Prevent N+1 query for platform access
+            'submission',
+            'rule',
+            'workspace',
+            'created_by',
+            'parent'
+        ).prefetch_related(
             'string_details__dimension',
             'string_details__dimension_value'
         )
+
+    def get_serializer_context(self):
+        """Add workspace to serializer context for validation."""
+        context = super().get_serializer_context()
+        workspace_id = self.kwargs.get('workspace_id')
+        if workspace_id:
+            try:
+                workspace = models.Workspace.objects.get(id=workspace_id)
+                context['workspace'] = workspace
+            except models.Workspace.DoesNotExist:
+                pass
+        return context
 
     @extend_schema(
         tags=["Strings"],

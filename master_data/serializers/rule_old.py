@@ -2,6 +2,7 @@ from rest_framework import serializers
 from django.db.models import Max
 from .. import models
 from typing import Optional, Dict, List, Any
+from .base import WorkspaceOwnedSerializer
 
 
 # =============================================================================
@@ -37,13 +38,13 @@ class RuleDetailCreateSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class RuleCreateUpdateSerializer(serializers.ModelSerializer):
+class RuleCreateUpdateSerializer(WorkspaceOwnedSerializer):
     """Serializer for creating and updating rules."""
 
     workspace = serializers.SerializerMethodField()
     workspace_name = serializers.SerializerMethodField()
 
-    class Meta:
+    class Meta(WorkspaceOwnedSerializer.Meta):
         model = models.Rule
         fields = [
             "id",
@@ -60,10 +61,8 @@ class RuleCreateUpdateSerializer(serializers.ModelSerializer):
             "last_updated",
         ]
 
-    extra_kwargs = {
-        'workspace': {'required': True, 'allow_null': False, "help_text": "ID of the workspace this rule belongs to"},
-        'slug': {'required': False, 'allow_blank': True, 'help_text': 'URL-friendly version of the name (auto-generated)'},
-    }
+        # Extend parent read_only_fields with slug (auto-generated)
+        read_only_fields = WorkspaceOwnedSerializer.Meta.read_only_fields + ['slug']
 
     def get_workspace(self, obj) -> int:
         return obj.workspace.id
@@ -384,11 +383,10 @@ class RuleDetailReadSerializer(serializers.ModelSerializer):
         return None
 
     def get_parent_dimension_name(self, obj) -> Optional[str]:
+        # Use already-loaded parent dimension from select_related
         if obj.dimension.parent:
-            parent = models.Dimension.objects.get(id=obj.dimension.parent.id)
-            return parent.name
-        else:
-            return None
+            return obj.dimension.parent.name
+        return None
 
     def get_next_field(self, obj) -> Optional[str]:
         if obj.field.next_field_id:
@@ -399,6 +397,12 @@ class RuleDetailReadSerializer(serializers.ModelSerializer):
         return obj.rule.name
 
     def get_in_parent_field(self, obj) -> bool:
+        # Use annotated field from queryset to avoid N+1 query
+        # If annotation exists, use it; otherwise fall back to field_level check
+        if hasattr(obj, 'in_parent_field'):
+            return obj.in_parent_field
+
+        # Fallback for cases where annotation isn't available
         field_level = obj.field.field_level
         if field_level <= 1:
             return False

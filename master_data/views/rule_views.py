@@ -6,6 +6,7 @@ from django_filters.rest_framework import DjangoFilterBackend, FilterSet
 from django.conf import settings
 from django.db import transaction
 from django.core.exceptions import PermissionDenied
+from django.db.models import Exists, OuterRef, F
 
 from drf_spectacular.openapi import AutoSchema
 from drf_spectacular.utils import extend_schema, OpenApiParameter
@@ -89,12 +90,24 @@ class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         """Get rules filtered by workspace from URL path."""
         workspace_id = self.kwargs.get('workspace_id')
         # WorkspaceValidationMixin already validated access in dispatch()
-        
+
         if workspace_id:
             return models.Rule.objects.filter(
                 workspace_id=workspace_id
-            ).select_related('platform').prefetch_related('rule_details')
-        
+            ).select_related(
+                'platform',
+                'workspace',
+                'created_by'
+            ).prefetch_related(
+                'rule_details',
+                'rule_details__dimension',
+                'rule_details__dimension__parent',
+                'rule_details__dimension__dimension_values',
+                'rule_details__field',
+                'rule_details__field__next_field',
+                'rule_details__created_by'
+            )
+
         return models.Rule.objects.none()
 
     def perform_create(self, serializer):
@@ -300,12 +313,30 @@ class RuleDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         """Get rule details filtered by workspace from URL path."""
         workspace_id = self.kwargs.get('workspace_id')
         # WorkspaceValidationMixin already validated access in dispatch()
-        
+
         if workspace_id:
+            # Subquery to check if dimension exists in parent field
+            parent_field_subquery = models.RuleDetail.objects.filter(
+                rule=OuterRef('rule'),
+                field__platform=OuterRef('field__platform'),
+                dimension=OuterRef('dimension'),
+                field__field_level=OuterRef('field__field_level') - 1
+            )
+
             return models.RuleDetail.objects.filter(
                 workspace_id=workspace_id
-            ).select_related('rule', 'field', 'dimension', 'rule__platform')
-        
+            ).select_related(
+                'rule',
+                'field',
+                'field__next_field',
+                'dimension',
+                'dimension__parent',
+                'rule__platform',
+                'created_by'
+            ).annotate(
+                in_parent_field=Exists(parent_field_subquery)
+            )
+
         return models.RuleDetail.objects.none()
 
     def get_serializer_class(self):

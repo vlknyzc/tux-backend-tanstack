@@ -268,6 +268,20 @@ REST_FRAMEWORK = {
     'DEFAULT_VERSION': 'v1',
     'ALLOWED_VERSIONS': ['v1', 'v2'],
     'VERSION_PARAM': 'version',
+
+    # Throttling for rate limiting (production settings - more strict)
+    'DEFAULT_THROTTLE_CLASSES': [
+        'rest_framework.throttling.AnonRateThrottle',
+        'rest_framework.throttling.UserRateThrottle',
+    ],
+    'DEFAULT_THROTTLE_RATES': {
+        'anon': '100/hour',  # Anonymous users: 100 requests per hour
+        'user': '1000/hour',  # Authenticated users: 1000 requests per hour
+        'auth': '5/minute',  # Authentication endpoint: 5 attempts per minute
+        'token_refresh': '10/minute',  # Token refresh: 10 per minute
+        'registration': '3/hour',  # Registration: 3 per hour
+        'login_attempt': '5/minute',  # Per-user login attempts: 5 per minute
+    },
 }
 
 # DJOSER settings
@@ -435,11 +449,19 @@ LOGGING = {
             'format': '{levelname} {message}',
             'style': '{',
         },
+        'security': {
+            'format': '{levelname} {asctime} SECURITY: {message}',
+            'style': '{',
+        },
     },
     'handlers': {
         'console': {
             'class': 'logging.StreamHandler',
             'formatter': 'verbose',
+        },
+        'security_console': {
+            'class': 'logging.StreamHandler',
+            'formatter': 'security',
         },
     },
     'root': {
@@ -465,6 +487,16 @@ LOGGING = {
         'master_data': {
             'handlers': ['console'],
             'level': 'DEBUG',
+            'propagate': False,
+        },
+        'security': {
+            'handlers': ['security_console'],
+            'level': 'INFO',
+            'propagate': False,
+        },
+        'users': {
+            'handlers': ['console'],
+            'level': 'INFO',
             'propagate': False,
         },
     },

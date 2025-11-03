@@ -5,6 +5,9 @@ import logging
 from .dimension_catalog_service import DimensionCatalogService
 from .inheritance_matrix_service import InheritanceMatrixService
 from .field_template_service import FieldTemplateService
+from .rule_cache_service import RuleCacheService
+from .rule_validation_service import RuleValidationService
+from .rule_metrics_service import RuleMetricsService
 from ..models import Rule, Field
 
 logger = logging.getLogger(__name__)
@@ -12,19 +15,38 @@ logger = logging.getLogger(__name__)
 
 class RuleService:
     """
-    Unified service that combines all rule optimization services.
-    This is the main service to replace the RuleNestedSerializer.
+    Facade service that coordinates between specialized rule services.
+
+    This service acts as a unified interface for rule operations,
+    delegating to specialized services:
+    - DimensionCatalogService: Dimension catalog operations
+    - InheritanceMatrixService: Inheritance matrix operations
+    - FieldTemplateService: Field template operations
+    - RuleCacheService: Cache management
+    - RuleValidationService: Validation and scoring
+    - RuleMetricsService: Performance metrics
+
+    Refactored from God Class (Issue #13) to follow Single Responsibility Principle.
     """
 
     def __init__(self):
+        # Core data services
         self.dimension_catalog = DimensionCatalogService()
         self.inheritance_matrix = InheritanceMatrixService()
         self.field_template = FieldTemplateService()
+
+        # Supporting services (extracted from God Class refactoring)
+        self.cache = RuleCacheService()
+        self.validation = RuleValidationService()
+        self.metrics = RuleMetricsService()
+
         self.cache_timeout = 30 * 60  # 30 minutes
 
     def _calculate_performance_metrics(self, field_templates, dimension_catalog):
         """
         Calculate performance metrics for the rule data.
+
+        Delegates to RuleMetricsService for metrics calculation.
 
         Args:
             field_templates: List of field templates
@@ -33,37 +55,10 @@ class RuleService:
         Returns:
             Dictionary containing performance metrics
         """
-        total_dimensions = len(dimension_catalog.get('dimensions', {}))
-        total_fields = len(field_templates)
-
-        # Calculate completeness scores
-        field_completeness_scores = []
-        for template in field_templates:
-            if template.get('dimensions'):
-                required_dims = sum(
-                    1 for d in template['dimensions'] if d.get('is_required', False))
-                total_dims = len(template['dimensions'])
-                score = (required_dims / total_dims) * \
-                    100 if total_dims > 0 else 0
-                field_completeness_scores.append(score)
-
-        avg_completeness = sum(field_completeness_scores) / \
-            len(field_completeness_scores) if field_completeness_scores else 0
-
-        # Get inheritance stats
-        inheritance_stats = dimension_catalog.get(
-            'inheritance_lookup', {}).get('inheritance_stats', {})
-        inheritance_coverage = inheritance_stats.get(
-            'inheritance_coverage', 0.0)
-
-        return {
-            'total_dimensions': total_dimensions,
-            'total_fields': total_fields,
-            'average_completeness_score': round(avg_completeness, 2),
-            'inheritance_coverage': round(inheritance_coverage * 100, 2),
-            'fields_analyzed': len(field_completeness_scores),
-            'timestamp': timezone.now().isoformat()
-        }
+        return self.metrics.calculate_performance_metrics(
+            field_templates,
+            dimension_catalog
+        )
 
     def get_lightweight_rule_data(self, rule: Rule) -> Dict:
         """
@@ -135,119 +130,60 @@ class RuleService:
     def get_rule_validation_summary(self, rule: Rule) -> Dict:
         """
         Get comprehensive validation summary for a rule.
-        """
-        try:
-            rule = Rule.objects.get(id=rule.id)
-        except Rule.DoesNotExist:
-            raise ValueError(f"Rule with id {rule.id} does not exist")
 
-        field_templates = self.field_template.get_templates_for_rule(rule.id)
+        Delegates to RuleValidationService for validation logic.
+
+        Args:
+            rule: Rule instance or rule ID
+
+        Returns:
+            Dictionary containing validation summary
+        """
+        # Get data from specialized services
+        field_templates = self.field_template.get_templates_for_rule(rule.id if hasattr(rule, 'id') else rule)
         inheritance_summary = self.inheritance_matrix.get_field_inheritance_summary(
-            rule.id)
+            rule.id if hasattr(rule, 'id') else rule
+        )
 
-        # Compile validation issues
-        validation_issues = []
-        warnings = []
-
-        # Configuration errors
-        config_errors = rule.validate_configuration() if hasattr(
-            rule, 'validate_configuration') else []
-        validation_issues.extend(config_errors)
-
-        # Field-level validation
-        for template in field_templates:
-            field_name = template['field_name']
-
-            # Check if field can generate
-            if not template.get('can_generate', False):
-                validation_issues.append(
-                    f"Field '{field_name}' cannot generate strings")
-
-            # Check completeness
-            completeness = template.get('completeness_score', 0)
-            if completeness < 50:
-                warnings.append(
-                    f"Field '{field_name}' has low completeness score: {completeness:.1f}%")
-
-            # Check for validation rules
-            for rule_item in template.get('validation_rules', []):
-                if rule_item['type'] == 'required_dimensions':
-                    # This is informational, not an error
-                    pass
-                elif rule_item['type'] == 'parent_constraint':
-                    warnings.append(
-                        f"Field '{field_name}': {rule_item['message']}")
-
-        return {
-            'rule': rule,
-            'rule_name': rule.name,
-            'is_valid': len(validation_issues) == 0,
-            'validation_issues': validation_issues,
-            'warnings': warnings,
-            'field_summary': {
-                'total_fields': len(field_templates),
-                'valid_fields': sum(1 for f in field_templates if f.get('can_generate', False)),
-                'fields_with_warnings': sum(1 for f in field_templates if f.get('completeness_score', 0) < 50),
-            },
-            'inheritance_summary': inheritance_summary,
-            'overall_score': self._calculate_overall_rule_score(field_templates, validation_issues, warnings),
-        }
-
-    def _calculate_overall_rule_score(self, field_templates: List[Dict], validation_issues: List[str], warnings: List[str]) -> float:
-        """
-        Calculate an overall rule quality score based on completeness, validation issues, and warnings.
-        Returns a score from 0-100.
-        """
-        if not field_templates:
-            return 0.0
-
-        # Base score from field completeness
-        completeness_scores = [template.get(
-            'completeness_score', 0) for template in field_templates]
-        avg_completeness = sum(completeness_scores) / \
-            len(completeness_scores) if completeness_scores else 0
-
-        # Penalty for validation issues (critical)
-        # 15 points per validation issue
-        validation_penalty = len(validation_issues) * 15
-
-        # Penalty for warnings (less critical)
-        warning_penalty = len(warnings) * 5  # 5 points per warning
-
-        # Calculate final score
-        final_score = avg_completeness - validation_penalty - warning_penalty
-
-        # Ensure score is between 0 and 100
-        return max(0.0, min(100.0, final_score))
+        # Delegate validation to validation service
+        return self.validation.get_rule_validation_summary(
+            rule,
+            field_templates,
+            inheritance_summary
+        )
 
     def invalidate_all_caches(self, rule: Rule):
-        """Invalidate all caches for a rule across all services"""
-        self.dimension_catalog.invalidate_cache(rule.id)
-        self.inheritance_matrix.invalidate_cache(rule.id)
-        self.field_template.invalidate_cache(rule.id)
+        """
+        Invalidate all caches for a rule across all services.
 
-        # Also invalidate the complete data cache
-        cache_key = f"complete_rule_data:{rule.id}"
-        cache.delete(cache_key)
+        Delegates to RuleCacheService for cache management.
 
-        # Clear Django's page cache for rule configuration endpoint
-        from django.core.cache import cache
-        cache_key = f"views.decorators.cache.cache_page.{rule.id}.GET"
-        cache.delete(cache_key)
+        Args:
+            rule: Rule instance or rule ID
+        """
+        self.cache.invalidate_all_caches(rule)
 
     def bulk_invalidate_caches(self, rules: List[Rule]):
-        """Invalidate caches for multiple rules"""
-        for rule in rules:
-            self.invalidate_all_caches(rule)
+        """
+        Invalidate caches for multiple rules.
+
+        Delegates to RuleCacheService for cache management.
+
+        Args:
+            rules: List of Rule instances or rule IDs
+        """
+        self.cache.bulk_invalidate_caches(rules)
 
     def clear_rule_configuration_cache(self, rule_id: int):
-        """Clear cache specifically for rule configuration endpoint"""
-        from ..signals.cache_invalidation import CacheInvalidationHelper
-        
-        # Use the centralized cache invalidation helper
-        CacheInvalidationHelper.invalidate_rule_caches([rule_id], "Manual cache clear")
-        
-        logger.info(f"Cleared rule configuration cache for rule {rule_id}")
+        """
+        Clear cache specifically for rule configuration endpoint.
+
+        Delegates to RuleCacheService for cache management.
+
+        Args:
+            rule_id: ID of the rule
+        """
+        self.cache.clear_rule_configuration_cache(rule_id)
 
     def get_complete_rule_data(self, rule: Rule) -> Dict:
         """
