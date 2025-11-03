@@ -15,6 +15,7 @@ from drf_spectacular.utils import extend_schema, OpenApiParameter
 from .. import serializers
 from .. import models
 from ..permissions import IsAuthenticatedOrDebugReadOnly
+from .mixins import WorkspaceValidationMixin
 
 
 class WorkspaceMixin:
@@ -76,16 +77,17 @@ class DimensionFilter(filters.FilterSet):
 
 
 @extend_schema(tags=['Dimensions'])
-class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
+class DimensionViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     """
     CRUD + bulk_create for Dimension, scoped per-workspace.
+    
+    URL: /api/v1/workspaces/{workspace_id}/dimensions/
     """
     queryset = models.Dimension.objects.all()
     serializer_class = serializers.DimensionSerializer
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = DimensionFilter
-    # filterset_fields = ['id', 'type', 'status', 'workspace__id']
 
     @extend_schema(tags=["Dimensions"])
     def list(self, request, *args, **kwargs):
@@ -112,70 +114,44 @@ class DimensionViewSet(WorkspaceMixin, viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
-        wid = self.get_workspace_id()
-        if wid:
-            # list/retrieve only dims in that workspace
-            self.check_workspace_access(wid)
-            return models.Dimension.objects.all_workspaces().filter(workspace_id=wid)
-
-        # no `?workspace=`: superusers see all, regular users auto-filter via manager
-        user = getattr(self.request, 'user', None)
-        if user and user.is_superuser:
-            return models.Dimension.objects.all_workspaces()
-        return models.Dimension.objects.all()
-
-    def get_object(self):
-        # enforce workspace scoping on retrieve()
-        obj = super().get_object()
-        wid = self.get_workspace_id()
-        if wid is not None and obj.workspace_id != wid:
-            self.check_workspace_access(wid)
-        return obj
+        """Get dimensions filtered by workspace from URL path."""
+        workspace_id = self.kwargs.get('workspace_id')
+        # WorkspaceValidationMixin already validated access in dispatch()
+        if workspace_id:
+            return models.Dimension.objects.filter(workspace_id=workspace_id)
+        return models.Dimension.objects.none()
 
     def perform_create(self, serializer):
-        # require payload to include { "workspace": <id> } via a write-only field
-        workspace_obj = serializer.validated_data.get('workspace')
-        if not workspace_obj:
-            raise PermissionDenied("No workspace context available")
-        wid = workspace_obj.id
-        self.check_workspace_access(wid)
-
-        kwargs = {}
-        if self.request.user.is_authenticated:
-            kwargs['created_by'] = self.request.user
-
-        serializer.save(**kwargs)
+        """Set workspace from URL path when creating objects."""
+        # WorkspaceValidationMixin.perform_create() handles workspace assignment
+        # But we still need to check if serializer has workspace field
+        workspace_id = self.kwargs.get('workspace_id')
+        if workspace_id:
+            workspace = models.Workspace.objects.get(id=workspace_id)
+            serializer.save(workspace=workspace)
+        else:
+            super().perform_create(serializer)
 
     @extend_schema(tags=["Dimensions"])
     @action(detail=False, methods=['post'])
     def bulk_create(self, request, version=None):
         """
-        POST /api/dimensions/bulk_create/?workspace=<id>
+        POST /api/v1/workspaces/{workspace_id}/dimensions/bulk_create/
         with body { "dimensions": [ {name, type, …}, … ] }
-
-        Workspace can be provided either as a query parameter (?workspace=<id>) 
-        or in the request body ("workspace": <id>).
+        
+        Workspace ID comes from URL path.
         """
-        wid = self.get_workspace_id()
-
-        # If workspace not found in query params, check request body
-        if not wid and hasattr(request, 'data') and 'workspace' in request.data:
-            try:
-                wid = int(request.data['workspace'])
-            except (ValueError, TypeError):
-                return Response({'error': 'Invalid workspace ID in request body'},
-                                status=status.HTTP_400_BAD_REQUEST)
-
-        if not wid:
-            return Response({'error': 'No workspace context available. Provide workspace as query parameter (?workspace=<id>) or in request body ("workspace": <id>)'},
-                            status=status.HTTP_400_BAD_REQUEST)
-        try:
-            self.check_workspace_access(wid)
-        except PermissionDenied as e:
-            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
+        workspace_id = self.kwargs.get('workspace_id')
+        # WorkspaceValidationMixin already validated access in dispatch()
+        
+        if not workspace_id:
+            return Response(
+                {'error': 'Workspace ID is required in URL path'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
         # fetch the Workspace instance once
-        workspace_obj = models.Workspace.objects.get(pk=wid)
+        workspace_obj = models.Workspace.objects.get(pk=workspace_id)
 
         serializer = serializers.DimensionBulkCreateSerializer(
             data=request.data)
@@ -262,16 +238,17 @@ class DimensionValueFilter(filters.FilterSet):
 
 
 @extend_schema(tags=['Dimensions'])
-class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
+class DimensionValueViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     """
     CRUD + bulk_create for DimensionValue, scoped per-workspace.
+    
+    URL: /api/v1/workspaces/{workspace_id}/dimension-values/
     """
     queryset = models.DimensionValue.objects.all()
     serializer_class = serializers.DimensionValueSerializer
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_class = DimensionValueFilter
-    # filterset_fields = ['id', 'dimension__id', 'workspace__id']
 
     @extend_schema(tags=["Dimensions"])
     def list(self, request, *args, **kwargs):
@@ -298,17 +275,14 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
         return super().destroy(request, *args, **kwargs)
 
     def get_queryset(self):
-        wid = self.get_workspace_id()
+        """Get dimension values filtered by workspace from URL path."""
+        workspace_id = self.kwargs.get('workspace_id')
+        # WorkspaceValidationMixin already validated access in dispatch()
         
-        if wid:
-            self.check_workspace_access(wid)
-            queryset = models.DimensionValue.objects.all_workspaces().filter(workspace_id=wid)
+        if workspace_id:
+            queryset = models.DimensionValue.objects.filter(workspace_id=workspace_id)
         else:
-            user = getattr(self.request, 'user', None)
-            if user and user.is_superuser:
-                queryset = models.DimensionValue.objects.all_workspaces()
-            else:
-                queryset = models.DimensionValue.objects.all()
+            queryset = models.DimensionValue.objects.none()
         
         # Apply select_related optimizations
         return queryset.select_related(
@@ -318,22 +292,16 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
             'workspace'           # For workspace_name
         )
 
-    def get_object(self):
-        obj = super().get_object()
-        wid = self.get_workspace_id()
-        if wid is not None and obj.workspace_id != wid:
-            self.check_workspace_access(wid)
-        return obj
-
     def perform_create(self, serializer):
         from ..services.constraint_validator import ConstraintValidatorService
 
-        # require a write-only `workspace` field in the serializer
-        workspace_obj = serializer.validated_data.get('workspace')
-        if not workspace_obj:
+        # Get workspace from URL path
+        workspace_id = self.kwargs.get('workspace_id')
+        if not workspace_id:
             raise PermissionDenied("No workspace context available")
-        wid = workspace_obj.id
-        self.check_workspace_access(wid)
+        
+        workspace = models.Workspace.objects.get(id=workspace_id)
+        # WorkspaceValidationMixin already validated access in dispatch()
 
         # Validate against dimension constraints
         dimension = serializer.validated_data.get('dimension')
@@ -352,7 +320,7 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
                     'validation_errors': validation_result['errors']
                 })
 
-        kwargs = {}
+        kwargs = {'workspace': workspace}
         user = getattr(self.request, 'user', None)
         if user and user.is_authenticated:
             kwargs['created_by'] = user
@@ -387,31 +355,21 @@ class DimensionValueViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=['post'])
     def bulk_create(self, request, version=None):
         """
-        POST /api/dimension-values/bulk_create/?workspace=<id>
+        POST /api/v1/workspaces/{workspace_id}/dimension-values/bulk_create/
         with body { "dimension_values": [ {...}, ... ] }
-
-        Workspace can be provided either as a query parameter (?workspace=<id>) 
-        or in the request body ("workspace": <id>).
+        
+        Workspace ID comes from URL path.
         """
-        wid = self.get_workspace_id()
+        workspace_id = self.kwargs.get('workspace_id')
+        # WorkspaceValidationMixin already validated access in dispatch()
+        
+        if not workspace_id:
+            return Response(
+                {'error': 'Workspace ID is required in URL path'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
 
-        # If workspace not found in query params, check request body
-        if not wid and hasattr(request, 'data') and 'workspace' in request.data:
-            try:
-                wid = int(request.data['workspace'])
-            except (ValueError, TypeError):
-                return Response({'error': 'Invalid workspace ID in request body'},
-                                status=status.HTTP_400_BAD_REQUEST)
-
-        if not wid:
-            return Response({'error': 'No workspace context available. Provide workspace as query parameter (?workspace=<id>) or in request body ("workspace": <id>)'},
-                            status=status.HTTP_400_BAD_REQUEST)
-        try:
-            self.check_workspace_access(wid)
-        except PermissionDenied as e:
-            return Response({'error': str(e)}, status=status.HTTP_403_FORBIDDEN)
-
-        workspace_obj = models.Workspace.objects.get(pk=wid)
+        workspace_obj = models.Workspace.objects.get(pk=workspace_id)
 
         serializer = serializers.DimensionValueBulkCreateSerializer(
             data=request.data)

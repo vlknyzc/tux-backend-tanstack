@@ -16,15 +16,18 @@ from .. import serializers
 from .. import models
 from ..services.propagation_service import PropagationService, PropagationError
 from ..permissions import IsAuthenticatedOrDebugReadOnly
+from .mixins import WorkspaceValidationMixin
 
 logger = logging.getLogger(__name__)
 
 
 @extend_schema(tags=['Propagation'])
-class PropagationJobViewSet(viewsets.ReadOnlyModelViewSet):
+class PropagationJobViewSet(WorkspaceValidationMixin, viewsets.ReadOnlyModelViewSet):
     """
     ViewSet for viewing propagation jobs.
     Read-only to maintain audit trail integrity.
+    
+    URL: /api/v1/workspaces/{workspace_id}/propagation-jobs/
     """
     serializer_class = serializers.PropagationJobSerializer
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
@@ -41,20 +44,16 @@ class PropagationJobViewSet(viewsets.ReadOnlyModelViewSet):
         return super().retrieve(request, *args, **kwargs)
 
     def get_queryset(self):
-        """Get propagation jobs filtered by workspace context."""
-        workspace = getattr(self.request, 'workspace', None)
-
-        if not workspace:
-            if hasattr(self.request, 'user') and self.request.user.is_superuser:
-                return models.PropagationJob.objects.all_workspaces().select_related(
-                    'workspace', 'triggered_by'
-                )
-            return models.PropagationJob.objects.none()
-
-        # For regular users, automatic workspace filtering is applied by managers
-        return models.PropagationJob.objects.all().select_related(
-            'workspace', 'triggered_by'
-        )
+        """Get propagation jobs filtered by workspace from URL path."""
+        workspace_id = self.kwargs.get('workspace_id')
+        # WorkspaceValidationMixin already validated access in dispatch()
+        
+        if workspace_id:
+            return models.PropagationJob.objects.filter(
+                workspace_id=workspace_id
+            ).select_related('workspace', 'triggered_by')
+        
+        return models.PropagationJob.objects.none()
 
     @extend_schema(tags=["String Propagation"])
     @action(detail=True, methods=['get'])
@@ -70,8 +69,8 @@ class PropagationJobViewSet(viewsets.ReadOnlyModelViewSet):
     @action(detail=False, methods=['get'])
     def summary(self, request):
         """Get summary statistics for propagation jobs."""
-        workspace = getattr(request, 'workspace', None)
-        if not workspace:
+        workspace_id = self.kwargs.get('workspace_id')
+        if not workspace_id:
             raise PermissionDenied("No workspace context available")
 
         queryset = self.get_queryset()
@@ -108,10 +107,12 @@ class PropagationJobViewSet(viewsets.ReadOnlyModelViewSet):
 
 
 @extend_schema(tags=['Propagation'])
-class PropagationErrorViewSet(viewsets.ModelViewSet):
+class PropagationErrorViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing propagation errors.
     Allows marking errors as resolved.
+    
+    URL: /api/v1/workspaces/{workspace_id}/propagation-errors/
     """
     serializer_class = serializers.PropagationErrorSerializer
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
@@ -132,19 +133,16 @@ class PropagationErrorViewSet(viewsets.ModelViewSet):
         return super().partial_update(request, *args, **kwargs)
 
     def get_queryset(self):
-        """Get propagation errors filtered by workspace context."""
-        workspace = getattr(self.request, 'workspace', None)
-
-        if not workspace:
-            if hasattr(self.request, 'user') and self.request.user.is_superuser:
-                return models.PropagationError.objects.all_workspaces().select_related(
-                    'job', 'string', 'string_detail', 'resolved_by'
-                )
-            return models.PropagationError.objects.none()
-
-        return models.PropagationError.objects.all().select_related(
-            'job', 'string', 'string_detail', 'resolved_by'
-        )
+        """Get propagation errors filtered by workspace from URL path."""
+        workspace_id = self.kwargs.get('workspace_id')
+        # WorkspaceValidationMixin already validated access in dispatch()
+        
+        if workspace_id:
+            return models.PropagationError.objects.filter(
+                job__workspace_id=workspace_id
+            ).select_related('job', 'string', 'string_detail', 'resolved_by')
+        
+        return models.PropagationError.objects.none()
 
     @extend_schema(tags=["String Propagation"])
     @action(detail=True, methods=['post'])
@@ -202,68 +200,29 @@ class PropagationErrorViewSet(viewsets.ModelViewSet):
 
 
 @extend_schema(tags=['Propagation'])
-class EnhancedStringDetailViewSet(viewsets.ModelViewSet):
+class EnhancedStringDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     """
     Enhanced StringDetail ViewSet with propagation control.
     Extends the existing StringDetailViewSet functionality.
+    
+    URL: /api/v1/workspaces/{workspace_id}/enhanced-string-details/
     """
     serializer_class = serializers.StringDetailUpdateWithPropagationSerializer
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
     filter_backends = [DjangoFilterBackend]
     filterset_fields = ['string', 'dimension', 'dimension_value']
 
-    def _resolve_workspace_context(self, request):
-        """Helper method to resolve workspace context from request."""
-        workspace = getattr(request, 'workspace', None)
-
-        # Handle workspace context automatically based on user's access
-        if not workspace:
-            # Check if workspace is explicitly specified in the request data
-            workspace_data = request.data.get('workspace')
-            if workspace_data:
-                # Convert workspace ID to Workspace instance
-                try:
-                    from ..models.workspace import Workspace
-                    workspace_obj = Workspace.objects.get(id=workspace_data)
-                    workspace = workspace_obj
-                except Workspace.DoesNotExist:
-                    raise PermissionDenied(
-                        f"Workspace {workspace_data} does not exist")
-
-                # Verify user has access to this workspace
-                if (request.user.is_authenticated and
-                    not request.user.is_superuser and
-                        not request.user.has_workspace_access(workspace_data)):
-                    raise PermissionDenied(
-                        f"Access denied to workspace {workspace_data}")
-                # Set the workspace context for this request
-                request.workspace = workspace
-            else:
-                # Try to auto-determine workspace from user's assignments
-                if not request.user.is_authenticated:
-                    raise PermissionDenied(
-                        "Authentication required for workspace operations")
-
-                user_workspaces = request.user.get_accessible_workspaces()
-
-                if request.user.is_superuser:
-                    raise PermissionDenied(
-                        "Superusers must specify 'workspace' in the request data.")
-                elif len(user_workspaces) == 1:
-                    # User has access to only one workspace - use it automatically
-                    workspace = user_workspaces[0]
-                    request.workspace = workspace
-                elif len(user_workspaces) > 1:
-                    raise PermissionDenied(
-                        "Multiple workspaces available. Please specify 'workspace' in the request data.")
-                else:
-                    raise PermissionDenied(
-                        "No workspace access available for this user.")
-
-        if not workspace:
+    def _get_workspace_from_url(self):
+        """Get workspace from URL path."""
+        workspace_id = self.kwargs.get('workspace_id')
+        if not workspace_id:
             raise PermissionDenied("No workspace context available")
-
-        return workspace
+        
+        from ..models.workspace import Workspace
+        try:
+            return Workspace.objects.get(id=workspace_id)
+        except Workspace.DoesNotExist:
+            raise PermissionDenied(f"Workspace {workspace_id} does not exist")
 
     def get_serializer_class(self):
         """Return appropriate serializer class based on action."""
@@ -294,19 +253,16 @@ class EnhancedStringDetailViewSet(viewsets.ModelViewSet):
         return self._enhanced_update(request, *args, partial=True, **kwargs)
 
     def get_queryset(self):
-        """Get string details filtered by workspace context."""
-        workspace = getattr(self.request, 'workspace', None)
-
-        if not workspace:
-            if hasattr(self.request, 'user') and self.request.user.is_superuser:
-                return models.StringDetail.objects.all_workspaces().select_related(
-                    'string', 'dimension', 'dimension_value'
-                )
-            return models.StringDetail.objects.none()
-
-        return models.StringDetail.objects.all().select_related(
-            'string', 'dimension', 'dimension_value'
-        )
+        """Get string details filtered by workspace from URL path."""
+        workspace_id = self.kwargs.get('workspace_id')
+        # WorkspaceValidationMixin already validated access in dispatch()
+        
+        if workspace_id:
+            return models.StringDetail.objects.filter(
+                string__workspace_id=workspace_id
+            ).select_related('string', 'dimension', 'dimension_value')
+        
+        return models.StringDetail.objects.none()
 
     def _enhanced_update(self, request, partial=False, *args, **kwargs):
         """Enhanced update with propagation control."""
@@ -321,9 +277,7 @@ class EnhancedStringDetailViewSet(viewsets.ModelViewSet):
             'propagation_depth', 10)
         dry_run = serializer.validated_data.pop('dry_run', False)
 
-        workspace = getattr(request, 'workspace', None)
-        if not workspace:
-            raise PermissionDenied("No workspace context available")
+        workspace = self._get_workspace_from_url()
 
         if dry_run:
             # Perform impact analysis without making changes
@@ -388,7 +342,7 @@ class EnhancedStringDetailViewSet(viewsets.ModelViewSet):
     )
     def analyze_impact(self, request, **kwargs):
         """Analyze propagation impact without making changes."""
-        workspace = self._resolve_workspace_context(request)
+        workspace = self._get_workspace_from_url()
 
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
@@ -422,7 +376,7 @@ class EnhancedStringDetailViewSet(viewsets.ModelViewSet):
     )
     def batch_update(self, request, **kwargs):
         """Perform batch updates on multiple StringDetails."""
-        workspace = self._resolve_workspace_context(request)
+        workspace = self._get_workspace_from_url()
 
         serializer = self.get_serializer(data=request.data)
         if serializer.is_valid():
@@ -451,9 +405,11 @@ class EnhancedStringDetailViewSet(viewsets.ModelViewSet):
 
 
 @extend_schema(tags=['Propagation'])
-class PropagationSettingsViewSet(viewsets.ModelViewSet):
+class PropagationSettingsViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing user propagation settings.
+    
+    URL: /api/v1/workspaces/{workspace_id}/propagation-settings/
     """
     serializer_class = serializers.PropagationSettingsSerializer
     permission_classes = [IsAuthenticatedOrDebugReadOnly]
@@ -479,34 +435,40 @@ class PropagationSettingsViewSet(viewsets.ModelViewSet):
         return super().partial_update(request, *args, **kwargs)
 
     def get_queryset(self):
-        """Get settings for current user and workspace."""
-        workspace = getattr(self.request, 'workspace', None)
-
-        if not workspace:
-            return models.PropagationSettings.objects.none()
-
-        # Users can only see their own settings
-        return models.PropagationSettings.objects.filter(
-            user=self.request.user,
-            workspace=workspace
-        )
+        """Get propagation settings filtered by workspace from URL path."""
+        workspace_id = self.kwargs.get('workspace_id')
+        # WorkspaceValidationMixin already validated access in dispatch()
+        
+        if workspace_id:
+            # Users can only see their own settings
+            return models.PropagationSettings.objects.filter(
+                workspace_id=workspace_id,
+                user=self.request.user
+            )
+        
+        return models.PropagationSettings.objects.none()
 
     def perform_create(self, serializer):
         """Set user and workspace when creating settings."""
-        workspace = getattr(self.request, 'workspace', None)
-        if not workspace:
+        workspace_id = self.kwargs.get('workspace_id')
+        if not workspace_id:
             raise PermissionDenied("No workspace context available")
-
+        
+        workspace = models.Workspace.objects.get(id=workspace_id)
+        # WorkspaceValidationMixin already validated access in dispatch()
+        
         serializer.save(user=self.request.user, workspace=workspace)
 
     @extend_schema(tags=["String Propagation"])
     @action(detail=False, methods=['get'])
     def current(self, request):
         """Get current user's settings for current workspace."""
-        workspace = getattr(request, 'workspace', None)
-        if not workspace:
+        workspace_id = self.kwargs.get('workspace_id')
+        if not workspace_id:
             raise PermissionDenied("No workspace context available")
-
+        
+        workspace = models.Workspace.objects.get(id=workspace_id)
+        
         settings = models.PropagationSettings.objects.get_for_user_and_workspace(
             request.user, workspace
         )

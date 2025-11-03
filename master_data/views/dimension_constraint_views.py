@@ -19,7 +19,7 @@ from .. import serializers
 from .. import models
 from ..permissions import IsAuthenticatedOrDebugReadOnly
 from ..services.constraint_validator import ConstraintValidatorService
-from .dimension_views import WorkspaceMixin
+from .mixins import WorkspaceValidationMixin
 
 
 class DimensionConstraintFilter(filters.FilterSet):
@@ -34,11 +34,13 @@ class DimensionConstraintFilter(filters.FilterSet):
 
 
 @extend_schema(tags=['Dimension Constraints'])
-class DimensionConstraintViewSet(WorkspaceMixin, viewsets.ModelViewSet):
+class DimensionConstraintViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     """
     ViewSet for managing dimension constraints.
 
     Provides CRUD operations for constraints with automatic workspace isolation.
+    
+    URL: /api/v1/workspaces/{workspace_id}/dimension-constraints/
     """
     queryset = models.DimensionConstraint.objects.all()
     serializer_class = serializers.DimensionConstraintSerializer
@@ -47,18 +49,16 @@ class DimensionConstraintViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     filterset_class = DimensionConstraintFilter
 
     def get_queryset(self):
-        """Filter queryset by workspace."""
-        wid = self.get_workspace_id()
-        if wid:
-            self.check_workspace_access(wid)
-            return models.DimensionConstraint.objects.filter(dimension__workspace_id=wid)
-
-        user = getattr(self.request, 'user', None)
-        if user and user.is_superuser:
-            return models.DimensionConstraint.objects.all()
-
-        # Use workspace filtering through dimension relationship
-        return models.DimensionConstraint.objects.select_related('dimension').all()
+        """Filter queryset by workspace from URL path."""
+        workspace_id = self.kwargs.get('workspace_id')
+        # WorkspaceValidationMixin already validated access in dispatch()
+        
+        if workspace_id:
+            return models.DimensionConstraint.objects.filter(
+                dimension__workspace_id=workspace_id
+            ).select_related('dimension')
+        
+        return models.DimensionConstraint.objects.none()
 
     def perform_create(self, serializer):
         """Create constraint with workspace validation."""
@@ -66,8 +66,12 @@ class DimensionConstraintViewSet(WorkspaceMixin, viewsets.ModelViewSet):
         if not dimension:
             raise PermissionDenied("Dimension is required")
 
-        # Check workspace access through dimension
-        self.check_workspace_access(dimension.workspace_id)
+        # Validate dimension belongs to workspace from URL
+        workspace_id = self.kwargs.get('workspace_id')
+        if workspace_id and dimension.workspace_id != workspace_id:
+            raise PermissionDenied(
+                f"Dimension does not belong to workspace {workspace_id}"
+            )
 
         kwargs = {}
         if self.request.user.is_authenticated:
@@ -81,7 +85,13 @@ class DimensionConstraintViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     def perform_update(self, serializer):
         """Update constraint with workspace validation."""
         instance = self.get_object()
-        self.check_workspace_access(instance.dimension.workspace_id)
+        workspace_id = self.kwargs.get('workspace_id')
+        
+        # Validate dimension belongs to workspace from URL
+        if workspace_id and instance.dimension.workspace_id != workspace_id:
+            raise PermissionDenied(
+                f"Constraint's dimension does not belong to workspace {workspace_id}"
+            )
 
         serializer.save()
 
@@ -90,7 +100,13 @@ class DimensionConstraintViewSet(WorkspaceMixin, viewsets.ModelViewSet):
 
     def perform_destroy(self, instance):
         """Delete constraint with workspace validation."""
-        self.check_workspace_access(instance.dimension.workspace_id)
+        workspace_id = self.kwargs.get('workspace_id')
+        
+        # Validate dimension belongs to workspace from URL
+        if workspace_id and instance.dimension.workspace_id != workspace_id:
+            raise PermissionDenied(
+                f"Constraint's dimension does not belong to workspace {workspace_id}"
+            )
         dimension_id = instance.dimension.id
 
         instance.delete()
@@ -113,13 +129,20 @@ class DimensionConstraintViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='by-dimension/(?P<dimension_id>[^/.]+)')
     def by_dimension(self, request, dimension_id=None, **kwargs):
         """
-        GET /api/dimension-constraints/by-dimension/{dimension_id}/
+        GET /api/v1/workspaces/{workspace_id}/dimension-constraints/by-dimension/{dimension_id}/
 
         Get all constraints for a specific dimension.
         """
         try:
+            workspace_id = self.kwargs.get('workspace_id')
             dimension = get_object_or_404(models.Dimension, id=dimension_id)
-            self.check_workspace_access(dimension.workspace_id)
+            
+            # Validate dimension belongs to workspace from URL
+            if workspace_id and dimension.workspace_id != workspace_id:
+                return Response(
+                    {'error': f'Dimension does not belong to workspace {workspace_id}'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
             constraints = models.DimensionConstraint.objects.filter(
                 dimension=dimension
@@ -143,14 +166,21 @@ class DimensionConstraintViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='bulk-create/(?P<dimension_id>[^/.]+)')
     def bulk_create(self, request, dimension_id=None, **kwargs):
         """
-        POST /api/dimension-constraints/bulk-create/{dimension_id}/
+        POST /api/v1/workspaces/{workspace_id}/dimension-constraints/bulk-create/{dimension_id}/
 
         Bulk create constraints for a dimension.
         Body: { "constraints": [ {constraint_type, value?, error_message?}, ... ] }
         """
         try:
+            workspace_id = self.kwargs.get('workspace_id')
             dimension = get_object_or_404(models.Dimension, id=dimension_id)
-            self.check_workspace_access(dimension.workspace_id)
+            
+            # Validate dimension belongs to workspace from URL
+            if workspace_id and dimension.workspace_id != workspace_id:
+                return Response(
+                    {'error': f'Dimension does not belong to workspace {workspace_id}'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
             serializer = serializers.ConstraintBulkCreateSerializer(data=request.data)
             if not serializer.is_valid():
@@ -203,14 +233,21 @@ class DimensionConstraintViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=['put'], url_path='reorder/(?P<dimension_id>[^/.]+)')
     def reorder(self, request, dimension_id=None, **kwargs):
         """
-        PUT /api/dimension-constraints/reorder/{dimension_id}/
+        PUT /api/v1/workspaces/{workspace_id}/dimension-constraints/reorder/{dimension_id}/
 
         Reorder constraints for a dimension.
         Body: { "constraint_ids": [3, 1, 2] }  // New order
         """
         try:
+            workspace_id = self.kwargs.get('workspace_id')
             dimension = get_object_or_404(models.Dimension, id=dimension_id)
-            self.check_workspace_access(dimension.workspace_id)
+            
+            # Validate dimension belongs to workspace from URL
+            if workspace_id and dimension.workspace_id != workspace_id:
+                return Response(
+                    {'error': f'Dimension does not belong to workspace {workspace_id}'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
             serializer = serializers.ConstraintReorderSerializer(data=request.data)
             if not serializer.is_valid():
@@ -289,14 +326,21 @@ class DimensionConstraintViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=['post'], url_path='validate/(?P<dimension_id>[^/.]+)')
     def validate_value(self, request, dimension_id=None, **kwargs):
         """
-        POST /api/dimension-constraints/validate/{dimension_id}/
+        POST /api/v1/workspaces/{workspace_id}/dimension-constraints/validate/{dimension_id}/
 
         Validate a value against dimension constraints.
         Body: { "value": "test-value" }
         """
         try:
+            workspace_id = self.kwargs.get('workspace_id')
             dimension = get_object_or_404(models.Dimension, id=dimension_id)
-            self.check_workspace_access(dimension.workspace_id)
+            
+            # Validate dimension belongs to workspace from URL
+            if workspace_id and dimension.workspace_id != workspace_id:
+                return Response(
+                    {'error': f'Dimension does not belong to workspace {workspace_id}'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
             serializer = serializers.DimensionValueValidationSerializer(data=request.data)
             if not serializer.is_valid():
@@ -350,14 +394,21 @@ class DimensionConstraintViewSet(WorkspaceMixin, viewsets.ModelViewSet):
     @action(detail=False, methods=['get'], url_path='violations/(?P<dimension_id>[^/.]+)')
     def check_violations(self, request, dimension_id=None, **kwargs):
         """
-        GET /api/dimension-constraints/violations/{dimension_id}/
+        GET /api/v1/workspaces/{workspace_id}/dimension-constraints/violations/{dimension_id}/
 
         Check existing dimension values for constraint violations.
         Useful when adding constraints to dimensions with existing values.
         """
         try:
+            workspace_id = self.kwargs.get('workspace_id')
             dimension = get_object_or_404(models.Dimension, id=dimension_id)
-            self.check_workspace_access(dimension.workspace_id)
+            
+            # Validate dimension belongs to workspace from URL
+            if workspace_id and dimension.workspace_id != workspace_id:
+                return Response(
+                    {'error': f'Dimension does not belong to workspace {workspace_id}'},
+                    status=status.HTTP_403_FORBIDDEN
+                )
 
             violations = ConstraintValidatorService.get_constraint_violations(dimension.id)
 

@@ -30,23 +30,65 @@ from .views import (
 )
 
 router = routers.DefaultRouter()
-router.register("dimensions", DimensionViewSet, basename="dimension")
-router.register("dimension-values", DimensionValueViewSet,
-                basename="dimensionvalue")
-router.register("dimension-constraints", DimensionConstraintViewSet,
-                basename="dimensionconstraint")
+
+# Global resources (no workspace_id in path)
 router.register("workspaces", WorkspaceViewSet, basename="workspace")
 router.register("platforms", PlatformViewSet, basename="platform")
 router.register("fields", FieldViewSet, basename="field")
-router.register("rules", RuleViewSet, basename="rule")
-router.register("rule-details", RuleDetailViewSet, basename="ruledetail")
-router.register("rule-nested", RuleNestedViewSet, basename="rule-nested")
 
-# Propagation endpoints
-router.register("propagation-jobs", PropagationJobViewSet, basename="propagation-job")
-router.register("propagation-errors", PropagationErrorViewSet, basename="propagation-error")
-router.register("enhanced-string-details", EnhancedStringDetailViewSet, basename="enhanced-stringdetail")
-router.register("propagation-settings", PropagationSettingsViewSet, basename="propagation-settings")
+# Workspace-scoped resources (workspace_id in path)
+router.register(
+    r"workspaces/(?P<workspace_id>\d+)/dimensions",
+    DimensionViewSet,
+    basename="dimension"
+)
+router.register(
+    r"workspaces/(?P<workspace_id>\d+)/dimension-values",
+    DimensionValueViewSet,
+    basename="dimensionvalue"
+)
+router.register(
+    r"workspaces/(?P<workspace_id>\d+)/dimension-constraints",
+    DimensionConstraintViewSet,
+    basename="dimensionconstraint"
+)
+router.register(
+    r"workspaces/(?P<workspace_id>\d+)/rules",
+    RuleViewSet,
+    basename="rule"
+)
+router.register(
+    r"workspaces/(?P<workspace_id>\d+)/rule-details",
+    RuleDetailViewSet,
+    basename="ruledetail"
+)
+router.register(
+    r"workspaces/(?P<workspace_id>\d+)/rule-nested",
+    RuleNestedViewSet,
+    basename="rule-nested"
+)
+
+# Propagation endpoints (workspace-scoped)
+router.register(
+    r"workspaces/(?P<workspace_id>\d+)/propagation-jobs",
+    PropagationJobViewSet,
+    basename="propagation-job"
+)
+router.register(
+    r"workspaces/(?P<workspace_id>\d+)/propagation-errors",
+    PropagationErrorViewSet,
+    basename="propagation-error"
+)
+router.register(
+    r"workspaces/(?P<workspace_id>\d+)/enhanced-string-details",
+    EnhancedStringDetailViewSet,
+    basename="enhanced-stringdetail"
+)
+router.register(
+    r"workspaces/(?P<workspace_id>\d+)/propagation-settings",
+    PropagationSettingsViewSet,
+    basename="propagation-settings"
+)
 
 urlpatterns = [
     path("", include(router.urls)),
@@ -62,34 +104,33 @@ urlpatterns = [
     path("health/", APIHealthView.as_view(), name="api-health"),
     path("demo/", VersionDemoView.as_view(), name="api-version-demo"),
 
-    # Rule configuration endpoint
-    path("rules/<int:rule_id>/configuration/",
+    # Rule configuration endpoints (workspace-scoped)
+    path("workspaces/<int:workspace_id>/rules/<int:rule_id>/configuration/",
          RuleConfigurationView.as_view(),
          name="rule-configuration"),
 
-    # Additional rule endpoints
-    path("rules/<int:rule_id>/lightweight/",
+    path("workspaces/<int:workspace_id>/rules/<int:rule_id>/lightweight/",
          LightweightRuleView.as_view(),
          name="rule-lightweight"),
 
-    path("rules/<int:rule_id>/fields/<int:field_id>/",
+    path("workspaces/<int:workspace_id>/rules/<int:rule_id>/fields/<int:field_id>/",
          FieldSpecificRuleView.as_view(),
          name="rule-field-specific"),
 
-    path("rules/<int:rule_id>/validation/",
+    path("workspaces/<int:workspace_id>/rules/<int:rule_id>/validation/",
          RuleValidationView.as_view(),
          name="rule-validation"),
 
-    path("rules/generation-preview/",
+    path("workspaces/<int:workspace_id>/rules/generation-preview/",
          GenerationPreviewView.as_view(),
          name="rule-generation-preview"),
 
-    # Cache management endpoints
-    path("rules/cache/invalidate/",
+    # Cache management endpoints (workspace-scoped)
+    path("workspaces/<int:workspace_id>/rules/cache/invalidate/",
          CacheManagementView.as_view(),
          name="rule-cache-invalidate"),
 
-    path("rules/<int:rule_id>/metrics/",
+    path("workspaces/<int:workspace_id>/rules/<int:rule_id>/metrics/",
          CacheManagementView.as_view(),
          name="rule-performance-metrics"),
 ]
