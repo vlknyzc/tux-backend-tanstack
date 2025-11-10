@@ -1,0 +1,510 @@
+{
+  "info": {
+    "name": "String Registry API",
+    "description": "API endpoints for validating and importing external platform strings into Tuxonomy.\n\n## Features\n- Upload CSV files with platform strings\n- Validate against workspace naming rules\n- Track dual hierarchies (Tuxonomy vs External)\n- Detect hierarchy conflicts\n\n## Setup\n1. Set the `base_url` variable (e.g., http://localhost:8000/api/v1)\n2. Set the `jwt_token` variable with your authentication token\n3. Update `workspace_id`, `platform_id`, `rule_id` as needed\n\n## Authentication\nAll requests require Bearer token authentication.",
+    "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
+    "_exporter_id": "string-registry-v1"
+  },
+  "auth": {
+    "type": "bearer",
+    "bearer": [
+      {
+        "key": "token",
+        "value": "{{jwt_token}}",
+        "type": "string"
+      }
+    ]
+  },
+  "item": [
+    {
+      "name": "CSV Upload & Validation",
+      "item": [
+        {
+          "name": "Upload CSV File",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test response status",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Parse response",
+                  "const response = pm.response.json();",
+                  "",
+                  "// Test response structure",
+                  "pm.test(\"Response has success field\", function () {",
+                  "    pm.expect(response).to.have.property('success');",
+                  "});",
+                  "",
+                  "pm.test(\"Response has summary\", function () {",
+                  "    pm.expect(response).to.have.property('summary');",
+                  "});",
+                  "",
+                  "pm.test(\"Response has results array\", function () {",
+                  "    pm.expect(response).to.have.property('results');",
+                  "    pm.expect(response.results).to.be.an('array');",
+                  "});",
+                  "",
+                  "// Display summary in console",
+                  "if (response.summary) {",
+                  "    console.log('=== Upload Summary ===');",
+                  "    console.log(`Total Rows: ${response.summary.total_rows}`);",
+                  "    console.log(`Valid: ${response.summary.valid}`);",
+                  "    console.log(`Warnings: ${response.summary.warnings}`);",
+                  "    console.log(`Failed: ${response.summary.failed}`);",
+                  "    console.log(`Skipped: ${response.summary.skipped_rows}`);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "platform_id",
+                  "value": "{{platform_id}}",
+                  "description": "ID of the platform (e.g., Meta Ads, Google Ads)",
+                  "type": "text"
+                },
+                {
+                  "key": "rule_id",
+                  "value": "{{rule_id}}",
+                  "description": "ID of the rule to validate against",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "description": "CSV file with columns: string_value, external_platform_id, entity_name, parent_external_id",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/string-registry/upload/",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "string-registry", "upload", ""]
+            },
+            "description": "Upload a CSV file containing external platform strings for validation.\n\n**CSV Format:**\n```csv\nstring_value,external_platform_id,entity_name,parent_external_id\nACME-2024,account_999,account,\nACME-2024-US-Q4-Awareness,campaign_123,campaign,account_999\n```\n\n**Features:**\n- Validates strings against selected rule\n- Supports mixed entity types (processes matching, skips mismatched)\n- Detects and handles duplicates\n- Links parent-child relationships\n- Detects hierarchy conflicts\n\n**Limits:**\n- Max file size: 5MB\n- Max rows: 500\n- Rate limit: 10 uploads/hour"
+          },
+          "response": [
+            {
+              "name": "Successful Upload",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "platform_id",
+                      "value": "1",
+                      "type": "text"
+                    },
+                    {
+                      "key": "rule_id",
+                      "value": "5",
+                      "type": "text"
+                    },
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/workspaces/1/string-registry/upload/",
+                  "host": ["{{base_url}}"],
+                  "path": ["workspaces", "1", "string-registry", "upload", ""]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"summary\": {\n    \"total_rows\": 3,\n    \"uploaded_rows\": 3,\n    \"processed_rows\": 3,\n    \"skipped_rows\": 0,\n    \"created\": 2,\n    \"updated\": 1,\n    \"valid\": 3,\n    \"warnings\": 1,\n    \"failed\": 0,\n    \"linked_parents\": 2,\n    \"parent_conflicts\": 0,\n    \"parent_not_found\": 0\n  },\n  \"results\": [\n    {\n      \"row_number\": 2,\n      \"string_value\": \"ACME-2024\",\n      \"external_platform_id\": \"account_999\",\n      \"entity_name\": \"account\",\n      \"parent_external_id\": null,\n      \"status\": \"valid\",\n      \"string_id\": 101,\n      \"tuxonomy_parent_id\": null,\n      \"errors\": [],\n      \"warnings\": []\n    },\n    {\n      \"row_number\": 3,\n      \"string_value\": \"ACME-2024-US-Q4-Awareness\",\n      \"external_platform_id\": \"campaign_123\",\n      \"entity_name\": \"campaign\",\n      \"parent_external_id\": \"account_999\",\n      \"status\": \"valid\",\n      \"string_id\": 102,\n      \"tuxonomy_parent_id\": 101,\n      \"errors\": [],\n      \"warnings\": []\n    },\n    {\n      \"row_number\": 4,\n      \"string_value\": \"ACME-2024-US-Q4-Broad-18-35\",\n      \"external_platform_id\": \"adgroup_456\",\n      \"entity_name\": \"ad_group\",\n      \"parent_external_id\": \"campaign_123\",\n      \"status\": \"warning\",\n      \"string_id\": 103,\n      \"tuxonomy_parent_id\": 102,\n      \"errors\": [],\n      \"warnings\": [\n        {\n          \"type\": \"parent_not_found\",\n          \"field\": \"parent_external_id\",\n          \"message\": \"Parent with external ID campaign_999 not found in workspace\"\n        }\n      ]\n    }\n  ]\n}"
+            },
+            {
+              "name": "Validation Errors",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "platform_id",
+                      "value": "1",
+                      "type": "text"
+                    },
+                    {
+                      "key": "rule_id",
+                      "value": "5",
+                      "type": "text"
+                    },
+                    {
+                      "key": "file",
+                      "type": "file",
+                      "src": []
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/workspaces/1/string-registry/upload/",
+                  "host": ["{{base_url}}"],
+                  "path": ["workspaces", "1", "string-registry", "upload", ""]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"success\": true,\n  \"summary\": {\n    \"total_rows\": 2,\n    \"uploaded_rows\": 2,\n    \"processed_rows\": 2,\n    \"skipped_rows\": 0,\n    \"created\": 0,\n    \"updated\": 0,\n    \"valid\": 1,\n    \"warnings\": 0,\n    \"failed\": 1,\n    \"linked_parents\": 0,\n    \"parent_conflicts\": 0,\n    \"parent_not_found\": 0\n  },\n  \"results\": [\n    {\n      \"row_number\": 2,\n      \"string_value\": \"INVALID-Q4-Awareness\",\n      \"external_platform_id\": \"campaign_999\",\n      \"entity_name\": \"campaign\",\n      \"parent_external_id\": null,\n      \"status\": \"failed\",\n      \"string_id\": null,\n      \"tuxonomy_parent_id\": null,\n      \"errors\": [\n        {\n          \"type\": \"invalid_dimension_value\",\n          \"field\": \"region\",\n          \"message\": \"Value 'INVALID' not valid for dimension 'region'\",\n          \"expected\": [\"US\", \"EU\", \"APAC\", \"LATAM\"],\n          \"received\": \"INVALID\"\n        }\n      ],\n      \"warnings\": []\n    }\n  ]\n}"
+            },
+            {
+              "name": "File Upload Error",
+              "originalRequest": {
+                "method": "POST",
+                "header": [],
+                "body": {
+                  "mode": "formdata",
+                  "formdata": [
+                    {
+                      "key": "platform_id",
+                      "value": "1",
+                      "type": "text"
+                    },
+                    {
+                      "key": "rule_id",
+                      "value": "5",
+                      "type": "text"
+                    }
+                  ]
+                },
+                "url": {
+                  "raw": "{{base_url}}/workspaces/1/string-registry/upload/",
+                  "host": ["{{base_url}}"],
+                  "path": ["workspaces", "1", "string-registry", "upload", ""]
+                }
+              },
+              "status": "Bad Request",
+              "code": 400,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"file\": [\n    \"No file was submitted.\"\n  ]\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Endpoints for uploading and validating CSV files containing external platform strings."
+    },
+    {
+      "name": "Single String Validation",
+      "item": [
+        {
+          "name": "Validate Single String",
+          "event": [
+            {
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test response status",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Parse response",
+                  "const response = pm.response.json();",
+                  "",
+                  "// Test response structure",
+                  "pm.test(\"Response has is_valid field\", function () {",
+                  "    pm.expect(response).to.have.property('is_valid');",
+                  "});",
+                  "",
+                  "// Display validation result",
+                  "if (response.is_valid) {",
+                  "    console.log('✅ String is VALID');",
+                  "} else {",
+                  "    console.log('❌ String is INVALID');",
+                  "    if (response.errors && response.errors.length > 0) {",
+                  "        console.log('Errors:', response.errors);",
+                  "    }",
+                  "}",
+                  "",
+                  "if (response.warnings && response.warnings.length > 0) {",
+                  "    console.log('⚠️ Warnings:', response.warnings);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"platform_id\": {{platform_id}},\n  \"rule_id\": {{rule_id}},\n  \"entity_name\": \"campaign\",\n  \"string_value\": \"ACME-2024-US-Q4-Awareness\",\n  \"external_platform_id\": \"campaign_test_123\",\n  \"parent_external_id\": \"account_999\"\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/string-registry/validate_single/",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "string-registry", "validate_single", ""]
+            },
+            "description": "Validate a single string without creating a database record.\n\n**Use Cases:**\n- Test string before adding to CSV\n- Real-time validation in UI\n- Testing rule patterns\n\n**Features:**\n- Parses dimension values from string\n- Validates against rule requirements\n- Checks entity-rule compatibility\n- Returns detailed error messages\n\n**Rate Limit:** 100 validations/hour"
+          },
+          "response": [
+            {
+              "name": "Valid String",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"platform_id\": 1,\n  \"rule_id\": 5,\n  \"entity_name\": \"campaign\",\n  \"string_value\": \"ACME-2024-US-Q4-Awareness\",\n  \"external_platform_id\": \"campaign_test_123\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/workspaces/1/string-registry/validate_single/",
+                  "host": ["{{base_url}}"],
+                  "path": ["workspaces", "1", "string-registry", "validate_single", ""]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"is_valid\": true,\n  \"entity\": {\n    \"id\": 3,\n    \"name\": \"campaign\",\n    \"entity_level\": 1\n  },\n  \"parsed_dimension_values\": {\n    \"region\": \"US\",\n    \"quarter\": \"Q4\",\n    \"objective\": \"Awareness\"\n  },\n  \"errors\": [],\n  \"warnings\": [],\n  \"expected_string\": null,\n  \"should_skip\": false\n}"
+            },
+            {
+              "name": "Invalid Dimension Value",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"platform_id\": 1,\n  \"rule_id\": 5,\n  \"entity_name\": \"campaign\",\n  \"string_value\": \"ACME-2024-INVALID-Q4-Awareness\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/workspaces/1/string-registry/validate_single/",
+                  "host": ["{{base_url}}"],
+                  "path": ["workspaces", "1", "string-registry", "validate_single", ""]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"is_valid\": false,\n  \"entity\": {\n    \"id\": 3,\n    \"name\": \"campaign\",\n    \"entity_level\": 1\n  },\n  \"parsed_dimension_values\": {\n    \"region\": \"INVALID\"\n  },\n  \"errors\": [\n    {\n      \"type\": \"invalid_dimension_value\",\n      \"field\": \"region\",\n      \"message\": \"Value 'INVALID' not valid for dimension 'region'\",\n      \"expected\": [\"US\", \"EU\", \"APAC\", \"LATAM\", \"MEA\"],\n      \"received\": \"INVALID\"\n    }\n  ],\n  \"warnings\": [],\n  \"expected_string\": null,\n  \"should_skip\": false\n}"
+            },
+            {
+              "name": "Entity Mismatch",
+              "originalRequest": {
+                "method": "POST",
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
+                "body": {
+                  "mode": "raw",
+                  "raw": "{\n  \"platform_id\": 1,\n  \"rule_id\": 5,\n  \"entity_name\": \"ad_group\",\n  \"string_value\": \"ACME-2024-US-Q4-Awareness\"\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
+                    }
+                  }
+                },
+                "url": {
+                  "raw": "{{base_url}}/workspaces/1/string-registry/validate_single/",
+                  "host": ["{{base_url}}"],
+                  "path": ["workspaces", "1", "string-registry", "validate_single", ""]
+                }
+              },
+              "status": "OK",
+              "code": 200,
+              "_postman_previewlanguage": "json",
+              "header": [
+                {
+                  "key": "Content-Type",
+                  "value": "application/json"
+                }
+              ],
+              "body": "{\n  \"is_valid\": false,\n  \"entity\": {\n    \"id\": 4,\n    \"name\": \"ad_group\",\n    \"entity_level\": 2\n  },\n  \"parsed_dimension_values\": {},\n  \"errors\": [\n    {\n      \"type\": \"entity_rule_mismatch\",\n      \"field\": \"entity_name\",\n      \"message\": \"Entity 'ad_group' doesn't match rule entity 'campaign'\",\n      \"expected\": \"campaign\",\n      \"received\": \"ad_group\",\n      \"suggestion\": \"This row will be skipped. Select a rule for this entity type.\"\n    }\n  ],\n  \"warnings\": [],\n  \"expected_string\": null,\n  \"should_skip\": true\n}"
+            }
+          ]
+        }
+      ],
+      "description": "Endpoint for validating individual strings without creating database records. Useful for testing and real-time UI validation."
+    },
+    {
+      "name": "Export & Search",
+      "item": [
+        {
+          "name": "Export External Strings",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/strings/export/?validation_source=external&format=csv",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "strings", "export", ""],
+              "query": [
+                {
+                  "key": "validation_source",
+                  "value": "external",
+                  "description": "Filter by validation source: internal | external"
+                },
+                {
+                  "key": "validation_status",
+                  "value": "warning",
+                  "description": "Filter by status: valid | invalid | warning | entity_mismatch",
+                  "disabled": true
+                },
+                {
+                  "key": "format",
+                  "value": "csv",
+                  "description": "Export format: csv | json"
+                },
+                {
+                  "key": "has_conflicts",
+                  "value": "true",
+                  "description": "Filter strings with hierarchy conflicts",
+                  "disabled": true
+                },
+                {
+                  "key": "external_platform_id",
+                  "value": "campaign_123",
+                  "description": "Search by specific platform ID",
+                  "disabled": true
+                }
+              ]
+            },
+            "description": "Export validated external strings using the existing Strings export functionality.\n\n**Query Parameters:**\n- `validation_source`: Filter by 'internal' or 'external'\n- `validation_status`: Filter by 'valid', 'invalid', 'warning', 'entity_mismatch'\n- `format`: Export format ('csv' or 'json')\n- `has_conflicts`: Filter strings with hierarchy conflicts\n- `external_platform_id`: Search by platform ID\n\n**Export Includes:**\n- String value\n- External platform ID\n- External parent ID\n- Validation status\n- Tuxonomy parent (if linked)\n- Validation errors/warnings\n- Entity and rule information"
+          },
+          "response": []
+        },
+        {
+          "name": "Export Strings with Conflicts",
+          "request": {
+            "method": "GET",
+            "header": [],
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/strings/export/?validation_source=external&validation_status=warning&format=csv",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "strings", "export", ""],
+              "query": [
+                {
+                  "key": "validation_source",
+                  "value": "external"
+                },
+                {
+                  "key": "validation_status",
+                  "value": "warning"
+                },
+                {
+                  "key": "format",
+                  "value": "csv"
+                }
+              ]
+            },
+            "description": "Export only external strings with warnings (typically hierarchy conflicts or parent not found)."
+          },
+          "response": []
+        }
+      ],
+      "description": "Endpoints for exporting and searching validated strings. Uses the existing Strings export API with additional filters for external validation."
+    }
+  ],
+  "variable": [
+    {
+      "key": "base_url",
+      "value": "http://localhost:8000/api/v1",
+      "type": "string"
+    },
+    {
+      "key": "workspace_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "platform_id",
+      "value": "1",
+      "type": "string"
+    },
+    {
+      "key": "rule_id",
+      "value": "5",
+      "type": "string"
+    },
+    {
+      "key": "jwt_token",
+      "value": "your_jwt_token_here",
+      "type": "string"
+    }
+  ]
+}
