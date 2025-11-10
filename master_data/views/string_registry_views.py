@@ -97,10 +97,10 @@ class StringRegistryViewSet(WorkspaceValidationMixin, viewsets.ViewSet):
         """,
     )
     @action(detail=False, methods=['post'])
-    def upload(self, request, workspace_id=None):
+    def upload(self, request, workspace_id=None, **kwargs):
         """Upload and validate CSV file with external strings."""
         # Validate workspace access
-        workspace = self.get_workspace(workspace_id)
+        workspace = self.get_validated_workspace()
 
         # Validate request
         serializer = CSVUploadRequestSerializer(data=request.data)
@@ -198,9 +198,9 @@ class StringRegistryViewSet(WorkspaceValidationMixin, viewsets.ViewSet):
         """,
     )
     @action(detail=False, methods=['post'])
-    def validate_single(self, request, workspace_id=None):
+    def validate_single(self, request, workspace_id=None, **kwargs):
         """Validate a single string without creating a record."""
-        workspace = self.get_workspace(workspace_id)
+        workspace = self.get_validated_workspace()
 
         serializer = SingleStringValidationRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)

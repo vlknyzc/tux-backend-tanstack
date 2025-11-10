@@ -73,6 +73,25 @@ class StringRegistryService:
         parsed_values = {}
         entity = None
 
+        # 0. Validate string length
+        MAX_STRING_LENGTH = 500
+        if len(string_value) > MAX_STRING_LENGTH:
+            errors.append({
+                'type': 'string_too_long',
+                'field': 'string_value',
+                'message': f"String exceeds maximum length of {MAX_STRING_LENGTH} characters",
+                'received': len(string_value),
+                'expected': f"≤ {MAX_STRING_LENGTH}"
+            })
+            return {
+                'is_valid': False,
+                'entity': None,
+                'parsed_dimension_values': {},
+                'errors': errors,
+                'warnings': warnings,
+                'expected_string': None
+            }
+
         # 1. Validate entity exists and belongs to platform
         try:
             entity = Entity.objects.get(name=entity_name, platform=platform)
@@ -97,7 +116,25 @@ class StringRegistryService:
             }
 
         # 2. Check if entity matches rule's entity (or skip if not)
-        if entity.id != rule.entity.id:
+        # Get the rule's entity from its RuleDetails
+        rule_entity = rule.rule_details.first().entity if rule.rule_details.exists() else None
+        if not rule_entity:
+            errors.append({
+                'type': 'rule_configuration_error',
+                'field': 'rule',
+                'message': f"Rule '{rule.name}' has no RuleDetails configured",
+                'received': rule.name
+            })
+            return {
+                'is_valid': False,
+                'entity': entity,
+                'parsed_dimension_values': {},
+                'errors': errors,
+                'warnings': warnings,
+                'expected_string': None
+            }
+
+        if entity.id != rule_entity.id:
             return {
                 'is_valid': False,
                 'entity': entity,
@@ -105,8 +142,8 @@ class StringRegistryService:
                 'errors': [{
                     'type': 'entity_rule_mismatch',
                     'field': 'entity_name',
-                    'message': f"Entity '{entity_name}' doesn't match rule entity '{rule.entity.name}'",
-                    'expected': rule.entity.name,
+                    'message': f"Entity '{entity_name}' doesn't match rule entity '{rule_entity.name}'",
+                    'expected': rule_entity.name,
                     'received': entity_name,
                     'suggestion': 'This row will be skipped. Select a rule for this entity type.'
                 }],
@@ -136,33 +173,44 @@ class StringRegistryService:
                 'expected_string': None
             }
 
-        # 4. Validate dimension values against catalog
-        dimension_catalog = DimensionCatalogService.get_optimized_catalog(rule.id)
+        # 4. Validate dimension values exist in database
+        from master_data.models import Dimension, DimensionValue
 
         for dimension_name, parsed_value in parsed_values.items():
-            # Find dimension in catalog
-            dimension_data = next(
-                (d for d in dimension_catalog['dimensions'] if d['dimension']['name'] == dimension_name),
-                None
-            )
-
-            if not dimension_data:
+            # Get the dimension
+            try:
+                dimension = Dimension.objects.get(
+                    name=dimension_name,
+                    workspace=workspace
+                )
+            except Dimension.DoesNotExist:
                 errors.append({
                     'type': 'missing_required_dimension',
                     'field': dimension_name,
-                    'message': f"Dimension '{dimension_name}' not found in rule configuration"
+                    'message': f"Dimension '{dimension_name}' not found in workspace"
                 })
                 continue
 
             # For list-type dimensions, validate value exists
-            if dimension_data['dimension']['dimension_type'] == 'list':
-                valid_values = [v['value'] for v in dimension_data.get('values', [])]
-                if parsed_value not in valid_values:
+            if dimension.type == 'list':
+                try:
+                    DimensionValue.objects.get(
+                        dimension=dimension,
+                        value=parsed_value,
+                        workspace=workspace
+                    )
+                except DimensionValue.DoesNotExist:
+                    # Get valid values for error message
+                    valid_values = list(DimensionValue.objects.filter(
+                        dimension=dimension,
+                        workspace=workspace
+                    ).values_list('value', flat=True)[:10])
+
                     errors.append({
                         'type': 'invalid_dimension_value',
                         'field': dimension_name,
                         'message': f"Value '{parsed_value}' not valid for dimension '{dimension_name}'",
-                        'expected': valid_values[:10],  # Show first 10
+                        'expected': valid_values,
                         'received': parsed_value
                     })
 
