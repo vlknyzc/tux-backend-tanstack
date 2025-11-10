@@ -444,7 +444,7 @@ class RuleReadSerializer(serializers.ModelSerializer):
     # New business logic fields
     configuration_errors = serializers.SerializerMethodField()
     required_dimensions = serializers.SerializerMethodField()
-    fields_with_rules = serializers.SerializerMethodField()
+    entities_with_rules = serializers.SerializerMethodField()
 
     class Meta:
         model = models.Rule
@@ -462,7 +462,7 @@ class RuleReadSerializer(serializers.ModelSerializer):
             "workspace_name",
             "configuration_errors",
             "required_dimensions",
-            "fields_with_rules",
+            "entities_with_rules",
             "created_by",
             "created_by_name",
             "created",
@@ -495,7 +495,7 @@ class RuleReadSerializer(serializers.ModelSerializer):
         """Get configuration validation errors."""
         return obj.validate_configuration()
 
-    def get_fields_with_rules(self, obj) -> List[Dict[str, Any]]:
+    def get_entities_with_rules(self, obj) -> List[Dict[str, Any]]:
         """Get all entities that have rule details configured."""
         entity_ids = list(obj.get_entities_with_rules()
                          )  # Convert to list to avoid multiple evaluations
@@ -856,8 +856,8 @@ class LightweightRuleSerializer(serializers.Serializer):
     last_updated = serializers.CharField()
 
     # Summary information
-    total_fields = serializers.IntegerField()
-    fields_with_rules = serializers.ListField(child=serializers.DictField())
+    total_entities = serializers.IntegerField()
+    entities_with_rules = serializers.ListField(child=serializers.DictField())
     can_generate_count = serializers.IntegerField()
     configuration_errors = serializers.ListField(child=serializers.CharField())
 

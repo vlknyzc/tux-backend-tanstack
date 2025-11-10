@@ -148,7 +148,7 @@ class RuleReadSerializer(serializers.ModelSerializer):
     # New business logic fields
     configuration_errors = serializers.SerializerMethodField()
     required_dimensions = serializers.SerializerMethodField()
-    fields_with_rules = serializers.SerializerMethodField()
+    entities_with_rules = serializers.SerializerMethodField()
 
     class Meta:
         model = Rule
@@ -166,7 +166,7 @@ class RuleReadSerializer(serializers.ModelSerializer):
             "workspace_name",
             "configuration_errors",
             "required_dimensions",
-            "fields_with_rules",
+            "entities_with_rules",
             "created_by",
             "created_by_name",
             "created",
@@ -199,7 +199,7 @@ class RuleReadSerializer(serializers.ModelSerializer):
         """Get configuration validation errors."""
         return obj.validate_configuration()
 
-    def get_fields_with_rules(self, obj) -> List[Dict[str, Any]]:
+    def get_entities_with_rules(self, obj) -> List[Dict[str, Any]]:
         """Get all entities that have rule details configured."""
         entity_ids = list(obj.get_entities_with_rules()
                          )  # Convert to list to avoid multiple evaluations

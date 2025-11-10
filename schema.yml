@@ -5673,9 +5673,9 @@ components:
           type: string
         last_updated:
           type: string
-        total_fields:
+        total_entities:
           type: integer
-        fields_with_rules:
+        entities_with_rules:
           type: array
           items:
             type: object
@@ -5692,7 +5692,7 @@ components:
       - created
       - created_by_name
       - description
-      - fields_with_rules
+      - entities_with_rules
       - id
       - is_default
       - last_updated
@@ -5702,7 +5702,7 @@ components:
       - platform_slug
       - slug
       - status
-      - total_fields
+      - total_entities
     LogoutResponse:
       type: object
       description: Serializer for logout response
@@ -6141,14 +6141,14 @@ components:
             type: array
             items:
               type: string
-          description: Get required dimensions by field.
+          description: Get required dimensions by entity.
           readOnly: true
-        fields_with_rules:
+        entities_with_rules:
           type: array
           items:
             type: object
             additionalProperties: {}
-          description: Get all fields that have rule details configured.
+          description: Get all entities that have rule details configured.
           readOnly: true
         created_by:
           type: integer
@@ -7222,14 +7222,14 @@ components:
             type: array
             items:
               type: string
-          description: Get required dimensions by field.
+          description: Get required dimensions by entity.
           readOnly: true
-        fields_with_rules:
+        entities_with_rules:
           type: array
           items:
             type: object
             additionalProperties: {}
-          description: Get all fields that have rule details configured.
+          description: Get all entities that have rule details configured.
           readOnly: true
         created_by:
           type: integer
@@ -7255,7 +7255,7 @@ components:
       - created
       - created_by
       - created_by_name
-      - fields_with_rules
+      - entities_with_rules
       - id
       - last_updated
       - name

@@ -275,6 +275,11 @@ class RuleNestedSerializer(serializers.ModelSerializer):
             # Safely get dimension values
             if detail.dimension:
                 try:
+                    # Filter dimension values (with defensive check for is_active field)
+                    filter_kwargs = {}
+                    if hasattr(detail.dimension.dimension_values.model, 'is_active'):
+                        filter_kwargs['is_active'] = True
+
                     dimension_values = [
                         {
                             'id': value.id,
@@ -282,8 +287,8 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                             'label': value.label,
                             'utm': value.utm,
                             'description': value.description or '',
-                            'is_active': value.is_active,
-                        } for value in detail.dimension.dimension_values.filter(is_active=True)
+                            'is_active': getattr(value, 'is_active', True),
+                        } for value in detail.dimension.dimension_values.filter(**filter_kwargs)
                         if value is not None  # Extra safety check
                     ]
                     dimension_info['dimension_values'] = dimension_values
