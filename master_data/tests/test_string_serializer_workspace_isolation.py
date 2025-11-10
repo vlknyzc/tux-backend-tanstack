@@ -46,11 +46,11 @@ class StringSerializerWorkspaceIsolationTestCase(TestCase):
             slug="test-platform"
         )
 
-        # Create fields for the platform
-        self.field1 = models.Field.objects.create(
-            name="Field 1",
+        # Create entities for the platform
+        self.entity1 = models.Entity.objects.create(
+            name="Entity 1",
             platform=self.platform,
-            field_level=1
+            entity_level=1
         )
 
         # Create rules in each workspace
@@ -103,19 +103,19 @@ class StringSerializerWorkspaceIsolationTestCase(TestCase):
         self.submission_ws1 = models.Submission.objects.create(
             name="Submission WS1",
             rule=self.rule_ws1,
-            starting_field=self.field1,
+            starting_entity=self.entity1,
             workspace=self.workspace1
         )
         self.submission_ws2 = models.Submission.objects.create(
             name="Submission WS2",
             rule=self.rule_ws2,
-            starting_field=self.field1,
+            starting_entity=self.entity1,
             workspace=self.workspace2
         )
 
         # Create parent strings in each workspace
         self.parent_string_ws1 = models.String.objects.create(
-            field=self.field1,
+            entity=self.entity1,
             rule=self.rule_ws1,
             submission=self.submission_ws1,
             value="parent_ws1",
@@ -123,7 +123,7 @@ class StringSerializerWorkspaceIsolationTestCase(TestCase):
             created_by=self.user
         )
         self.parent_string_ws2 = models.String.objects.create(
-            field=self.field1,
+            entity=self.entity1,
             rule=self.rule_ws2,
             submission=self.submission_ws2,
             value="parent_ws2",
@@ -136,7 +136,7 @@ class StringSerializerWorkspaceIsolationTestCase(TestCase):
         # Without workspace context, querysets should be empty
         serializer = serializers.StringWithDetailsSerializer(
             data={
-                'field': self.field1.id,
+                'entity': self.entity1.id,
                 'workspace': self.workspace1.id,
                 'details': [
                     {
@@ -151,12 +151,12 @@ class StringSerializerWorkspaceIsolationTestCase(TestCase):
         # (this tests the default behavior without context)
         self.assertIsNotNone(serializer)
 
-    def test_submission_field_filters_by_workspace(self):
-        """Test that submission field only accepts submissions from current workspace."""
+    def test_submission_serializer_field_filters_by_workspace(self):
+        """Test that submission serializer field only accepts submissions from current workspace."""
         # Try to reference submission from workspace 2 while in workspace 1 context
         serializer = serializers.StringWithDetailsSerializer(
             data={
-                'field': self.field1.id,
+                'entity': self.entity1.id,
                 'submission': self.submission_ws2.id,  # From workspace 2
                 'workspace': self.workspace1.id,
                 'details': [
@@ -173,11 +173,11 @@ class StringSerializerWorkspaceIsolationTestCase(TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn('submission', serializer.errors)
 
-    def test_submission_field_accepts_same_workspace(self):
-        """Test that submission field accepts submissions from same workspace."""
+    def test_submission_serializer_field_accepts_same_workspace(self):
+        """Test that submission serializer field accepts submissions from same workspace."""
         serializer = serializers.StringWithDetailsSerializer(
             data={
-                'field': self.field1.id,
+                'entity': self.entity1.id,
                 'submission': self.submission_ws1.id,  # From workspace 1
                 'workspace': self.workspace1.id,
                 'details': [
@@ -195,12 +195,12 @@ class StringSerializerWorkspaceIsolationTestCase(TestCase):
         if 'submission' in serializer.errors:
             self.fail(f"Submission from same workspace should be valid: {serializer.errors['submission']}")
 
-    def test_parent_field_filters_by_workspace(self):
-        """Test that parent field only accepts strings from current workspace."""
+    def test_parent_serializer_field_filters_by_workspace(self):
+        """Test that parent serializer field only accepts strings from current workspace."""
         # Try to reference parent string from workspace 2 while in workspace 1 context
         serializer = serializers.StringWithDetailsSerializer(
             data={
-                'field': self.field1.id,
+                'entity': self.entity1.id,
                 'parent': self.parent_string_ws2.id,  # From workspace 2
                 'workspace': self.workspace1.id,
                 'details': [
@@ -217,11 +217,11 @@ class StringSerializerWorkspaceIsolationTestCase(TestCase):
         self.assertFalse(serializer.is_valid())
         self.assertIn('parent', serializer.errors)
 
-    def test_parent_field_accepts_same_workspace(self):
-        """Test that parent field accepts strings from same workspace."""
+    def test_parent_serializer_field_accepts_same_workspace(self):
+        """Test that parent serializer field accepts strings from same workspace."""
         serializer = serializers.StringWithDetailsSerializer(
             data={
-                'field': self.field1.id,
+                'entity': self.entity1.id,
                 'parent': self.parent_string_ws1.id,  # From workspace 1
                 'workspace': self.workspace1.id,
                 'details': [
@@ -297,15 +297,15 @@ class StringAPIWorkspaceIsolationTestCase(APITestCase):
         # Authenticate
         self.client.force_authenticate(user=self.user)
 
-        # Create platform and field
+        # Create platform and entity
         self.platform = models.Platform.objects.create(
             name="Test Platform",
             slug="test-platform"
         )
-        self.field1 = models.Field.objects.create(
-            name="Field 1",
+        self.entity1 = models.Entity.objects.create(
+            name="Entity 1",
             platform=self.platform,
-            field_level=1
+            entity_level=1
         )
 
         # Create rules
@@ -358,19 +358,19 @@ class StringAPIWorkspaceIsolationTestCase(APITestCase):
         self.submission_ws1 = models.Submission.objects.create(
             name="Submission WS1",
             rule=self.rule_ws1,
-            starting_field=self.field1,
+            starting_entity=self.entity1,
             workspace=self.workspace1
         )
         self.submission_ws2 = models.Submission.objects.create(
             name="Submission WS2",
             rule=self.rule_ws2,
-            starting_field=self.field1,
+            starting_entity=self.entity1,
             workspace=self.workspace2
         )
 
         # Create parent strings
         self.parent_string_ws1 = models.String.objects.create(
-            field=self.field1,
+            entity=self.entity1,
             rule=self.rule_ws1,
             submission=self.submission_ws1,
             value="parent_ws1",
@@ -378,7 +378,7 @@ class StringAPIWorkspaceIsolationTestCase(APITestCase):
             created_by=self.user
         )
         self.parent_string_ws2 = models.String.objects.create(
-            field=self.field1,
+            entity=self.entity1,
             rule=self.rule_ws2,
             submission=self.submission_ws2,
             value="parent_ws2",
@@ -390,7 +390,7 @@ class StringAPIWorkspaceIsolationTestCase(APITestCase):
         """Test that API rejects submission from different workspace."""
         url = f'/api/v1/workspaces/{self.workspace1.id}/strings/'
         data = {
-            'field': self.field1.id,
+            'entity': self.entity1.id,
             'submission': self.submission_ws2.id,  # From workspace 2
             'workspace': self.workspace1.id,
             'details': [
@@ -411,7 +411,7 @@ class StringAPIWorkspaceIsolationTestCase(APITestCase):
         """Test that API rejects parent string from different workspace."""
         url = f'/api/v1/workspaces/{self.workspace1.id}/strings/'
         data = {
-            'field': self.field1.id,
+            'entity': self.entity1.id,
             'parent': self.parent_string_ws2.id,  # From workspace 2
             'workspace': self.workspace1.id,
             'details': [
@@ -435,7 +435,7 @@ class StringAPIWorkspaceIsolationTestCase(APITestCase):
         from master_data.serializers.string import StringWithDetailsSerializer
 
         data = {
-            'field': self.field1.id,
+            'entity': self.entity1.id,
             'submission': self.submission_ws1.id,  # From workspace 1
             'workspace': self.workspace1.id,
             'details': [
@@ -452,7 +452,7 @@ class StringAPIWorkspaceIsolationTestCase(APITestCase):
         )
 
         serializer.is_valid()
-        # If it fails, it shouldn't be because of submission field
+        # If it fails, it shouldn't be because of submission serializer field
         if 'submission' in serializer.errors:
             self.fail(f"Submission from same workspace should be valid: {serializer.errors['submission']}")
 
@@ -463,7 +463,7 @@ class StringAPIWorkspaceIsolationTestCase(APITestCase):
         from master_data.serializers.string import StringWithDetailsSerializer
 
         data = {
-            'field': self.field1.id,
+            'entity': self.entity1.id,
             'parent': self.parent_string_ws1.id,  # From workspace 1
             'workspace': self.workspace1.id,
             'details': [
@@ -480,7 +480,7 @@ class StringAPIWorkspaceIsolationTestCase(APITestCase):
         )
 
         serializer.is_valid()
-        # If it fails, it shouldn't be because of parent field
+        # If it fails, it shouldn't be because of parent serializer field
         if 'parent' in serializer.errors:
             self.fail(f"Parent from same workspace should be valid: {serializer.errors['parent']}")
 
@@ -492,7 +492,7 @@ class StringAPIWorkspaceIsolationTestCase(APITestCase):
 
         # Try to reference submission from workspace 2 (should fail due to workspace filtering)
         data = {
-            'field': self.field1.id,
+            'entity': self.entity1.id,
             'submission': self.submission_ws2.id,  # From workspace 2
             'workspace': self.workspace1.id,
             'details': [

@@ -133,7 +133,7 @@ class InheritanceService:
         children = String.objects.filter(
             parent=parent_string,
             workspace=parent_string.workspace
-        ).select_related('field', 'parent')
+        ).select_related('entity', 'parent')
 
         # Check for warnings
         if children.count() > 50:
@@ -199,18 +199,19 @@ class InheritanceService:
     def _generate_inherited_update(child_string, parent_update: Dict[str, Any]) -> Dict[str, Any]:
         """
         Generate an inherited update for a child string based on parent changes.
+        Note: 'field_updates' refers to updates to data fields, not the Field/Entity model.
         """
         # In a real implementation, this would apply inheritance rules
-        # For now, we'll propagate all field updates that are inheritable
-        
+        # For now, we'll propagate all data field updates that are inheritable
+
         parent_field_updates = parent_update.get('field_updates', {})
         inherited_updates = {}
-        
-        # Simple inheritance: child inherits all parent field updates
-        # In practice, this would check inheritance rules and field compatibility
+
+        # Simple inheritance: child inherits all parent data field updates
+        # In practice, this would check inheritance rules and data field compatibility
         for field_key, value in parent_field_updates.items():
-            # Check if this field should be inherited
-            if InheritanceService._should_inherit_field(child_string, field_key):
+            # Check if this data field should be inherited
+            if InheritanceService._should_inherit_data_field(child_string, field_key):
                 inherited_updates[field_key] = value
 
         return {
@@ -223,18 +224,19 @@ class InheritanceService:
         }
 
     @staticmethod
-    def _should_inherit_field(child_string, field_key: str) -> bool:
+    def _should_inherit_data_field(child_string, field_key: str) -> bool:
         """
-        Determine if a child string should inherit a specific field.
+        Determine if a child string should inherit a specific data field.
+        Note: 'field' here refers to a data field/attribute, not the Field/Entity model.
         """
         # In a real implementation, this would check:
-        # - Field inheritance rules
-        # - Child field compatibility
+        # - Data field inheritance rules
+        # - Child data field compatibility
         # - Business logic constraints
-        
-        # For now, inherit all fields except those explicitly marked as non-inheritable
+
+        # For now, inherit all data fields except those explicitly marked as non-inheritable
         non_inheritable_prefixes = ['local_', 'child_specific_']
-        
+
         return not any(field_key.startswith(prefix) for prefix in non_inheritable_prefixes)
 
     @staticmethod
@@ -292,7 +294,7 @@ class InheritanceService:
                 children = String.objects.filter(
                     parent=updated_string,
                     workspace=updated_string.workspace
-                ).select_related('field')
+                ).select_related('entity')
 
                 for child in children:
                     try:
@@ -336,29 +338,30 @@ class InheritanceService:
         Apply inheritance updates to a specific child string.
         """
         try:
+            # Note: field_updates refers to updates to data fields, not the Field/Entity model
             parent_field_updates = parent_modification.field_updates
-            inherited_fields = {}
-            updated_fields = []
+            inherited_field_updates = {}
+            updated_field_keys = []
 
-            # Determine which fields should be inherited
+            # Determine which data fields should be inherited
             for field_key, value in parent_field_updates.items():
-                if InheritanceService._should_inherit_field(child_string, field_key):
-                    inherited_fields[field_key] = value
-                    updated_fields.append(field_key)
+                if InheritanceService._should_inherit_data_field(child_string, field_key):
+                    inherited_field_updates[field_key] = value
+                    updated_field_keys.append(field_key)
 
-            # If no fields to inherit, skip this child
-            if not inherited_fields:
+            # If no data fields to inherit, skip this child
+            if not inherited_field_updates:
                 return None
 
             # Update the child string
             child_string.version += 1
-            
-            # In a real implementation, this would update the actual field values
+
+            # In a real implementation, this would update the actual data field values
             # For now, we'll just update the metadata
             child_string.generation_metadata.update({
                 'last_inherited_from': str(parent_modification.string.id),
                 'inherited_at': parent_modification.modified_at.isoformat(),
-                'inherited_fields': list(inherited_fields.keys())
+                'inherited_field_keys': list(inherited_field_updates.keys())
             })
             child_string.save()
 
@@ -367,7 +370,7 @@ class InheritanceService:
                 workspace=child_string.workspace,
                 string=child_string,
                 version=child_string.version,
-                field_updates=inherited_fields,
+                field_updates=inherited_field_updates,
                 string_value=child_string.value,
                 original_values={'inherited_from': str(parent_modification.id)},
                 modified_by=user,
@@ -376,7 +379,7 @@ class InheritanceService:
                 parent_version=parent_modification,
                 metadata={
                     'inheritance_source': str(parent_modification.string.id),
-                    'inherited_fields': updated_fields
+                    'inherited_field_keys': updated_field_keys
                 }
             )
 
@@ -385,14 +388,14 @@ class InheritanceService:
                 workspace=child_string.workspace,
                 parent_modification=parent_modification,
                 child_string=child_string,
-                inherited_fields=inherited_fields
+                inherited_fields=inherited_field_updates
             )
 
             return {
                 'string_id': child_string.id,
                 'parent_string_id': parent_modification.string.id,
-                'updated_fields': updated_fields,
-                'inherited_values': inherited_fields
+                'updated_field_keys': updated_field_keys,
+                'inherited_values': inherited_field_updates
             }
 
         except Exception as e:
@@ -418,18 +421,19 @@ class InheritanceService:
                 
                 try:
                     string_obj = String.objects.get(id=string_id, workspace=workspace)
-                    
-                    # Check field compatibility
+
+                    # Check data field compatibility
+                    # Note: 'field' here refers to data fields, not the Field/Entity model
                     for field_key, value in field_updates.items():
-                        compatibility_error = InheritanceService._check_field_compatibility(
+                        compatibility_error = InheritanceService._check_data_field_compatibility(
                             string_obj, field_key, value
                         )
                         if compatibility_error:
                             errors.append({
                                 'string_id': string_id,
-                                'field': field_key,
+                                'data_field': field_key,
                                 'error': compatibility_error,
-                                'error_type': 'field_compatibility'
+                                'error_type': 'data_field_compatibility'
                             })
 
                     # Check for potential orphans
@@ -441,7 +445,7 @@ class InheritanceService:
                             if children_count > 0:
                                 errors.append({
                                     'string_id': string_id,
-                                    'field': 'parent_id',
+                                    'data_field': 'parent_id',
                                     'error': f'Removing parent would orphan {children_count} children',
                                     'error_type': 'orphan_prevention'
                                 })
@@ -449,7 +453,7 @@ class InheritanceService:
                 except String.DoesNotExist:
                     errors.append({
                         'string_id': string_id,
-                        'field': None,
+                        'data_field': None,
                         'error': 'String not found',
                         'error_type': 'not_found'
                     })
@@ -457,7 +461,7 @@ class InheritanceService:
         except Exception as e:
             errors.append({
                 'string_id': None,
-                'field': None,
+                'data_field': None,
                 'error': f'Validation error: {str(e)}',
                 'error_type': 'system_error'
             })
@@ -465,20 +469,21 @@ class InheritanceService:
         return errors
 
     @staticmethod
-    def _check_field_compatibility(string_obj, field_key: str, value: Any) -> Optional[str]:
+    def _check_data_field_compatibility(string_obj, field_key: str, value: Any) -> Optional[str]:
         """
-        Check if a field value is compatible with the string's configuration.
+        Check if a data field value is compatible with the string's configuration.
+        Note: 'field' here refers to data fields/attributes, not the Field/Entity model.
         """
         # In a real implementation, this would check:
-        # - Field type constraints
+        # - Data field type constraints
         # - Value format validation
         # - Business rule compliance
-        
+
         # Basic validation example
         if value is not None and not isinstance(value, (str, int, float, bool)):
-            return f"Invalid value type for field {field_key}"
-        
+            return f"Invalid value type for data field {field_key}"
+
         if isinstance(value, str) and len(value) > 255:
-            return f"Value too long for field {field_key} (max 255 characters)"
-        
+            return f"Value too long for data field {field_key} (max 255 characters)"
+
         return None

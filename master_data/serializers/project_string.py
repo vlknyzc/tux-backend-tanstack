@@ -15,8 +15,10 @@ class ProjectStringDetailNestedSerializer(serializers.ModelSerializer):
     """Serializer for project string details when nested in string creation/updates."""
 
     # Add dimension metadata
-    dimension_name = serializers.CharField(source='dimension.name', read_only=True)
-    dimension_type = serializers.CharField(source='dimension.dimension_type', read_only=True)
+    dimension_name = serializers.CharField(
+        source='dimension.name', read_only=True)
+    dimension_type = serializers.CharField(
+        source='dimension.dimension_type', read_only=True)
     dimension_value_display = serializers.SerializerMethodField()
     dimension_value_label = serializers.SerializerMethodField()
 
@@ -50,7 +52,8 @@ class ProjectStringDetailWriteSerializer(serializers.Serializer):
     """Serializer for writing project string details."""
     dimension = serializers.IntegerField()
     dimension_value = serializers.IntegerField(required=False, allow_null=True)
-    dimension_value_freetext = serializers.CharField(required=False, allow_null=True, allow_blank=True)
+    dimension_value_freetext = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True)
 
     def validate(self, attrs):
         """Validate that either dimension_value or dimension_value_freetext is provided."""
@@ -77,9 +80,11 @@ class ProjectStringDetailWriteSerializer(serializers.Serializer):
 class ProjectStringReadSerializer(serializers.ModelSerializer):
     """Serializer for reading project strings."""
     project_name = serializers.CharField(source='project.name', read_only=True)
-    platform_name = serializers.CharField(source='platform.name', read_only=True)
+    platform_name = serializers.CharField(
+        source='platform.name', read_only=True)
     entity_name = serializers.CharField(source='entity.name', read_only=True)
-    entity_level = serializers.IntegerField(source='entity.entity_level', read_only=True)
+    entity_level = serializers.IntegerField(
+        source='entity.entity_level', read_only=True)
     rule_name = serializers.CharField(source='rule.name', read_only=True)
     created_by_name = serializers.SerializerMethodField()
     details = serializers.SerializerMethodField(read_only=True)
@@ -114,11 +119,11 @@ class ProjectStringExpandedSerializer(ProjectStringReadSerializer):
     """Serializer for expanded project string with hierarchy and suggestions."""
     hierarchy_path = serializers.SerializerMethodField()
     can_have_children = serializers.SerializerMethodField()
-    suggested_child_field = serializers.SerializerMethodField()
+    suggested_child_entity = serializers.SerializerMethodField()
 
     class Meta(ProjectStringReadSerializer.Meta):
         fields = ProjectStringReadSerializer.Meta.fields + [
-            'hierarchy_path', 'can_have_children', 'suggested_child_field'
+            'hierarchy_path', 'can_have_children', 'suggested_child_entity'
         ]
 
     def get_hierarchy_path(self, obj):
@@ -129,7 +134,7 @@ class ProjectStringExpandedSerializer(ProjectStringReadSerializer):
         """Check if string can have children."""
         return obj.can_have_children()
 
-    def get_suggested_child_field(self, obj):
+    def get_suggested_child_entity(self, obj):
         """Get suggested next entity for child strings."""
         next_entity = obj.suggest_child_entity()
         if next_entity:
@@ -157,31 +162,32 @@ class ProjectStringWriteSerializer(serializers.Serializer):
 class BulkProjectStringCreateSerializer(serializers.Serializer):
     """Serializer for bulk creating project strings."""
     rule = serializers.IntegerField()
-    starting_field = serializers.IntegerField()
+    starting_entity = serializers.IntegerField()
     strings = ProjectStringWriteSerializer(many=True)
 
     def validate(self, attrs):
         """Validate bulk string creation data."""
         rule_id = attrs['rule']
-        starting_field_id = attrs['starting_field']
+        starting_entity_id = attrs['starting_entity']
         strings_data = attrs['strings']
 
         # Validate rule exists
         try:
             rule = models.Rule.objects.get(id=rule_id)
         except models.Rule.DoesNotExist:
-            raise serializers.ValidationError(f"Rule with id {rule_id} does not exist")
+            raise serializers.ValidationError(
+                f"Rule with id {rule_id} does not exist")
 
         # Validate starting entity belongs to rule's platform
         try:
-            starting_entity = models.Entity.objects.get(id=starting_field_id)
+            starting_entity = models.Entity.objects.get(id=starting_entity_id)
             if starting_entity.platform != rule.platform:
                 raise serializers.ValidationError(
                     "Starting entity must belong to the rule's platform"
                 )
         except models.Entity.DoesNotExist:
             raise serializers.ValidationError(
-                f"Entity with id {starting_field_id} does not exist"
+                f"Entity with id {starting_entity_id} does not exist"
             )
 
         # Validate all entities belong to rule's platform
@@ -271,7 +277,8 @@ class BulkProjectStringCreateSerializer(serializers.Serializer):
 
                 # Create string details
                 for detail_data in details_data:
-                    dimension = models.Dimension.objects.get(id=detail_data['dimension'])
+                    dimension = models.Dimension.objects.get(
+                        id=detail_data['dimension'])
                     dimension_value = None
                     dimension_value_freetext = None
 
@@ -280,7 +287,8 @@ class BulkProjectStringCreateSerializer(serializers.Serializer):
                             id=detail_data['dimension_value']
                         )
                     else:
-                        dimension_value_freetext = detail_data.get('dimension_value_freetext')
+                        dimension_value_freetext = detail_data.get(
+                            'dimension_value_freetext')
 
                     # Check if inherited from parent
                     is_inherited = False
@@ -314,7 +322,8 @@ class BulkProjectStringCreateSerializer(serializers.Serializer):
             user=user,
             type='strings_generated',
             description=f"generated {len(created_strings)} strings for {platform.name}",
-            metadata={'string_count': len(created_strings), 'platform_id': platform.id}
+            metadata={'string_count': len(
+                created_strings), 'platform_id': platform.id}
         )
 
         return created_strings
@@ -339,7 +348,8 @@ class ProjectStringUpdateSerializer(serializers.Serializer):
 
         # Create new details
         for detail_data in details_data:
-            dimension = models.Dimension.objects.get(id=detail_data['dimension'])
+            dimension = models.Dimension.objects.get(
+                id=detail_data['dimension'])
             dimension_value = None
             dimension_value_freetext = None
 
@@ -348,7 +358,8 @@ class ProjectStringUpdateSerializer(serializers.Serializer):
                     id=detail_data['dimension_value']
                 )
             else:
-                dimension_value_freetext = detail_data.get('dimension_value_freetext')
+                dimension_value_freetext = detail_data.get(
+                    'dimension_value_freetext')
 
             # Check if inherited from parent
             is_inherited = False

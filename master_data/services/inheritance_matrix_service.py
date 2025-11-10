@@ -90,30 +90,30 @@ class InheritanceMatrixService:
         }
 
     def _analyze_inheritance_patterns(self, rule_details_data: List[Dict]) -> Dict:
-        """Analyze inheritance patterns between field levels"""
-        # Group by field level and dimension
+        """Analyze inheritance patterns between entity levels"""
+        # Group by entity level and dimension
         entity_levels = {}
         # Maps (dimension, entity_level) -> rule_detail
-        dimension_field_map = {}
+        dimension_entity_map = {}
 
         for detail in rule_details_data:
             entity_level = detail['entity_level']
             dimension = detail['dimension']
 
-            # Group by field level
+            # Group by entity level
             if entity_level not in entity_levels:
                 entity_levels[entity_level] = []
             entity_levels[entity_level].append(detail)
 
             # Create lookup map
             key = (dimension, entity_level)
-            dimension_field_map[key] = detail
+            dimension_entity_map[key] = detail
 
         # Find inheritance relationships
         inheritance_relationships = []
         inherited_dimensions = set()
 
-        # Sort field levels to process in order
+        # Sort entity levels to process in order
         sorted_levels = sorted(entity_levels.keys())
 
         for i, current_level in enumerate(sorted_levels):
@@ -125,29 +125,29 @@ class InheritanceMatrixService:
             for detail in current_details:
                 dimension = detail['dimension']
 
-                # Look for this dimension in previous field levels
+                # Look for this dimension in previous entity levels
                 inherited_from = []
                 for prev_level in sorted_levels[:i]:  # All previous levels
                     prev_key = (dimension, prev_level)
-                    if prev_key in dimension_field_map:
-                        parent_detail = dimension_field_map[prev_key]
+                    if prev_key in dimension_entity_map:
+                        parent_detail = dimension_entity_map[prev_key]
                         inherited_from.append({
                             'parent_entity_level': prev_level,
-                            'parent_field_name': parent_detail['field_name'],
+                            'parent_entity_name': parent_detail['entity_name'],
                             'parent_rule_detail': parent_detail['id'],
                             'inherits_formatting': self._check_formatting_inheritance(detail, parent_detail),
                         })
                         inherited_dimensions.add(dimension)
 
                 if inherited_from:
-                    # Take the most immediate parent (highest field level)
+                    # Take the most immediate parent (highest entity level)
                     immediate_parent = max(
                         inherited_from, key=lambda x: x['parent_entity_level'])
 
                     inheritance_relationships.append({
                         'child_rule_detail': detail['id'],
                         'child_entity_level': detail['entity_level'],
-                        'child_field_name': detail['field_name'],
+                        'child_entity_name': detail['entity_name'],
                         'dimension': dimension,
                         'dimension_name': detail['dimension_name'],
                         'immediate_parent': immediate_parent,
@@ -155,8 +155,8 @@ class InheritanceMatrixService:
                         'is_inherited': True,
                     })
 
-        # Find field level dependencies
-        field_dependencies = self._analyze_field_dependencies(
+        # Find entity level dependencies
+        entity_level_dependencies = self._analyze_entity_level_dependencies(
             entity_levels, sorted_levels)
 
         # Build dimension inheritance tree
@@ -167,7 +167,7 @@ class InheritanceMatrixService:
             'entity_levels': entity_levels,
             'inheritance_relationships': inheritance_relationships,
             'inherited_dimensions': list(inherited_dimensions),
-            'field_dependencies': field_dependencies,
+            'entity_level_dependencies': entity_level_dependencies,
             'inheritance_tree': inheritance_tree,
             'total_inherited_dimensions': len(inherited_dimensions),
             'inheritance_coverage': len(inherited_dimensions) / len(rule_details_data) if rule_details_data else 0,
@@ -181,8 +181,8 @@ class InheritanceMatrixService:
             child_detail['delimiter'] == parent_detail['delimiter']
         )
 
-    def _analyze_field_dependencies(self, entity_levels: Dict, sorted_levels: List[int]) -> Dict:
-        """Analyze dependencies between field levels"""
+    def _analyze_entity_level_dependencies(self, entity_levels: Dict, sorted_levels: List[int]) -> Dict:
+        """Analyze dependencies between entity levels"""
         dependencies = {}
 
         for level in sorted_levels:
@@ -231,7 +231,7 @@ class InheritanceMatrixService:
 
         # Build tree for each dimension
         for dimension, rels in by_dimension.items():
-            # Sort by field level
+            # Sort by entity level
             rels.sort(key=lambda x: x['child_entity_level'])
 
             tree[dimension] = {
@@ -269,13 +269,13 @@ class InheritanceMatrixService:
             'inheritance_tree': inheritance_matrix['inheritance_tree'].get(dimension.id, {}),
         }
 
-    def get_field_inheritance_summary(self, rule: Rule) -> Dict:
-        """Get a summary of inheritance patterns by field level"""
+    def get_entity_level_inheritance_summary(self, rule: Rule) -> Dict:
+        """Get a summary of inheritance patterns by entity level"""
         matrix = self.get_matrix_for_rule(rule)
         inheritance_matrix = matrix['inheritance_matrix']
 
         summary = {}
-        for level, deps in inheritance_matrix['field_dependencies'].items():
+        for level, deps in inheritance_matrix['entity_level_dependencies'].items():
             summary[level] = {
                 'entity_level': level,
                 'total_dimensions': deps['dimension_count'],

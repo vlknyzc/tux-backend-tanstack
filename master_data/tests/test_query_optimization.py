@@ -56,19 +56,19 @@ class QueryOptimizationTestCase(APITestCase):
             slug="snowflake"
         )
 
-        # Create fields (Fields are workspace-agnostic)
-        self.field1 = models.Field.objects.create(
+        # Create entities (Entities are workspace-agnostic)
+        self.entity1 = models.Entity.objects.create(
             name="Database",
-            field_level=1,
+            entity_level=1,
             platform=self.platform
         )
-        self.field2 = models.Field.objects.create(
+        self.entity2 = models.Entity.objects.create(
             name="Schema",
-            field_level=2,
+            entity_level=2,
             platform=self.platform
         )
-        self.field1.next_field = self.field2
-        self.field1.save()
+        self.entity1.next_entity = self.entity2
+        self.entity1.save()
 
         # Create dimensions with parent relationships
         self.dim_environment = models.Dimension.objects.create(
@@ -115,22 +115,22 @@ class QueryOptimizationTestCase(APITestCase):
         )
 
         # Create rule details
-        for field in [self.field1, self.field2]:
+        for entity in [self.entity1, self.entity2]:
             for dimension in [self.dim_environment, self.dim_project]:
                 models.RuleDetail.objects.create(
                     rule=self.rule,
-                    field=field,
+                    entity=entity,
                     dimension=dimension,
                     dimension_order=1 if dimension == self.dim_environment else 2,
                     workspace=self.workspace,
                     created_by=self.user
                 )
 
-        # Create submission (requires rule and starting_field)
+        # Create submission (requires rule and starting_entity)
         self.submission = models.Submission.objects.create(
             name="Test Submission",
             rule=self.rule,
-            starting_field=self.field1,
+            starting_entity=self.entity1,
             workspace=self.workspace,
             created_by=self.user
         )
@@ -139,7 +139,7 @@ class QueryOptimizationTestCase(APITestCase):
         for i in range(50):
             string_obj = models.String.objects.create(
                 submission=self.submission,
-                field=self.field1,
+                entity=self.entity1,
                 rule=self.rule,
                 value=f"test_string_{i}",
                 workspace=self.workspace,
@@ -317,14 +317,14 @@ class AnnotationTestCase(TestCase):
             slug="snowflake"
         )
 
-        self.field1 = models.Field.objects.create(
+        self.entity1 = models.Entity.objects.create(
             name="Database",
-            field_level=1,
+            entity_level=1,
             platform=self.platform
         )
-        self.field2 = models.Field.objects.create(
+        self.entity2 = models.Entity.objects.create(
             name="Schema",
-            field_level=2,
+            entity_level=2,
             platform=self.platform
         )
 
@@ -342,83 +342,83 @@ class AnnotationTestCase(TestCase):
             created_by=self.user
         )
 
-        # Create rule detail for field1
+        # Create rule detail for entity1
         self.rule_detail1 = models.RuleDetail.objects.create(
             rule=self.rule,
-            field=self.field1,
+            entity=self.entity1,
             dimension=self.dimension,
             dimension_order=1,
             workspace=self.workspace,
             created_by=self.user
         )
 
-        # Create rule detail for field2 (should inherit from field1)
+        # Create rule detail for entity2 (should inherit from entity1)
         self.rule_detail2 = models.RuleDetail.objects.create(
             rule=self.rule,
-            field=self.field2,
+            entity=self.entity2,
             dimension=self.dimension,
             dimension_order=1,
             workspace=self.workspace,
             created_by=self.user
         )
 
-    def test_in_parent_field_annotation(self):
-        """Test that in_parent_field annotation is correctly applied."""
+    def test_in_parent_entity_annotation(self):
+        """Test that in_parent_entity annotation is correctly applied."""
         from django.db.models import Exists, OuterRef
 
         # Build queryset with annotation (simulating RuleDetailViewSet)
-        parent_field_subquery = models.RuleDetail.objects.filter(
+        parent_entity_subquery = models.RuleDetail.objects.filter(
             rule=OuterRef('rule'),
-            field__platform=OuterRef('field__platform'),
+            entity__platform=OuterRef('entity__platform'),
             dimension=OuterRef('dimension'),
-            field__field_level=OuterRef('field__field_level') - 1
+            entity__entity_level=OuterRef('entity__entity_level') - 1
         )
 
         queryset = models.RuleDetail.objects.filter(
             workspace=self.workspace
         ).annotate(
-            in_parent_field=Exists(parent_field_subquery)
-        ).select_related('field', 'dimension', 'rule')
+            in_parent_entity=Exists(parent_entity_subquery)
+        ).select_related('entity', 'dimension', 'rule')
 
         # Get rule details
-        rule_details = list(queryset.order_by('field__field_level'))
+        rule_details = list(queryset.order_by('entity__entity_level'))
 
-        # rule_detail1 (field_level=1) should NOT have parent field
+        # rule_detail1 (entity_level=1) should NOT have parent entity
         self.assertFalse(
-            rule_details[0].in_parent_field,
-            "Field level 1 should not have parent field"
+            rule_details[0].in_parent_entity,
+            "Entity level 1 should not have parent entity"
         )
 
-        # rule_detail2 (field_level=2) SHOULD have parent field
+        # rule_detail2 (entity_level=2) SHOULD have parent entity
         self.assertTrue(
-            rule_details[1].in_parent_field,
-            "Field level 2 should have parent field"
+            rule_details[1].in_parent_entity,
+            "Entity level 2 should have parent entity"
         )
 
     def test_annotation_prevents_queries(self):
         """Test that using annotation prevents additional queries."""
         from django.db.models import Exists, OuterRef
 
-        parent_field_subquery = models.RuleDetail.objects.filter(
+        parent_entity_subquery = models.RuleDetail.objects.filter(
             rule=OuterRef('rule'),
-            field__platform=OuterRef('field__platform'),
+            entity__platform=OuterRef('entity__platform'),
             dimension=OuterRef('dimension'),
-            field__field_level=OuterRef('field__field_level') - 1
+            entity__entity_level=OuterRef('entity__entity_level') - 1
         )
 
         queryset = models.RuleDetail.objects.filter(
             workspace=self.workspace
         ).annotate(
-            in_parent_field=Exists(parent_field_subquery)
-        ).select_related('field', 'dimension', 'rule')
+            in_parent_entity=Exists(parent_entity_subquery)
+        ).select_related('entity', 'dimension', 'rule')
 
         # Force evaluation
         rule_details = list(queryset)
 
-        # Now accessing in_parent_field should not trigger any queries
+        # Now accessing in_parent_entity should not trigger any queries
         with CaptureQueriesContext(connection) as context:
             for detail in rule_details:
-                _ = detail.in_parent_field
+                _ = detail.in_parent_entity
 
         # Should be 0 queries since annotation is already loaded
         self.assertEqual(
