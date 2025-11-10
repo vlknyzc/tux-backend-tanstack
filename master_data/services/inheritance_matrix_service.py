@@ -1,4 +1,4 @@
-from ..models import Rule, RuleDetail, Field, Dimension
+from ..models import Rule, RuleDetail, Entity, Dimension
 from django.db.models import QuerySet
 from django.utils import timezone
 from django.core.cache import cache
@@ -52,8 +52,8 @@ class InheritanceMatrixService:
         """Build inheritance matrix using optimized queries"""
         rule_details = list(
             RuleDetail.objects.filter(rule=rule).select_related(
-                'dimension', 'field', 'dimension__parent'
-            ).order_by('field__field_level', 'dimension_order')
+                'dimension', 'entity', 'dimension__parent'
+            ).order_by('entity__entity_level', 'dimension_order')
         )
 
         # Convert to format for analysis
@@ -61,9 +61,9 @@ class InheritanceMatrixService:
             {
                 'id': detail.id,
                 'rule': detail.rule.id,
-                'field_level': detail.field.field_level,
-                'field': detail.field,
-                'field_name': detail.field.name,
+                'entity_level': detail.entity.entity_level,
+                'entity': detail.entity,
+                'entity_name': detail.entity.name,
                 'dimension': detail.dimension.id,
                 'dimension_name': detail.dimension.name,
                 'dimension_type': detail.dimension.type,
@@ -92,21 +92,21 @@ class InheritanceMatrixService:
     def _analyze_inheritance_patterns(self, rule_details_data: List[Dict]) -> Dict:
         """Analyze inheritance patterns between field levels"""
         # Group by field level and dimension
-        field_levels = {}
-        # Maps (dimension, field_level) -> rule_detail
+        entity_levels = {}
+        # Maps (dimension, entity_level) -> rule_detail
         dimension_field_map = {}
 
         for detail in rule_details_data:
-            field_level = detail['field_level']
+            entity_level = detail['entity_level']
             dimension = detail['dimension']
 
             # Group by field level
-            if field_level not in field_levels:
-                field_levels[field_level] = []
-            field_levels[field_level].append(detail)
+            if entity_level not in entity_levels:
+                entity_levels[entity_level] = []
+            entity_levels[entity_level].append(detail)
 
             # Create lookup map
-            key = (dimension, field_level)
+            key = (dimension, entity_level)
             dimension_field_map[key] = detail
 
         # Find inheritance relationships
@@ -114,13 +114,13 @@ class InheritanceMatrixService:
         inherited_dimensions = set()
 
         # Sort field levels to process in order
-        sorted_levels = sorted(field_levels.keys())
+        sorted_levels = sorted(entity_levels.keys())
 
         for i, current_level in enumerate(sorted_levels):
             if i == 0:  # Skip first level (no inheritance possible)
                 continue
 
-            current_details = field_levels[current_level]
+            current_details = entity_levels[current_level]
 
             for detail in current_details:
                 dimension = detail['dimension']
@@ -132,7 +132,7 @@ class InheritanceMatrixService:
                     if prev_key in dimension_field_map:
                         parent_detail = dimension_field_map[prev_key]
                         inherited_from.append({
-                            'parent_field_level': prev_level,
+                            'parent_entity_level': prev_level,
                             'parent_field_name': parent_detail['field_name'],
                             'parent_rule_detail': parent_detail['id'],
                             'inherits_formatting': self._check_formatting_inheritance(detail, parent_detail),
@@ -142,11 +142,11 @@ class InheritanceMatrixService:
                 if inherited_from:
                     # Take the most immediate parent (highest field level)
                     immediate_parent = max(
-                        inherited_from, key=lambda x: x['parent_field_level'])
+                        inherited_from, key=lambda x: x['parent_entity_level'])
 
                     inheritance_relationships.append({
                         'child_rule_detail': detail['id'],
-                        'child_field_level': detail['field_level'],
+                        'child_entity_level': detail['entity_level'],
                         'child_field_name': detail['field_name'],
                         'dimension': dimension,
                         'dimension_name': detail['dimension_name'],
@@ -157,14 +157,14 @@ class InheritanceMatrixService:
 
         # Find field level dependencies
         field_dependencies = self._analyze_field_dependencies(
-            field_levels, sorted_levels)
+            entity_levels, sorted_levels)
 
         # Build dimension inheritance tree
         inheritance_tree = self._build_inheritance_tree(
             inheritance_relationships)
 
         return {
-            'field_levels': field_levels,
+            'entity_levels': entity_levels,
             'inheritance_relationships': inheritance_relationships,
             'inherited_dimensions': list(inherited_dimensions),
             'field_dependencies': field_dependencies,
@@ -181,37 +181,37 @@ class InheritanceMatrixService:
             child_detail['delimiter'] == parent_detail['delimiter']
         )
 
-    def _analyze_field_dependencies(self, field_levels: Dict, sorted_levels: List[int]) -> Dict:
+    def _analyze_field_dependencies(self, entity_levels: Dict, sorted_levels: List[int]) -> Dict:
         """Analyze dependencies between field levels"""
         dependencies = {}
 
         for level in sorted_levels:
             dependencies[level] = {
-                'field_level': level,
-                'dimension_count': len(field_levels[level]),
-                'unique_dimensions': len(set(d['dimension'] for d in field_levels[level])),
-                'required_dimensions': len([d for d in field_levels[level] if d['is_required']]),
+                'entity_level': level,
+                'dimension_count': len(entity_levels[level]),
+                'unique_dimensions': len(set(d['dimension'] for d in entity_levels[level])),
+                'required_dimensions': len([d for d in entity_levels[level] if d['is_required']]),
                 'depends_on_levels': [],
             }
 
             # Find which previous levels this level depends on
             current_dimensions = set(d['dimension']
-                                     for d in field_levels[level])
+                                     for d in entity_levels[level])
 
             for prev_level in sorted_levels:
                 if prev_level >= level:
                     break
 
                 prev_dimensions = set(d['dimension']
-                                      for d in field_levels[prev_level])
+                                      for d in entity_levels[prev_level])
                 common_dimensions = current_dimensions.intersection(
                     prev_dimensions)
 
                 if common_dimensions:
                     dependencies[level]['depends_on_levels'].append({
-                        'field_level': prev_level,
+                        'entity_level': prev_level,
                         'shared_dimensions': len(common_dimensions),
-                        'dimension_names': [d['dimension_name'] for d in field_levels[level]
+                        'dimension_names': [d['dimension_name'] for d in entity_levels[level]
                                             if d['dimension'] in common_dimensions]
                     })
 
@@ -232,14 +232,14 @@ class InheritanceMatrixService:
         # Build tree for each dimension
         for dimension, rels in by_dimension.items():
             # Sort by field level
-            rels.sort(key=lambda x: x['child_field_level'])
+            rels.sort(key=lambda x: x['child_entity_level'])
 
             tree[dimension] = {
                 'dimension': dimension,
                 'dimension_name': rels[0]['dimension_name'],
                 'inheritance_chain': rels,
                 'total_levels': len(rels) + 1,  # +1 for the root level
-                'max_field_level': max(r['child_field_level'] for r in rels),
+                'max_entity_level': max(r['child_entity_level'] for r in rels),
             }
 
         return tree
@@ -277,15 +277,15 @@ class InheritanceMatrixService:
         summary = {}
         for level, deps in inheritance_matrix['field_dependencies'].items():
             summary[level] = {
-                'field_level': level,
+                'entity_level': level,
                 'total_dimensions': deps['dimension_count'],
                 'inherited_dimensions': len([
                     rel for rel in inheritance_matrix['inheritance_relationships']
-                    if rel['child_field_level'] == level
+                    if rel['child_entity_level'] == level
                 ]),
                 'original_dimensions': deps['dimension_count'] - len([
                     rel for rel in inheritance_matrix['inheritance_relationships']
-                    if rel['child_field_level'] == level
+                    if rel['child_entity_level'] == level
                 ]),
                 'inheritance_percentage': 0,
             }

@@ -2,10 +2,10 @@ from .dimension_views import DimensionViewSet, DimensionValueViewSet
 from .dimension_constraint_views import DimensionConstraintViewSet
 from .workspace_views import WorkspaceViewSet, PlatformViewSet
 from .rule_views import RuleViewSet, RuleDetailViewSet, RuleNestedViewSet
-from .field_views import FieldViewSet
+from .entity_views import EntityViewSet
 from .rule_configuration_views import (
     LightweightRuleView,
-    FieldSpecificRuleView,
+    EntitySpecificRuleView,
     RuleValidationView,
     GenerationPreviewView,
     CacheManagementView,
@@ -39,10 +39,10 @@ __all__ = [
     'RuleViewSet',
     'RuleDetailViewSet',
     'RuleNestedViewSet',
-    'FieldViewSet',
+    'EntityViewSet',
     # Rule configuration views
     'LightweightRuleView',
-    'FieldSpecificRuleView',
+    'EntitySpecificRuleView',
     'RuleValidationView',
     'GenerationPreviewView',
     'CacheManagementView',

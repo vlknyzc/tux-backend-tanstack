@@ -3,7 +3,7 @@ RuleValidationService: Validates rule structure and constraints.
 
 This service handles all validation logic for rules, including:
 - Rule configuration validation
-- Field completeness checking
+- Entity completeness checking
 - Validation issue compilation
 - Rule quality scoring
 
@@ -25,7 +25,7 @@ class RuleValidationService:
 
     Responsibilities:
     - Comprehensive rule validation
-    - Field-level validation
+    - Entity-level validation
     - Completeness scoring
     - Overall rule quality assessment
     - Warning and error compilation
@@ -41,7 +41,7 @@ class RuleValidationService:
     def get_rule_validation_summary(
         self,
         rule,
-        field_templates: List[Dict],
+        entity_templates: List[Dict],
         inheritance_summary: Dict
     ) -> Dict:
         """
@@ -49,7 +49,7 @@ class RuleValidationService:
 
         Args:
             rule: Rule instance or rule ID
-            field_templates: List of field templates from FieldTemplateService
+            entity_templates: List of entity templates from EntityTemplateService
             inheritance_summary: Inheritance summary from InheritanceMatrixService
 
         Returns:
@@ -59,7 +59,7 @@ class RuleValidationService:
             - is_valid: Boolean indicating if rule is valid
             - validation_issues: List of critical issues
             - warnings: List of warnings
-            - field_summary: Summary of field validation
+            - entity_summary: Summary of entity validation
             - inheritance_summary: Inheritance information
             - overall_score: Quality score (0-100)
         """
@@ -84,21 +84,21 @@ class RuleValidationService:
             rule, 'validate_configuration') else []
         validation_issues.extend(config_errors)
 
-        # Field-level validation
-        for template in field_templates:
-            field_name = template['field_name']
+        # Entity-level validation
+        for template in entity_templates:
+            entity_name = template['entity_name']
 
-            # Check if field can generate
+            # Check if entity can generate
             if not template.get('can_generate', False):
                 validation_issues.append(
-                    f"Field '{field_name}' cannot generate strings"
+                    f"Entity '{entity_name}' cannot generate strings"
                 )
 
             # Check completeness
             completeness = template.get('completeness_score', 0)
             if completeness < 50:
                 warnings.append(
-                    f"Field '{field_name}' has low completeness score: {completeness:.1f}%"
+                    f"Entity '{entity_name}' has low completeness score: {completeness:.1f}%"
                 )
 
             # Check for validation rules
@@ -108,11 +108,11 @@ class RuleValidationService:
                     pass
                 elif rule_item['type'] == 'parent_constraint':
                     warnings.append(
-                        f"Field '{field_name}': {rule_item['message']}")
+                        f"Entity '{entity_name}': {rule_item['message']}")
 
         # Calculate overall score
         overall_score = self._calculate_overall_rule_score(
-            field_templates,
+            entity_templates,
             validation_issues,
             warnings
         )
@@ -123,10 +123,10 @@ class RuleValidationService:
             'is_valid': len(validation_issues) == 0,
             'validation_issues': validation_issues,
             'warnings': warnings,
-            'field_summary': {
-                'total_fields': len(field_templates),
-                'valid_fields': sum(1 for f in field_templates if f.get('can_generate', False)),
-                'fields_with_warnings': sum(1 for f in field_templates if f.get('completeness_score', 0) < 50),
+            'entity_summary': {
+                'total_entities': len(entity_templates),
+                'valid_entities': sum(1 for e in entity_templates if e.get('can_generate', False)),
+                'entities_with_warnings': sum(1 for e in entity_templates if e.get('completeness_score', 0) < 50),
             },
             'inheritance_summary': inheritance_summary,
             'overall_score': overall_score,
@@ -134,7 +134,7 @@ class RuleValidationService:
 
     def _calculate_overall_rule_score(
         self,
-        field_templates: List[Dict],
+        entity_templates: List[Dict],
         validation_issues: List[str],
         warnings: List[str]
     ) -> float:
@@ -143,7 +143,7 @@ class RuleValidationService:
         validation issues, and warnings.
 
         Args:
-            field_templates: List of field templates
+            entity_templates: List of entity templates
             validation_issues: List of critical validation issues
             warnings: List of warnings
 
@@ -153,18 +153,18 @@ class RuleValidationService:
             - 0 = Rule with critical issues
 
         Scoring formula:
-        - Base score: Average field completeness
+        - Base score: Average entity completeness
         - Penalties:
           - Validation issues: -15 points each (critical)
           - Warnings: -5 points each (less critical)
         """
-        if not field_templates:
+        if not entity_templates:
             return 0.0
 
-        # Base score from field completeness
+        # Base score from entity completeness
         completeness_scores = [
             template.get('completeness_score', 0)
-            for template in field_templates
+            for template in entity_templates
         ]
         avg_completeness = (
             sum(completeness_scores) / len(completeness_scores)
@@ -250,24 +250,24 @@ class RuleValidationService:
 
         # Get rule details
         rule_details = rule.rule_details.select_related(
-            'dimension', 'field'
-        ).order_by('field__field_level', 'dimension_order')
+            'dimension', 'entity'
+        ).order_by('entity__entity_level', 'dimension_order')
 
-        # Check for duplicate dimensions in same field
-        field_dimensions = {}
+        # Check for duplicate dimensions in same entity
+        entity_dimensions = {}
         for detail in rule_details:
-            field_id = detail.field.id
+            entity_id = detail.entity.id
             dim_id = detail.dimension.id
 
-            if field_id not in field_dimensions:
-                field_dimensions[field_id] = set()
+            if entity_id not in entity_dimensions:
+                entity_dimensions[entity_id] = set()
 
-            if dim_id in field_dimensions[field_id]:
+            if dim_id in entity_dimensions[entity_id]:
                 constraint_violations.append(
-                    f"Duplicate dimension '{detail.dimension.name}' in field '{detail.field.name}'"
+                    f"Duplicate dimension '{detail.dimension.name}' in entity '{detail.entity.name}'"
                 )
             else:
-                field_dimensions[field_id].add(dim_id)
+                entity_dimensions[entity_id].add(dim_id)
 
         # Additional constraint checks could be added here
         # - Parent-child relationships

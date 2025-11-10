@@ -97,10 +97,10 @@ from .dimension_ref import (
 # =============================================================================
 
 from .field_template import (
-    OptimizedFieldTemplateSerializer,
-    FieldDimensionSerializer,
-    FieldTemplateSerializer,
-    FieldSpecificDataSerializer,
+    OptimizedEntityTemplateSerializer,
+    EntityDimensionSerializer,
+    EntityTemplateSerializer,
+    EntitySpecificDataSerializer,
 )
 
 # =============================================================================
@@ -167,10 +167,10 @@ __all__ = [
     'DimensionReferenceSerializer',
 
     # Field template serializers
-    'OptimizedFieldTemplateSerializer',
-    'FieldDimensionSerializer',
-    'FieldTemplateSerializer',
-    'FieldSpecificDataSerializer',
+    'OptimizedEntityTemplateSerializer',
+    'EntityDimensionSerializer',
+    'EntityTemplateSerializer',
+    'EntitySpecificDataSerializer',
 
     # Metadata serializers
     'InheritanceLookupSerializer',

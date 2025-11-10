@@ -12,13 +12,13 @@ from rest_framework import serializers
 class InheritanceLookupSerializer(serializers.Serializer):
     """Serializer for inheritance lookup tables"""
     dimension = serializers.IntegerField(required=False)
-    field_level_inherited_from = serializers.IntegerField(required=False)
+    entity_level_inherited_from = serializers.IntegerField(required=False)
     inherits_formatting = serializers.BooleanField(required=False)
     inheritance_chain = serializers.ListField(
         child=serializers.IntegerField(), required=False)
     by_dimension = serializers.DictField(required=False)
-    by_target_field_level = serializers.DictField(required=False)
-    by_source_field_level = serializers.DictField(required=False)
+    by_target_entity_level = serializers.DictField(required=False)
+    by_source_entity_level = serializers.DictField(required=False)
     inherits_from_dimension = serializers.DictField(required=False)
     provides_inheritance_to = serializers.DictField(required=False)
     inherited_dimensions = serializers.ListField(
@@ -34,8 +34,8 @@ class ConstraintRelationshipSerializer(serializers.Serializer):
         child=serializers.DictField(),
         help_text="Array of parent-child dimension constraints"
     )
-    field_level_constraints = serializers.DictField(
-        help_text="Field-level dimension requirements"
+    entity_level_constraints = serializers.DictField(
+        help_text="Entity-level dimension requirements"
     )
     value_constraints = serializers.DictField(
         help_text="Pre-computed value constraint lookups"
@@ -43,7 +43,7 @@ class ConstraintRelationshipSerializer(serializers.Serializer):
 
 
 class ValidationRuleSerializer(serializers.Serializer):
-    """Serializer for field validation rules"""
+    """Serializer for entity validation rules"""
     type = serializers.CharField()
     message = serializers.CharField()
     dimensions = serializers.ListField(
@@ -67,15 +67,15 @@ class InheritanceInfoSerializer(serializers.Serializer):
     """Serializer for dimension inheritance information"""
     is_inherited = serializers.BooleanField()
     parent_rule_detail = serializers.IntegerField(allow_null=True)
-    parent_field_level = serializers.IntegerField(allow_null=True)
-    parent_field_name = serializers.CharField(allow_null=True)
+    parent_entity_level = serializers.IntegerField(allow_null=True)
+    parent_entity_name = serializers.CharField(allow_null=True)
     inherits_formatting = serializers.BooleanField()
 
 
 class ConstraintLookupSerializer(serializers.Serializer):
     """Serializer for constraint lookup tables"""
     parent_child_constraints = serializers.ListField()
-    field_level_constraints = serializers.DictField()
+    entity_level_constraints = serializers.DictField()
     value_constraints = serializers.DictField()
     parent_to_children_map = serializers.DictField()
     child_to_parent_map = serializers.DictField()
@@ -95,7 +95,7 @@ class MetadataIndexesSerializer(serializers.Serializer):
     dimension_to_type = serializers.DictField()
     dimension_to_name = serializers.DictField()
     dimension_name_to_id = serializers.DictField()
-    field_level_to_dimensions = serializers.DictField()
+    entity_level_to_dimensions = serializers.DictField()
     dimension_order_index = serializers.DictField()
     fast_lookups = serializers.DictField()
     metadata_stats = serializers.DictField()
@@ -108,7 +108,7 @@ class ValidationSummarySerializer(serializers.Serializer):
     is_valid = serializers.BooleanField()
     validation_issues = serializers.ListField(child=serializers.CharField())
     warnings = serializers.ListField(child=serializers.CharField())
-    field_summary = serializers.DictField()
+    entity_summary = serializers.DictField()
     inheritance_summary = serializers.DictField()
     overall_score = serializers.FloatField()
 

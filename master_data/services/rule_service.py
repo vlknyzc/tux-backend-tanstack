@@ -4,12 +4,12 @@ from django.utils import timezone
 import logging
 from .dimension_catalog_service import DimensionCatalogService
 from .inheritance_matrix_service import InheritanceMatrixService
-from .field_template_service import FieldTemplateService
+from .entity_template_service import EntityTemplateService
 from .rule_cache_service import RuleCacheService
 from .rule_validation_service import RuleValidationService
 from .rule_metrics_service import RuleMetricsService
 from .constants import CACHE_TIMEOUT_DEFAULT
-from ..models import Rule, Field
+from ..models import Rule, Entity
 
 logger = logging.getLogger(__name__)
 
@@ -22,7 +22,7 @@ class RuleService:
     delegating to specialized services:
     - DimensionCatalogService: Dimension catalog operations
     - InheritanceMatrixService: Inheritance matrix operations
-    - FieldTemplateService: Field template operations
+    - EntityTemplateService: Entity template operations
     - RuleCacheService: Cache management
     - RuleValidationService: Validation and scoring
     - RuleMetricsService: Performance metrics
@@ -34,7 +34,7 @@ class RuleService:
         # Core data services
         self.dimension_catalog = DimensionCatalogService()
         self.inheritance_matrix = InheritanceMatrixService()
-        self.field_template = FieldTemplateService()
+        self.entity_template = EntityTemplateService()
 
         # Supporting services (extracted from God Class refactoring)
         self.cache = RuleCacheService()
@@ -43,21 +43,21 @@ class RuleService:
 
         self.cache_timeout = CACHE_TIMEOUT_DEFAULT
 
-    def _calculate_performance_metrics(self, field_templates, dimension_catalog):
+    def _calculate_performance_metrics(self, entity_templates, dimension_catalog):
         """
         Calculate performance metrics for the rule data.
 
         Delegates to RuleMetricsService for metrics calculation.
 
         Args:
-            field_templates: List of field templates
+            entity_templates: List of entity templates
             dimension_catalog: Dictionary containing dimension catalog data
 
         Returns:
             Dictionary containing performance metrics
         """
         return self.metrics.calculate_performance_metrics(
-            field_templates,
+            entity_templates,
             dimension_catalog
         )
 
@@ -71,8 +71,8 @@ class RuleService:
         except Rule.DoesNotExist:
             raise ValueError(f"Rule with id {rule.id} does not exist")
 
-        # Get basic field template info
-        field_templates = self.field_template.get_templates_for_rule(rule.id)
+        # Get basic entity template info
+        entity_templates = self.entity_template.get_templates_for_rule(rule.id)
 
         return {
             'id': rule.id,
@@ -89,43 +89,43 @@ class RuleService:
             'last_updated': rule.last_updated.isoformat(),
 
             # Summary information
-            'total_fields': len(field_templates),
-            'fields_with_rules': [{'id': f['field'], 'name': f['field_name'], 'field_level': f['field_level']} for f in field_templates],
-            'can_generate_count': sum(1 for f in field_templates if f.get('can_generate', False)),
+            'total_entities': len(entity_templates),
+            'entities_with_rules': [{'id': e['entity'], 'name': e['entity_name'], 'entity_level': e['entity_level']} for e in entity_templates],
+            'can_generate_count': sum(1 for e in entity_templates if e.get('can_generate', False)),
             'configuration_errors': rule.validate_configuration() if hasattr(rule, 'validate_configuration') else [],
         }
 
-    def get_field_specific_data(self, rule: Rule, field: Field) -> Dict:
+    def get_entity_specific_data(self, rule: Rule, entity: Entity) -> Dict:
         """
-        Get data specific to a single field within a rule.
-        Useful for field-specific operations or editing.
+        Get data specific to a single entity within a rule.
+        Useful for entity-specific operations or editing.
         """
-        field_template = self.field_template.get_template_for_field(
-            rule.id, field.id)
+        entity_template = self.entity_template.get_template_for_entity(
+            rule.id, entity.id)
 
-        # Get inheritance information for all dimensions in this field
+        # Get inheritance information for all dimensions in this entity
         dimension_inheritance = {}
-        for dim in field_template['dimensions']:
+        for dim in entity_template['dimensions']:
             dim = dim['dimension']
             dimension_inheritance[dim] = self.inheritance_matrix.get_inheritance_for_dimension(
                 rule.id, dim)
 
         return {
-            'field_template': field_template,
+            'entity_template': entity_template,
             'dimension_inheritance': dimension_inheritance,
-            'field_summary': {
-                'can_generate': field_template.get('can_generate', False),
-                'completeness_score': field_template.get('completeness_score', 0),
-                'total_dimensions': field_template.get('dimension_count', 0),
-                'inherited_dimensions': field_template.get('inherited_dimension_count', 0),
+            'entity_summary': {
+                'can_generate': entity_template.get('can_generate', False),
+                'completeness_score': entity_template.get('completeness_score', 0),
+                'total_dimensions': entity_template.get('dimension_count', 0),
+                'inherited_dimensions': entity_template.get('inherited_dimension_count', 0),
             }
         }
 
-    def get_generation_preview(self, rule: Rule, field: Field, sample_values: Dict[str, str]) -> Dict:
+    def get_generation_preview(self, rule: Rule, entity: Entity, sample_values: Dict[str, str]) -> Dict:
         """
-        Generate a preview using the field template service.
+        Generate a preview using the entity template service.
         """
-        return self.field_template.get_generation_preview(rule.id, field.id, sample_values)
+        return self.entity_template.get_generation_preview(rule.id, entity.id, sample_values)
 
     def get_rule_validation_summary(self, rule: Rule) -> Dict:
         """
@@ -140,15 +140,15 @@ class RuleService:
             Dictionary containing validation summary
         """
         # Get data from specialized services
-        field_templates = self.field_template.get_templates_for_rule(rule.id if hasattr(rule, 'id') else rule)
-        inheritance_summary = self.inheritance_matrix.get_field_inheritance_summary(
+        entity_templates = self.entity_template.get_templates_for_rule(rule.id if hasattr(rule, 'id') else rule)
+        inheritance_summary = self.inheritance_matrix.get_entity_inheritance_summary(
             rule.id if hasattr(rule, 'id') else rule
         )
 
         # Delegate validation to validation service
         return self.validation.get_rule_validation_summary(
             rule,
-            field_templates,
+            entity_templates,
             inheritance_summary
         )
 
@@ -202,16 +202,16 @@ class RuleService:
             logger.info(
                 f"Building complete rule data for rule {rule_id}: {rule.name}")
 
-            # Build optimized field templates (dimension ID references only)
+            # Build optimized entity templates (dimension ID references only)
             try:
-                field_templates = self.field_template.get_optimized_templates_for_rule(
+                entity_templates = self.entity_template.get_optimized_templates_for_rule(
                     rule)
                 logger.info(
-                    f"Field templates built successfully: {len(field_templates)} templates")
+                    f"Entity templates built successfully: {len(entity_templates)} templates")
             except Exception as e:
                 logger.error(
-                    f"Error building field templates for rule {rule_id}: {str(e)}")
-                raise Exception(f"Field template generation failed: {str(e)}")
+                    f"Error building entity templates for rule {rule_id}: {str(e)}")
+                raise Exception(f"Entity template generation failed: {str(e)}")
 
             # Build enhanced dimension catalog with fast lookups
             try:
@@ -229,7 +229,7 @@ class RuleService:
             try:
                 metadata = {
                     'generated_at': timezone.now().isoformat(),
-                    'total_fields': len(field_templates),
+                    'total_entities': len(entity_templates),
                     'total_dimensions': len(dimension_catalog.get('dimensions', {})),
                     'inheritance_coverage': dimension_catalog.get('inheritance_lookup', {}).get('inheritance_stats', {}).get('inheritance_coverage', 0.0)
                 }
@@ -242,7 +242,7 @@ class RuleService:
                 'rule': rule.id,
                 'rule_name': rule.name,
                 'rule_slug': rule.slug,
-                'field_templates': field_templates,
+                'entity_templates': entity_templates,
                 'dimension_catalog': dimension_catalog,
                 'metadata': metadata
             }
@@ -280,64 +280,64 @@ class RuleService:
 
             # Get all rule details with related data in a single query
             rule_details = rule.rule_details.select_related(
-                'field', 'dimension', 'dimension__parent'
+                'entity', 'dimension', 'dimension__parent'
             ).prefetch_related(
                 'dimension__dimension_values'
-            ).order_by('field__field_level', 'dimension_order')
+            ).order_by('entity__entity_level', 'dimension_order')
 
             # Pre-build inheritance lookup to avoid N+1 queries
             inheritance_lookup = self._build_inheritance_lookup(rule_details)
 
-            # Build fields as an array instead of object
-            fields = []
+            # Build entities as an array instead of object
+            entities = []
 
-            # Group rule details by field
-            fields_data = {}
+            # Group rule details by entity
+            entities_data = {}
             for detail in rule_details:
-                field = detail.field
-                if field.id not in fields_data:
-                    fields_data[field.id] = {
-                        'field': field,
-                        'field_items': []
+                entity = detail.entity
+                if entity.id not in entities_data:
+                    entities_data[entity.id] = {
+                        'entity': entity,
+                        'entity_items': []
                     }
-                fields_data[field.id]['field_items'].append(detail)
+                entities_data[entity.id]['entity_items'].append(detail)
 
-            # Build fields structure as array - exactly matching redocs format
-            for field_id, field_data in fields_data.items():
-                field = field_data['field']
-                field_obj = {
-                    'id': field.id,
-                    'name': field.name,
-                    'level': field.field_level,
-                    'next_field_id': field.next_field.id if field.next_field else None,
-                    'next_field_name': field.next_field.name if field.next_field else None,
-                    'field_items': []
+            # Build entities structure as array - exactly matching redocs format
+            for entity_id, entity_data in entities_data.items():
+                entity = entity_data['entity']
+                entity_obj = {
+                    'id': entity.id,
+                    'name': entity.name,
+                    'level': entity.entity_level,
+                    'next_entity_id': entity.next_entity.id if entity.next_entity else None,
+                    'next_entity_name': entity.next_entity.name if entity.next_entity else None,
+                    'entity_items': []
                 }
 
-                # Add field items (rule details) - exactly matching redocs format
-                for detail in field_data['field_items']:
+                # Add entity items (rule details) - exactly matching redocs format
+                for detail in entity_data['entity_items']:
                     # Use pre-built inheritance lookup
                     inheritance_info = inheritance_lookup.get(detail.id, {
                         'is_inherited': False,
-                        'inherits_from_field_item': None
+                        'inherits_from_entity_item': None
                     })
 
-                    field_obj['field_items'].append({
+                    entity_obj['entity_items'].append({
                         'id': detail.id,
                         'dimension_id': detail.dimension.id,
                         'order': detail.dimension_order,
                         'is_required': getattr(detail, 'is_required', True),
                         'is_inherited': inheritance_info['is_inherited'],
-                        'inherits_from_field_item': inheritance_info['inherits_from_field_item'],
+                        'inherits_from_entity_item': inheritance_info['inherits_from_entity_item'],
                         'prefix': detail.prefix,
                         'suffix': detail.suffix,
                         'delimiter': detail.delimiter
                     })
 
-                fields.append(field_obj)
+                entities.append(entity_obj)
 
-            # Sort fields by level to maintain order
-            fields.sort(key=lambda x: x['level'])
+            # Sort entities by level to maintain order
+            entities.sort(key=lambda x: x['level'])
 
             # Build dimensions and dimension values - exactly matching redocs format
             dimensions, dimension_values = self._build_dimensions_and_values_for_configuration(
@@ -357,7 +357,7 @@ class RuleService:
                     'id': rule.workspace.id,
                     'name': rule.workspace.name
                 },
-                'fields': fields,
+                'entities': entities,
                 'dimensions': dimensions,
                 'dimension_values': dimension_values,
                 'generated_at': timezone.now().isoformat(),
@@ -376,36 +376,36 @@ class RuleService:
         """Build inheritance lookup to avoid N+1 queries"""
         inheritance_lookup = {}
 
-        # Group by dimension and field level for efficient lookup
-        dimension_field_map = {}
+        # Group by dimension and entity level for efficient lookup
+        dimension_entity_map = {}
         for detail in rule_details:
             dimension_id = detail.dimension.id
-            field_level = detail.field.field_level
+            entity_level = detail.entity.entity_level
 
-            if dimension_id not in dimension_field_map:
-                dimension_field_map[dimension_id] = {}
+            if dimension_id not in dimension_entity_map:
+                dimension_entity_map[dimension_id] = {}
 
-            dimension_field_map[dimension_id][field_level] = detail.id
+            dimension_entity_map[dimension_id][entity_level] = detail.id
 
         # Build inheritance lookup
         for detail in rule_details:
             dimension_id = detail.dimension.id
-            current_field_level = detail.field.field_level
+            current_entity_level = detail.entity.entity_level
 
-            # Check if this dimension exists in previous field levels
+            # Check if this dimension exists in previous entity levels
             is_inherited = False
-            inherits_from_field_item = None
+            inherits_from_entity_item = None
 
-            if current_field_level > 1:
-                for level in range(current_field_level - 1, 0, -1):
-                    if level in dimension_field_map.get(dimension_id, {}):
+            if current_entity_level > 1:
+                for level in range(current_entity_level - 1, 0, -1):
+                    if level in dimension_entity_map.get(dimension_id, {}):
                         is_inherited = True
-                        inherits_from_field_item = dimension_field_map[dimension_id][level]
+                        inherits_from_entity_item = dimension_entity_map[dimension_id][level]
                         break
 
             inheritance_lookup[detail.id] = {
                 'is_inherited': is_inherited,
-                'inherits_from_field_item': inherits_from_field_item
+                'inherits_from_entity_item': inherits_from_entity_item
             }
 
         return inheritance_lookup

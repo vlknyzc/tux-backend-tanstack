@@ -54,7 +54,7 @@ class RuleMetricsService:
         - Generation timestamp
 
         Args:
-            field_templates: List of field templates from FieldTemplateService
+            field_templates: List of field templates from EntityTemplateService
             dimension_catalog: Dictionary containing dimension catalog data
                 from DimensionCatalogService
 

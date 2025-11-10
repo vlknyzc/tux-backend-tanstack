@@ -9,7 +9,7 @@ from django.utils import timezone
 from django.contrib.auth import get_user_model
 
 from ..models import (
-    String, StringDetail, StringModification, Rule, Field, Workspace
+    String, StringDetail, StringModification, Rule, Entity, Workspace
 )
 
 User = get_user_model()

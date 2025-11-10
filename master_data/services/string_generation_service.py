@@ -24,13 +24,13 @@ class StringGenerationService:
     """
 
     @staticmethod
-    def generate_string_value(rule: Rule, field, dimension_values: Dict[str, str]) -> str:
+    def generate_string_value(rule: Rule, entity, dimension_values: Dict[str, str]) -> str:
         """
         Generate a string value based on rule configuration and dimension values.
 
         Args:
             rule: The naming rule to apply
-            field: The field this string belongs to
+            entity: The entity this string belongs to
             dimension_values: Dict mapping dimension names to their values
 
         Returns:
@@ -40,23 +40,23 @@ class StringGenerationService:
             NamingConventionError: If generation fails due to missing values or invalid config
         """
         try:
-            # Get rule details for this field, ordered by dimension_order
+            # Get rule details for this entity, ordered by dimension_order
             rule_details = RuleDetail.objects.filter(
                 rule=rule,
-                field=field
+                entity=entity
             ).select_related('dimension').order_by('dimension_order')
 
             if not rule_details.exists():
                 raise NamingConventionError(
-                    f"No rule details found for rule '{rule.name}' and field '{field.name}'"
+                    f"No rule details found for rule '{rule.name}' and entity '{entity.name}'"
                 )
-            
+
             # Validate dimension order sequence to ensure data integrity
             orders = [detail.dimension_order for detail in rule_details]
             expected_orders = list(range(1, len(orders) + 1))
             if sorted(orders) != expected_orders:
                 raise NamingConventionError(
-                    f"Invalid dimension order sequence for rule '{rule.name}' field '{field.name}': "
+                    f"Invalid dimension order sequence for rule '{rule.name}' entity '{entity.name}': "
                     f"expected {expected_orders}, got {sorted(orders)}"
                 )
 
@@ -101,7 +101,7 @@ class StringGenerationService:
         return formatted
 
     @staticmethod
-    def validate_dimension_values(rule: Rule, field, dimension_values: Dict[str, str]) -> List[str]:
+    def validate_dimension_values(rule: Rule, entity, dimension_values: Dict[str, str]) -> List[str]:
         """
         Validate that all required dimension values are provided and valid.
 
@@ -110,9 +110,9 @@ class StringGenerationService:
         """
         errors = []
 
-        # Get required dimensions for this rule and field
+        # Get required dimensions for this rule and entity
         required_dimensions = RuleDetail.objects.filter(
-            rule=rule, field=field
+            rule=rule, entity=entity
         ).values_list('dimension__name', flat=True)
 
         # Check for missing dimensions
@@ -155,7 +155,7 @@ class StringGenerationService:
             return False
 
     @staticmethod
-    def check_naming_conflicts(rule: Rule, field, proposed_value: str, exclude_string: Optional[int] = None) -> List[str]:
+    def check_naming_conflicts(rule: Rule, entity, proposed_value: str, exclude_string: Optional[int] = None) -> List[str]:
         """
         Check for naming conflicts with existing strings.
 
@@ -167,7 +167,7 @@ class StringGenerationService:
         # Check for exact duplicates
         existing_query = String.objects.filter(
             rule=rule,
-            field=field,
+            entity=entity,
             value=proposed_value
         )
 
@@ -176,12 +176,12 @@ class StringGenerationService:
 
         if existing_query.exists():
             conflicts.append(
-                f"String value '{proposed_value}' already exists for this rule and field")
+                f"String value '{proposed_value}' already exists for this rule and entity")
 
         # Check for similar strings (optional - for warnings)
         similar_strings = String.objects.filter(
             rule=rule,
-            field=field,
+            entity=entity,
             value__icontains=proposed_value[:10]  # Check first 10 chars
         )
 
@@ -198,7 +198,7 @@ class StringGenerationService:
 
     @staticmethod
     @transaction.atomic
-    def create_string_with_details(submission, field, dimension_values: Dict[str, str]) -> String:
+    def create_string_with_details(submission, entity, dimension_values: Dict[str, str]) -> String:
         """
         Create a new String with auto-generated value and associated StringDetails.
 
@@ -207,7 +207,7 @@ class StringGenerationService:
 
         Args:
             submission: [DEPRECATED] Submission instance (use Projects instead)
-            field: Field instance
+            entity: Entity instance
             dimension_values: Dict of dimension values
 
         Returns:
@@ -217,19 +217,19 @@ class StringGenerationService:
 
         # Validate dimension values
         validation_errors = StringGenerationService.validate_dimension_values(
-            rule, field, dimension_values
+            rule, entity, dimension_values
         )
         if validation_errors:
             raise ValidationError(validation_errors)
 
         # Generate string value
         generated_value = StringGenerationService.generate_string_value(
-            rule, field, dimension_values
+            rule, entity, dimension_values
         )
 
         # Check for conflicts
         conflicts = StringGenerationService.check_naming_conflicts(
-            rule, field, generated_value
+            rule, entity, generated_value
         )
         if any('already exists' in conflict for conflict in conflicts):
             raise NamingConventionError(conflicts[0])
@@ -237,7 +237,7 @@ class StringGenerationService:
         # Create the String (submission is optional now)
         string = String.objects.create(
             submission=submission,  # Legacy support
-            field=field,
+            entity=entity,
             rule=rule,
             value=generated_value,
             string_uuid=uuid.uuid4()
@@ -246,7 +246,7 @@ class StringGenerationService:
         # Create StringDetails for each dimension
         for dimension_name, value in dimension_values.items():
             dimension = rule.rule_details.filter(
-                field=field,
+                entity=entity,
                 dimension__name=dimension_name
             ).first().dimension
 

@@ -1,8 +1,8 @@
 """
-Field template serializers for field templates and field-specific data.
+Entity template serializers for entity templates and entity-specific data.
 
-This module contains serializers responsible for field templates,
-field dimensions, and field-specific rule data.
+This module contains serializers responsible for entity templates,
+entity dimensions, and entity-specific rule data.
 """
 
 from rest_framework import serializers
@@ -14,12 +14,12 @@ from .metadata import (
 )
 
 
-class OptimizedFieldTemplateSerializer(serializers.Serializer):
-    """Optimized field template with minimal data and ID references"""
-    field = serializers.IntegerField()
-    field_name = serializers.CharField()
-    field_level = serializers.IntegerField()
-    next_field = serializers.IntegerField(allow_null=True)
+class OptimizedEntityTemplateSerializer(serializers.Serializer):
+    """Optimized entity template with minimal data and ID references"""
+    entity = serializers.IntegerField()
+    entity_name = serializers.CharField()
+    entity_level = serializers.IntegerField()
+    next_entity = serializers.IntegerField(allow_null=True)
     can_generate = serializers.BooleanField()
 
     # Dimension references (not full data)
@@ -29,12 +29,12 @@ class OptimizedFieldTemplateSerializer(serializers.Serializer):
     inherited_dimension_count = serializers.IntegerField()
 
     # Computed metadata
-    field_rule_preview = serializers.CharField()
+    entity_rule_preview = serializers.CharField()
     completeness_score = serializers.FloatField()
 
 
-class FieldDimensionSerializer(serializers.Serializer):
-    """Serializer for dimension information within a field template"""
+class EntityDimensionSerializer(serializers.Serializer):
+    """Serializer for dimension information within an entity template"""
     rule_detail = serializers.IntegerField()
     dimension = serializers.IntegerField()
     dimension_name = serializers.CharField()
@@ -67,30 +67,30 @@ class FieldDimensionSerializer(serializers.Serializer):
     has_constraints = serializers.BooleanField()
 
 
-class FieldTemplateSerializer(serializers.Serializer):
-    """Serializer for field templates"""
-    field = serializers.IntegerField()
-    field_name = serializers.CharField()
-    field_level = serializers.IntegerField()
-    next_field = serializers.IntegerField(allow_null=True)
-    next_field_name = serializers.CharField(allow_null=True, allow_blank=True)
+class EntityTemplateSerializer(serializers.Serializer):
+    """Serializer for entity templates"""
+    entity = serializers.IntegerField()
+    entity_name = serializers.CharField()
+    entity_level = serializers.IntegerField()
+    next_entity = serializers.IntegerField(allow_null=True)
+    next_entity_name = serializers.CharField(allow_null=True, allow_blank=True)
     can_generate = serializers.BooleanField()
 
     # Dimensions
-    dimensions = FieldDimensionSerializer(many=True)
+    dimensions = EntityDimensionSerializer(many=True)
     dimension_count = serializers.IntegerField()
     required_dimension_count = serializers.IntegerField()
     inherited_dimension_count = serializers.IntegerField()
 
     # Preview and metadata
-    field_rule_preview = serializers.CharField()
+    entity_rule_preview = serializers.CharField()
     validation_rules = ValidationRuleSerializer(many=True)
     generation_metadata = GenerationMetadataSerializer()
     completeness_score = serializers.FloatField()
 
 
-class FieldSpecificDataSerializer(serializers.Serializer):
-    """Serializer for field-specific rule data"""
-    field_template = FieldTemplateSerializer()
+class EntitySpecificDataSerializer(serializers.Serializer):
+    """Serializer for entity-specific rule data"""
+    entity_template = EntityTemplateSerializer()
     dimension_inheritance = serializers.DictField()
-    field_summary = serializers.DictField()
+    entity_summary = serializers.DictField()

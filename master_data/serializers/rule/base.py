@@ -9,7 +9,7 @@ import logging
 from rest_framework import serializers
 from typing import Optional
 from django.core.exceptions import ObjectDoesNotExist
-from ...models import Rule, RuleDetail, Field, Platform, Workspace
+from ...models import Rule, RuleDetail, Entity, Platform, Workspace
 from ..base import WorkspaceOwnedSerializer
 
 logger = logging.getLogger(__name__)
@@ -21,7 +21,7 @@ class RuleDetailCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = RuleDetail
         fields = [
-            'field',
+            'entity',
             'dimension',
             'prefix',
             'suffix',
@@ -35,7 +35,7 @@ class RuleDetailCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         """Enhanced validation for rule detail creation."""
-        field = attrs['field']
+        entity = attrs['entity']
         dimension = attrs['dimension']
 
         # Note: rule validation is handled at the RuleNestedSerializer level
@@ -80,7 +80,7 @@ class RuleCreateUpdateSerializer(WorkspaceOwnedSerializer):
 class RuleNestedSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating rules with nested rule details."""
 
-    field_details = serializers.SerializerMethodField()
+    entity_details = serializers.SerializerMethodField()
     name = serializers.CharField()
     platform = serializers.PrimaryKeyRelatedField(
         queryset=Platform.objects.all())
@@ -135,18 +135,18 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                 "Invalid platform format. Expected an ID or a Platform instance.")
 
     def validate(self, attrs):
-        """Validate that all fields in rule_details belong to the same platform."""
+        """Validate that all entities in rule_details belong to the same platform."""
         platform = attrs.get('platform')
         rule_details = attrs.get('rule_details', [])
 
         if platform and rule_details:
             for detail in rule_details:
-                field = detail.get('field')
-                if field and hasattr(field, 'platform') and field.platform != platform:
+                entity = detail.get('entity')
+                if entity and hasattr(entity, 'platform') and entity.platform != platform:
                     raise serializers.ValidationError(
-                        f"Field '{field.name}' belongs to platform '{field.platform.name}' "
+                        f"Entity '{entity.name}' belongs to platform '{entity.platform.name}' "
                         f"but the rule is for platform '{platform.name}'. "
-                        "All fields must belong to the same platform."
+                        "All entities must belong to the same platform."
                     )
 
         return attrs
@@ -154,7 +154,7 @@ class RuleNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = Rule
         fields = ['id', 'name', 'description', 'status', 'platform',
-                  'platform_name', 'platform_slug', 'field_details', 'rule_details',
+                  'platform_name', 'platform_slug', 'entity_details', 'rule_details',
                   'workspace', 'workspace_name']
 
     def create(self, validated_data):
@@ -214,30 +214,31 @@ class RuleNestedSerializer(serializers.ModelSerializer):
 
         return instance
 
-    def get_field_details(self, obj):
+    def get_entity_details(self, obj):
         # Get all rule details for this rule
         rule_details = obj.rule_details.all()
 
-        # Create a dictionary to group by field
+        # Create a dictionary to group by entity
         grouped_details = {}
 
         for detail in rule_details:
-            if not detail.field:
+            if not detail.entity:
                 continue
 
-            field = detail.field.id
+            entity_id = detail.entity.id
 
-            if field not in grouped_details:
-                # Initialize the field group with field information safely
-                next_field_name = None
-                if detail.field and detail.field.next_field:
-                    next_field_name = detail.field.next_field.name
+            if entity_id not in grouped_details:
+                # Initialize the entity group with entity information safely
+                next_entity_id = None
+                if detail.entity and detail.entity.next_entity:
+                    next_entity_id = detail.entity.next_entity.id
 
-                grouped_details[field] = {
-                    'field': field,
-                    'field_name': detail.field.name if detail.field else None,
-                    'field_level': detail.field.field_level if detail.field else None,
-                    'next_field': next_field_name,
+                grouped_details[entity_id] = {
+                    'entity': entity_id,
+                    'entity_name': detail.entity.name if detail.entity else None,
+                    'entity_level': detail.entity.entity_level if detail.entity else None,
+                    'next_entity': next_entity_id,
+                    'can_generate': True,  # TODO: implement can_generate logic
                     'dimensions': []
                 }
 
@@ -250,31 +251,43 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                 'dimension': detail.dimension.id if detail.dimension else None,
                 'dimension_name': detail.dimension.name if detail.dimension else None,
                 'dimension_type': detail.dimension.type if detail.dimension else None,
+                'dimension_description': detail.dimension.description if detail.dimension else None,
                 'dimension_order': detail.dimension_order,
+                'is_required': getattr(detail, 'is_required', True),
                 'prefix': detail.prefix or '',  # Convert None to empty string
                 'suffix': detail.suffix or '',  # Convert None to empty string
                 'delimiter': detail.delimiter or '',  # Convert None to empty string
+                'effective_delimiter': detail.delimiter or '',  # TODO: implement effective delimiter logic
                 'parent_dimension_name': (detail.dimension.parent.name
                                           if detail.dimension and detail.dimension.parent
                                           else None),
                 'parent_dimension': (detail.dimension.parent.id
                                      if detail.dimension and detail.dimension.parent
                                      else None),
-                'dimension_values': []
+                'inherits_from_parent': False,  # TODO: implement inheritance detection
+                'parent_rule_detail': None,  # TODO: implement parent rule detail lookup
+                'dimension_values': [],
+                'dimension_value_count': 0,
+                'allows_freetext': detail.dimension.type == 'text' if detail.dimension else False,
+                'is_dropdown': detail.dimension.type in ['list', 'combobox'] if detail.dimension else False
             }
 
             # Safely get dimension values
             if detail.dimension:
                 try:
-                    dimension_info['dimension_values'] = [
+                    dimension_values = [
                         {
                             'id': value.id,
                             'value': value.value,
                             'label': value.label,
                             'utm': value.utm,
-                        } for value in detail.dimension.dimension_values.all()
+                            'description': value.description or '',
+                            'is_active': value.is_active,
+                        } for value in detail.dimension.dimension_values.filter(is_active=True)
                         if value is not None  # Extra safety check
                     ]
+                    dimension_info['dimension_values'] = dimension_values
+                    dimension_info['dimension_value_count'] = len(dimension_values)
                 except (AttributeError, ObjectDoesNotExist) as e:
                     # Log expected errors when accessing dimension values
                     logger.warning(
@@ -299,9 +312,9 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                     )
                     raise
 
-            grouped_details[field]['dimensions'].append(dimension_info)
+            grouped_details[entity_id]['dimensions'].append(dimension_info)
 
-            # combine dimensions to form field_rule safely
+            # combine dimensions to form entity_rule safely
             try:
                 dimension_names = [
                     (dim.get('prefix', '') or '') +  # Handle None values
@@ -309,35 +322,50 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                     (dim.get('suffix', '') or '') +
                     (dim.get('delimiter', '') or '')
                     for dim in sorted(
-                        grouped_details[field]['dimensions'],
+                        grouped_details[entity_id]['dimensions'],
                         # Default to 0 if missing
                         key=lambda x: x.get('dimension_order', 0)
                     )
                 ]
-                field_rule = ''.join(dimension_names)
-                grouped_details[field]['field_rule'] = field_rule
+                entity_rule = ''.join(dimension_names)
+                grouped_details[entity_id]['entity_rule_preview'] = entity_rule
             except (AttributeError, KeyError, TypeError) as e:
-                # Log expected errors when forming field_rule
+                # Log expected errors when forming entity_rule
                 logger.warning(
-                    f'Error forming field_rule for field {field}: {e}',
+                    f'Error forming entity_rule for entity {entity_id}: {e}',
                     extra={
-                        'field_id': field,
+                        'entity_id': entity_id,
                         'rule_id': obj.id,
-                        'dimensions_count': len(grouped_details[field]['dimensions'])
+                        'dimensions_count': len(grouped_details[entity_id]['dimensions'])
                     }
                 )
-                grouped_details[field]['field_rule'] = ''
+                grouped_details[entity_id]['entity_rule_preview'] = ''
             except Exception as e:
                 # Log unexpected errors and re-raise
                 logger.error(
-                    f'Unexpected error forming field_rule: {e}',
+                    f'Unexpected error forming entity_rule: {e}',
                     exc_info=True,
                     extra={
-                        'field_id': field,
+                        'entity_id': entity_id,
                         'rule_id': obj.id
                     }
                 )
                 raise
+
+        # Add computed fields to each entity group
+        for entity_id, entity_data in grouped_details.items():
+            # Add dimension counts
+            entity_data['dimension_count'] = len(entity_data['dimensions'])
+            entity_data['required_dimension_count'] = sum(
+                1 for d in entity_data['dimensions'] if d.get('is_required', True)
+            )
+
+            # Add required dimensions list (dimension names)
+            entity_data['required_dimensions'] = [
+                d['dimension_name']
+                for d in entity_data['dimensions']
+                if d.get('is_required', True)
+            ]
 
         # Convert dictionary to list
         return list(grouped_details.values())

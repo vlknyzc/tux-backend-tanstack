@@ -76,9 +76,9 @@ class StringWithDetailsSerializer(WorkspaceOwnedSerializer):
     """
 
     details = StringDetailNestedSerializer(many=True, source='string_details')
-    field = serializers.PrimaryKeyRelatedField(
-        queryset=models.Field.objects.all(),
-        help_text="Field this string belongs to"
+    entity = serializers.PrimaryKeyRelatedField(
+        queryset=models.Entity.objects.all(),
+        help_text="Entity this string belongs to"
     )
     submission = serializers.PrimaryKeyRelatedField(
         queryset=models.Submission.objects.none(),  # Filtered in __init__
@@ -110,7 +110,7 @@ class StringWithDetailsSerializer(WorkspaceOwnedSerializer):
     class Meta(WorkspaceOwnedSerializer.Meta):
         model = models.String
         fields = [
-            'id', 'submission', 'field', 'parent', 'string_uuid', 'parent_uuid',
+            'id', 'submission', 'entity', 'parent', 'string_uuid', 'parent_uuid',
             'is_auto_generated', 'generation_metadata', 'version', 'workspace',
             'created', 'last_updated', 'details', 'created_by', 'value'
         ]
@@ -264,7 +264,7 @@ class StringWithDetailsReadSerializer(serializers.ModelSerializer):
     """
 
     details = StringDetailNestedSerializer(many=True, source='string_details')
-    field = serializers.SerializerMethodField()
+    entity = serializers.SerializerMethodField()
     submission = serializers.SerializerMethodField()
     rule = serializers.SerializerMethodField()
     platform = serializers.SerializerMethodField()
@@ -273,12 +273,12 @@ class StringWithDetailsReadSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.String
         fields = [
-            'id', 'submission', 'field', 'rule', 'value', 'string_uuid',
+            'id', 'submission', 'entity', 'rule', 'value', 'string_uuid',
             'parent', 'parent_uuid', 'is_auto_generated', 'generation_metadata',
             'version', 'workspace', 'created', 'last_updated', 'details', 'platform',
             'created_by'
         ]
-        read_only_fields = ['id', 'submission', 'field', 'rule', 'value', 'string_uuid',
+        read_only_fields = ['id', 'submission', 'entity', 'rule', 'value', 'string_uuid',
                             'parent', 'parent_uuid', 'is_auto_generated', 'generation_metadata',
                             'version', 'workspace', 'created', 'last_updated', 'details', 'platform',
                             'created_by']
@@ -290,12 +290,12 @@ class StringWithDetailsReadSerializer(serializers.ModelSerializer):
             'name': obj.submission.name
         }
 
-    def get_field(self, obj):
-        """Get field info."""
+    def get_entity(self, obj):
+        """Get entity info."""
         return {
-            'id': obj.field.id,
-            'name': obj.field.name,
-            'level': obj.field.field_level
+            'id': obj.entity.id,
+            'name': obj.entity.name,
+            'level': obj.entity.entity_level
         }
 
     def get_rule(self, obj):
@@ -308,8 +308,8 @@ class StringWithDetailsReadSerializer(serializers.ModelSerializer):
     def get_platform(self, obj):
         """Get platform info."""
         return {
-            'id': obj.field.platform.id,
-            'name': obj.field.platform.name
+            'id': obj.entity.platform.id,
+            'name': obj.entity.platform.name
         }
 
     def get_parent(self, obj):

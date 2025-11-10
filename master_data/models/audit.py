@@ -180,8 +180,8 @@ class StringUpdateBatch(TimeStampModel, WorkspaceMixin):
         on_delete=models.CASCADE,
         help_text="Rule being updated in this batch"
     )
-    field = models.ForeignKey(
-        'master_data.Field',
+    entity = models.ForeignKey(
+        'master_data.Entity',
         on_delete=models.CASCADE,
         help_text="Field being updated in this batch"
     )
@@ -251,7 +251,7 @@ class StringUpdateBatch(TimeStampModel, WorkspaceMixin):
         indexes = [
             models.Index(fields=['workspace', 'status']),
             models.Index(fields=['initiated_by', 'initiated_at']),
-            models.Index(fields=['rule', 'field']),
+            models.Index(fields=['rule', 'entity']),
         ]
 
     def __str__(self):

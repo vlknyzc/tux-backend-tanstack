@@ -42,7 +42,7 @@ class APIVersionView(APIView):
                     'Multi-tenant workspace support',
                     'Basic string generation',
                     'Rule management',
-                    'Field hierarchy support'
+                    'Entity hierarchy support'
                 ],
                 'deprecated_features': [],
                 'breaking_changes': [],
@@ -60,7 +60,7 @@ class APIVersionView(APIView):
                     'Enhanced multi-tenant workspace support',
                     'Advanced string generation with AI',
                     'Advanced rule management with validation',
-                    'Complex field hierarchy support',
+                    'Complex entity hierarchy support',
                     'Real-time collaboration features',
                     'Advanced caching and performance optimizations'
                 ],

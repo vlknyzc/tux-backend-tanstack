@@ -12,7 +12,7 @@ from django.contrib.auth import get_user_model
 
 from ..models import (
     String, StringDetail, StringModification, StringUpdateBatch,
-    StringInheritanceUpdate, Rule, Field, Workspace
+    StringInheritanceUpdate, Rule, Entity, Workspace
 )
 from .inheritance_service import InheritanceService
 from .conflict_resolution_service import ConflictResolutionService
@@ -116,7 +116,7 @@ class BatchUpdateService:
             batch = StringUpdateBatch.objects.create(
                 workspace=workspace,
                 rule=strings.first().rule,  # Assume all strings use same rule
-                field=strings.first().field,  # Assume all strings use same field
+                entity=strings.first().entity,  # Assume all strings use same entity
                 initiated_by=user,
                 total_strings=len(updates),
                 metadata={

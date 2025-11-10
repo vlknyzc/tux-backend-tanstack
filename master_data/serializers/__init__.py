@@ -2,7 +2,8 @@ from .dimension import (
     DimensionSerializer,
     DimensionValueSerializer,
     DimensionBulkCreateSerializer,
-    DimensionValueBulkCreateSerializer
+    DimensionValueBulkCreateSerializer,
+    BulkUpdateParentsSerializer
 )
 from .dimension_constraint import (
     DimensionConstraintSerializer,
@@ -22,8 +23,8 @@ from .rule import (
     DefaultRuleRequestSerializer,
 
     # Extended catalog serializers
-    FieldTemplateSerializer,
-    FieldSpecificDataSerializer,
+    EntityTemplateSerializer,
+    EntitySpecificDataSerializer,
     LightweightRuleSerializer,
     DimensionCatalogSerializer,
     GenerationPreviewSerializer,
@@ -47,7 +48,7 @@ from .rule import (
     CacheInvalidationResponseSerializer,
     GenerationPreviewResponseSerializer,
 )
-from .platform import PlatformSerializer, FieldSerializer, PlatformTemplateSerializer
+from .platform import PlatformSerializer, EntitySerializer, PlatformTemplateSerializer
 from .string import (
     StringDetailNestedSerializer,
     StringWithDetailsSerializer,
@@ -117,6 +118,7 @@ __all__ = [
     'DimensionValueSerializer',
     'DimensionBulkCreateSerializer',
     'DimensionValueBulkCreateSerializer',
+    'BulkUpdateParentsSerializer',
     'DimensionConstraintSerializer',
     'ConstraintBulkCreateSerializer',
     'ConstraintReorderSerializer',
@@ -131,8 +133,8 @@ __all__ = [
     'DefaultRuleRequestSerializer',
     # Enhanced rule serializers
     'LightweightRuleSerializer',
-    'FieldTemplateSerializer',
-    'FieldSpecificDataSerializer',
+    'EntityTemplateSerializer',
+    'EntitySpecificDataSerializer',
     'DimensionCatalogSerializer',
     'GenerationPreviewSerializer',
     'ValidationSummarySerializer',
@@ -155,7 +157,7 @@ __all__ = [
     'CacheInvalidationResponseSerializer',
     'GenerationPreviewResponseSerializer',
     'PlatformSerializer',
-    'FieldSerializer',
+    'EntitySerializer',
     'PlatformTemplateSerializer',
     'StringExpandedSerializer',
     'StringGenerationRequestSerializer',

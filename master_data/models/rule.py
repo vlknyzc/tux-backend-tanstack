@@ -28,7 +28,7 @@ class RuleQuerySet(models.QuerySet):
 
     def with_details(self):
         """Prefetch rule details for efficient access."""
-        return self.prefetch_related('rule_details__field', 'rule_details__dimension')
+        return self.prefetch_related('rule_details__entity', 'rule_details__dimension')
 
 
 class RuleManager(models.Manager):
@@ -164,46 +164,46 @@ class Rule(TimeStampModel, WorkspaceMixin):
         from ..services import NamingPatternValidator
         return NamingPatternValidator.validate_rule_configuration(self)
 
-    def get_preview(self, field, sample_values):
+    def get_preview(self, entity, sample_values):
         """
         Generate a preview of what naming would look like with sample values.
 
         Args:
-            field: Field to generate preview for
+            entity: Entity to generate preview for
             sample_values: Dict of dimension_name -> sample_value
 
         Returns:
             Preview string or error message
         """
         from ..services import NamingPatternValidator
-        return NamingPatternValidator.get_naming_preview(self, field, sample_values)
+        return NamingPatternValidator.get_naming_preview(self, entity, sample_values)
 
-    def get_required_dimensions(self, field):
-        """Get list of dimensions required for the given field."""
-        return self.rule_details.filter(field=field).values_list('dimension__name', flat=True)
+    def get_required_dimensions(self, entity):
+        """Get list of dimensions required for the given entity."""
+        return self.rule_details.filter(entity=entity).values_list('dimension__name', flat=True)
 
-    def get_fields_with_rules(self):
-        """Get all fields that have rule details configured."""
-        return self.rule_details.values_list('field', flat=True).distinct()
+    def get_entities_with_rules(self):
+        """Get all entities that have rule details configured."""
+        return self.rule_details.values_list('entity', flat=True).distinct()
 
-    def can_generate_for_field(self, field):
-        """Check if this rule can generate strings for the given field."""
-        return self.rule_details.filter(field=field).exists()
+    def can_generate_for_entity(self, entity):
+        """Check if this rule can generate strings for the given entity."""
+        return self.rule_details.filter(entity=entity).exists()
 
-    def get_generation_order(self, field):
-        """Get the dimension generation order for a specific field."""
+    def get_generation_order(self, entity):
+        """Get the dimension generation order for a specific entity."""
         return list(
-            self.rule_details.filter(field=field)
+            self.rule_details.filter(entity=entity)
             .order_by('dimension_order')
             .values_list('dimension__name', flat=True)
         )
 
-    def generate_string(self, field, dimension_values):
+    def generate_string(self, entity, dimension_values):
         """
         Generate a string value using this rule.
 
         Args:
-            field: Field to generate for
+            entity: Entity to generate for
             dimension_values: Dict mapping dimension names to values
 
         Returns:
@@ -216,7 +216,7 @@ class Rule(TimeStampModel, WorkspaceMixin):
 
         try:
             return StringGenerationService.generate_string_value(
-                self, field, dimension_values
+                self, entity, dimension_values
             )
         except Exception as e:
             raise ValidationError(f"String generation failed: {str(e)}")
@@ -236,9 +236,9 @@ class Rule(TimeStampModel, WorkspaceMixin):
 class RuleDetailQuerySet(models.QuerySet):
     """Custom QuerySet for RuleDetail model."""
 
-    def for_field(self, field):
+    def for_entity(self, entity):
         """Filter rule details for a specific field."""
-        return self.filter(field=field)
+        return self.filter(entity=entity)
 
     def ordered_by_dimension(self):
         """Order rule details by dimension order."""
@@ -265,8 +265,8 @@ class RuleDetailManager(models.Manager):
         """Filter queryset by specific workspace"""
         return RuleDetailQuerySet(self.model, using=self._db).filter(workspace_id=workspace_id)
 
-    def for_field(self, field):
-        return self.get_queryset().for_field(field)
+    def for_entity(self, entity):
+        return self.get_queryset().for_entity(entity)
 
 
 class RuleDetail(TimeStampModel, WorkspaceMixin):
@@ -284,11 +284,11 @@ class RuleDetail(TimeStampModel, WorkspaceMixin):
         related_name="rule_details",
         help_text="Rule this detail belongs to"
     )
-    field = models.ForeignKey(
-        "master_data.Field",
+    entity = models.ForeignKey(
+        "master_data.Entity",
         on_delete=models.CASCADE,
         related_name="rule_details",
-        help_text="Field this formatting applies to"
+        help_text="Entity this formatting applies to"
     )
     dimension = models.ForeignKey(
         "master_data.Dimension",
@@ -332,11 +332,11 @@ class RuleDetail(TimeStampModel, WorkspaceMixin):
         verbose_name = "Rule Detail"
         verbose_name_plural = "Rule Details"
         # Unique per workspace
-        unique_together = [("workspace", "rule", "field",
+        unique_together = [("workspace", "rule", "entity",
                             "dimension", 'dimension_order')]
-        ordering = ['workspace', 'rule', 'field', 'dimension_order']
+        ordering = ['workspace', 'rule', 'entity', 'dimension_order']
         indexes = [
-            models.Index(fields=['workspace', 'rule', 'field']),
+            models.Index(fields=['workspace', 'rule', 'entity']),
             models.Index(fields=['workspace', 'dimension']),
         ]
 
@@ -344,19 +344,19 @@ class RuleDetail(TimeStampModel, WorkspaceMixin):
         """Validate rule detail configuration."""
         super().clean()
 
-        # Validate dimension order uniqueness within rule+field per workspace
+        # Validate dimension order uniqueness within rule+entity per workspace
         if self.dimension_order is not None:
             existing_order = RuleDetail.objects.filter(
                 workspace=self.workspace,
                 rule=self.rule,
-                field=self.field,
+                entity=self.entity,
                 dimension_order=self.dimension_order
             ).exclude(pk=self.pk)
 
             if existing_order.exists():
                 raise ValidationError(
                     f"Dimension order {self.dimension_order} is already used for "
-                    f"field '{self.field.name}' in rule '{self.rule.name}' in this workspace"
+                    f"entity '{self.entity.name}' in rule '{self.rule.name}' in this workspace"
                 )
 
         # Validate that rule and dimension belong to the same workspace
@@ -396,7 +396,7 @@ class RuleDetail(TimeStampModel, WorkspaceMixin):
     def __str__(self):
         order_info = f" (Order: {self.dimension_order})" if self.dimension_order else ""
         return (
-            f"{self.rule.name} - {self.field.name} - "
+            f"{self.rule.name} - {self.entity.name} - "
             f"{self.dimension.name}{order_info}"
         )
 

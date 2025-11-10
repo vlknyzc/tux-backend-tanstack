@@ -33,8 +33,8 @@ class DimensionDefinitionSerializer(serializers.Serializer):
 
     # Order and positioning
     dimension_order = serializers.IntegerField()
-    field_level = serializers.IntegerField()
-    field_name = serializers.CharField()
+    entity_level = serializers.IntegerField()
+    entity_name = serializers.CharField()
 
     # Value metadata
     value_count = serializers.IntegerField()
@@ -64,12 +64,12 @@ class DimensionValueSerializer(serializers.Serializer):
 
 
 class DimensionReferenceSerializer(serializers.Serializer):
-    """Minimal dimension reference for field templates"""
+    """Minimal dimension reference for entity templates"""
     dimension = serializers.IntegerField()
     dimension_order = serializers.IntegerField()
     is_required = serializers.BooleanField()
     is_inherited = serializers.BooleanField()
-    inherits_from_field_level = serializers.IntegerField(allow_null=True)
+    inherits_from_entity_level = serializers.IntegerField(allow_null=True)
 
     # Formatting overrides (only if different from dimension defaults)
     prefix_override = serializers.CharField(allow_blank=True, allow_null=True)

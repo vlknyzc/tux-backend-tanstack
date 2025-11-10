@@ -99,8 +99,8 @@ class ListProjectStringsView(WorkspaceValidationMixin, views.APIView):
     Endpoint: GET /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings
 
     Query Parameters:
-    - field: Filter by field ID
-    - parent_field: Filter by parent field ID (returns parent strings for a given field level)
+    - entity: Filter by entity ID
+    - parent_entity: Filter by parent entity ID (returns parent strings for a given entity level)
     - parent_uuid: Filter by parent UUID (returns children of a specific parent)
     - search: Search by string value
     - page: Page number (default: 1)
@@ -129,17 +129,17 @@ class ListProjectStringsView(WorkspaceValidationMixin, views.APIView):
             project=project,
             platform=platform
         ).select_related(
-            'project', 'platform', 'field', 'rule', 'created_by'
+            'project', 'platform', 'entity', 'rule', 'created_by'
         ).prefetch_related('details')
 
         # Apply filters
-        field_id = request.query_params.get('field')
-        if field_id:
-            queryset = queryset.filter(field_id=field_id)
+        entity_id = request.query_params.get('entity')
+        if entity_id:
+            queryset = queryset.filter(entity_id=entity_id)
 
-        parent_field_id = request.query_params.get('parent_field')
-        if parent_field_id:
-            queryset = queryset.filter(field_id=parent_field_id, parent__isnull=True)
+        parent_entity_id = request.query_params.get('parent_entity')
+        if parent_entity_id:
+            queryset = queryset.filter(entity_id=parent_entity_id, parent__isnull=True)
 
         parent_uuid = request.query_params.get('parent_uuid')
         if parent_uuid:
@@ -149,8 +149,8 @@ class ListProjectStringsView(WorkspaceValidationMixin, views.APIView):
         if search:
             queryset = queryset.filter(value__icontains=search)
 
-        # Order by field level and value
-        queryset = queryset.order_by('field__field_level', 'value')
+        # Order by entity level and value
+        queryset = queryset.order_by('entity__entity_level', 'value')
 
         # Pagination
         page = int(request.query_params.get('page', 1))
@@ -592,7 +592,7 @@ class ExportProjectStringsView(WorkspaceValidationMixin, views.APIView):
             project=project,
             platform=platform
         ).select_related(
-            'project', 'platform', 'field', 'rule', 'created_by'
+            'project', 'platform', 'entity', 'rule', 'created_by'
         ).prefetch_related('details__dimension', 'details__dimension_value')
 
         # Get export format
@@ -617,7 +617,7 @@ class ExportProjectStringsView(WorkspaceValidationMixin, views.APIView):
 
         # Write header
         writer.writerow([
-            'String ID', 'UUID', 'Project', 'Platform', 'Field', 'Field Level',
+            'String ID', 'UUID', 'Project', 'Platform', 'Entity', 'Entity Level',
             'Value', 'Parent UUID', 'Rule', 'Created By', 'Created', 'Last Updated'
         ])
 
@@ -628,8 +628,8 @@ class ExportProjectStringsView(WorkspaceValidationMixin, views.APIView):
                 str(string.string_uuid),
                 string.project.name,
                 string.platform.name,
-                string.field.name,
-                string.field.field_level,
+                string.entity.name,
+                string.entity.entity_level,
                 string.value,
                 str(string.parent_uuid) if string.parent_uuid else '',
                 string.rule.name,

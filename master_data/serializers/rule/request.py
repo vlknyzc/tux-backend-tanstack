@@ -6,23 +6,23 @@ incoming API requests related to rules.
 """
 
 from rest_framework import serializers
-from ...models import Field, Rule
+from ...models import Entity, Rule
 
 
 class RulePreviewRequestSerializer(serializers.Serializer):
     """Serializer for rule preview requests."""
-    field = serializers.IntegerField()
+    entity = serializers.IntegerField()
     sample_values = serializers.DictField(
         child=serializers.CharField(),
         help_text="Sample dimension values for preview generation"
     )
 
-    def validate_field(self, value):
-        """Validate that field exists."""
+    def validate_entity(self, value):
+        """Validate that entity exists."""
         try:
-            Field.objects.get(id=value)
-        except Field.DoesNotExist:
-            raise serializers.ValidationError("Field does not exist")
+            Entity.objects.get(id=value)
+        except Entity.DoesNotExist:
+            raise serializers.ValidationError("Entity does not exist")
         return value
 
 
@@ -43,7 +43,7 @@ class GenerationPreviewRequestSerializer(serializers.Serializer):
     """Serializer for generation preview requests."""
     rule_id = serializers.IntegerField()
     sample_values = serializers.DictField()
-    field_id = serializers.IntegerField(required=False)
+    entity_id = serializers.IntegerField(required=False)
 
 
 class CacheInvalidationRequestSerializer(serializers.Serializer):

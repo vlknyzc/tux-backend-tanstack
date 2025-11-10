@@ -56,7 +56,7 @@ class RuleCacheService:
         # Import here to avoid circular imports
         from .dimension_catalog_service import DimensionCatalogService
         from .inheritance_matrix_service import InheritanceMatrixService
-        from .field_template_service import FieldTemplateService
+        from .entity_template_service import EntityTemplateService
 
         # Get rule ID
         rule_id = rule.id if hasattr(rule, 'id') else rule
@@ -64,7 +64,7 @@ class RuleCacheService:
         # Invalidate individual service caches
         dimension_service = DimensionCatalogService()
         inheritance_service = InheritanceMatrixService()
-        template_service = FieldTemplateService()
+        template_service = EntityTemplateService()
 
         dimension_service.invalidate_cache(rule_id)
         inheritance_service.invalidate_cache(rule_id)

@@ -1,7 +1,7 @@
 from .base import TimeStampModel, default_workspace_logo, WorkspaceMixin
 from .workspace import Workspace
 from .platform import Platform
-from .field import Field
+from .entity import Entity
 from .dimension import Dimension, DimensionValue
 from .dimension_constraint import DimensionConstraint, ConstraintTypeChoices, CONSTRAINT_TYPES_REQUIRING_VALUE
 from .rule import Rule, RuleDetail
@@ -38,7 +38,7 @@ __all__ = [
     'WorkspaceMixin',
     'Workspace',
     'Platform',
-    'Field',
+    'Entity',
     'Dimension',
     'DimensionValue',
     'DimensionConstraint',

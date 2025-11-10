@@ -18,12 +18,12 @@ from ..models import Rule
 from ..services import (
     DimensionCatalogService,
     InheritanceMatrixService,
-    FieldTemplateService,
+    EntityTemplateService,
     RuleService
 )
 from ..serializers import (
     LightweightRuleSerializer,
-    FieldSpecificDataSerializer,
+    EntitySpecificDataSerializer,
     GenerationPreviewSerializer,
     ValidationSummarySerializer,
     PerformanceMetricsSerializer,
@@ -152,22 +152,22 @@ class LightweightRuleView(APIView, WorkspaceScopedRuleViewMixin):
             return Response({'error': 'Failed to retrieve rule data. Please try again or contact support.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
-class FieldSpecificRuleView(APIView, WorkspaceScopedRuleViewMixin):
+class EntitySpecificRuleView(APIView, WorkspaceScopedRuleViewMixin):
     """
-    Endpoint for field-specific rule data.
-    
-    URL: /api/v1/workspaces/{workspace_id}/rules/{rule_id}/fields/{field_id}/
+    Endpoint for entity-specific rule data.
+
+    URL: /api/v1/workspaces/{workspace_id}/rules/{rule_id}/entities/{entity_id}/
     """
     permission_classes = [permissions.IsAuthenticated]
-    serializer_class = FieldSpecificDataSerializer
+    serializer_class = EntitySpecificDataSerializer
 
     def __init__(self):
         super().__init__()
         self.rule_service = RuleService()
 
     @extend_schema(tags=["Rule Configuration"])
-    def get(self, request, workspace_id, rule_id, field_id, version=None):
-        """Get field-specific rule data"""
+    def get(self, request, workspace_id, rule_id, entity_id, version=None):
+        """Get entity-specific rule data"""
         start_time = time.time()
 
         try:
@@ -176,16 +176,16 @@ class FieldSpecificRuleView(APIView, WorkspaceScopedRuleViewMixin):
                 request, rule_id, workspace_id
             )
 
-            field_data = self.rule_service.get_field_specific_data(
-                rule_id, field_id)
+            entity_data = self.rule_service.get_entity_specific_data(
+                rule_id, entity_id)
 
             # Add performance metrics
-            field_data['performance_metrics'] = {
+            entity_data['performance_metrics'] = {
                 'generation_time_ms': (time.time() - start_time) * 1000,
                 'workspace': workspace_id
             }
 
-            serializer = FieldSpecificDataSerializer(data=field_data)
+            serializer = EntitySpecificDataSerializer(data=entity_data)
             if serializer.is_valid():
                 return Response(serializer.validated_data)
             else:
@@ -205,7 +205,7 @@ class FieldSpecificRuleView(APIView, WorkspaceScopedRuleViewMixin):
                     'user_id': request.user.id if request.user.is_authenticated else None,
                     'workspace_id': workspace_id,
                     'rule_id': rule_id,
-                    'field_id': field_id
+                    'entity_id': entity_id
                 }
             )
             return Response({'error': 'Invalid request parameters'}, status=status.HTTP_400_BAD_REQUEST)
@@ -218,10 +218,10 @@ class FieldSpecificRuleView(APIView, WorkspaceScopedRuleViewMixin):
                     'user_id': request.user.id if request.user.is_authenticated else None,
                     'workspace_id': workspace_id,
                     'rule_id': rule_id,
-                    'field_id': field_id
+                    'entity_id': entity_id
                 }
             )
-            return Response({'error': 'Failed to retrieve field data. Please try again or contact support.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
+            return Response({'error': 'Failed to retrieve entity data. Please try again or contact support.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
 
 
 class RuleValidationView(APIView, WorkspaceScopedRuleViewMixin):
@@ -319,7 +319,7 @@ class GenerationPreviewView(APIView, WorkspaceScopedRuleViewMixin):
             return Response(request_serializer.errors, status=status.HTTP_400_BAD_REQUEST)
 
         rule_id = request_serializer.validated_data['rule']
-        field = request_serializer.validated_data['field']
+        entity = request_serializer.validated_data['entity']
         sample_values = request_serializer.validated_data['sample_values']
 
         try:
@@ -329,7 +329,7 @@ class GenerationPreviewView(APIView, WorkspaceScopedRuleViewMixin):
             )
 
             preview_data = self.rule_service.get_generation_preview(
-                rule, field, sample_values)
+                rule, entity, sample_values)
 
             # Add performance metrics
             preview_data['performance_metrics'] = {
@@ -357,7 +357,7 @@ class GenerationPreviewView(APIView, WorkspaceScopedRuleViewMixin):
                     'user_id': request.user.id if request.user.is_authenticated else None,
                     'workspace_id': workspace_id,
                     'rule_id': rule_id,
-                    'field': field
+                    'entity': entity
                 }
             )
             return Response({'error': 'Invalid request parameters'}, status=status.HTTP_400_BAD_REQUEST)
@@ -370,7 +370,7 @@ class GenerationPreviewView(APIView, WorkspaceScopedRuleViewMixin):
                     'user_id': request.user.id if request.user.is_authenticated else None,
                     'workspace_id': workspace_id,
                     'rule_id': rule_id,
-                    'field': field
+                    'entity': entity
                 }
             )
             return Response({'error': 'Failed to generate preview. Please try again or contact support.'}, status=status.HTTP_500_INTERNAL_SERVER_ERROR)
@@ -496,7 +496,7 @@ class RuleConfigurationView(APIView, WorkspaceScopedRuleViewMixin):
 
     @extend_schema(
         summary="Get Rule Configuration",
-        description="Retrieve complete rule configuration data including fields, dimensions, and dimension values",
+        description="Retrieve complete rule configuration data including entities, dimensions, and dimension values",
         parameters=[
             OpenApiParameter(
                 name="workspace_id",
@@ -550,21 +550,21 @@ class RuleConfigurationView(APIView, WorkspaceScopedRuleViewMixin):
                         "id": 2,
                         "name": "Client 1"
                     },
-                    "fields": [
+                    "entities": [
                         {
                             "id": 50,
                             "name": "Advertiser",
                             "level": 1,
-                            "next_field_id": 51,
-                            "next_field_name": "Campaign",
-                            "field_items": [
+                            "next_entity_id": 51,
+                            "next_entity_name": "Campaign",
+                            "entity_items": [
                                 {
                                     "id": 1,
                                     "dimension_id": 22,
                                     "order": 1,
                                     "is_required": True,
                                     "is_inherited": False,
-                                    "inherits_from_field_item": None,
+                                    "inherits_from_entity_item": None,
                                     "prefix": None,
                                     "suffix": None,
                                     "delimiter": None

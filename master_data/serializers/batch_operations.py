@@ -364,7 +364,7 @@ class StringUpdateBatchSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.StringUpdateBatch
         fields = [
-            'id', 'rule', 'field', 'initiated_by', 'initiated_by_name',
+            'id', 'rule', 'entity', 'initiated_by', 'initiated_by_name',
             'initiated_at', 'completed_at', 'status', 'total_strings',
             'processed_strings', 'failed_strings', 'backup_id', 'metadata',
             'progress_percentage', 'is_complete'

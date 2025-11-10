@@ -30,13 +30,13 @@ logger = logging.getLogger(__name__)
 class StringWorkspaceFilter(filters.FilterSet):
     """Filter for workspace-scoped strings."""
     submission = filters.NumberFilter(field_name='submission')
-    field = filters.NumberFilter(field_name='field')
-    field_level = filters.NumberFilter(field_name='field__field_level')
+    entity = filters.NumberFilter(field_name='entity')
+    entity_level = filters.NumberFilter(field_name='entity__entity_level')
     platform = filters.NumberFilter(field_name='rule__platform__id')
 
     class Meta:
         model = models.String
-        fields = ['id', 'submission', 'field', 'field_level', 'platform']
+        fields = ['id', 'submission', 'entity', 'entity_level', 'platform']
 
 
 @extend_schema(tags=['Strings'])
@@ -75,8 +75,8 @@ class StringViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
             queryset = models.String.objects.all()
 
         return queryset.select_related(
-            'field',
-            'field__platform',  # Prevent N+1 query for platform access
+            'entity',
+            'entity__platform',  # Prevent N+1 query for platform access
             'submission',
             'rule',
             'workspace',

@@ -2,19 +2,19 @@ from typing import Dict, List, Optional
 from django.core.cache import cache
 from django.utils import timezone
 from django.db.models import QuerySet, Q
-from ..models import Rule, RuleDetail, Field, Dimension
+from ..models import Rule, RuleDetail, Entity, Dimension
 from .constants import CACHE_TIMEOUT_DEFAULT
 
 
-class FieldTemplateService:
-    """Service for building field templates and managing field-level operations"""
+class EntityTemplateService:
+    """Service for building entity templates and managing entity-level operations"""
 
     def __init__(self):
         self.cache_timeout = CACHE_TIMEOUT_DEFAULT
 
     def get_templates_for_rule(self, rule: Rule) -> List[Dict]:
-        """Get field templates for a rule with comprehensive field data"""
-        cache_key = f"field_templates:{rule.id}"
+        """Get entity templates for a rule with comprehensive entity data"""
+        cache_key = f"entity_templates:{rule.id}"
 
         cached = cache.get(cache_key)
         if cached:
@@ -32,25 +32,25 @@ class FieldTemplateService:
         return templates
 
     def _build_templates(self, rule: Rule) -> List[Dict]:
-        """Build field templates with optimized queries"""
+        """Build entity templates with optimized queries"""
         rule_details = RuleDetail.objects.filter(rule=rule).select_related(
-            'field', 'dimension', 'dimension__parent'
+            'entity', 'dimension', 'dimension__parent'
         ).prefetch_related(
             'dimension__dimension_values'
-        ).order_by('field__field_level', 'dimension_order')
+        ).order_by('entity__entity_level', 'dimension_order')
 
-        # Group by field
-        fields_map = {}
+        # Group by entity
+        entities_map = {}
         for detail in rule_details:
-            field = detail.field
-            if field not in fields_map:
-                fields_map[field] = {
-                    'field': field,
-                    'field_name': detail.field.name,
-                    'field_level': detail.field.field_level,
-                    'next_field': getattr(detail.field, 'next_field', None),
-                    'next_field_name': getattr(detail.field, 'next_field', None).name if getattr(detail.field, 'next_field', None) else None,
-                    'can_generate': self._check_can_generate(rule, detail.field),
+            entity = detail.entity
+            if entity not in entities_map:
+                entities_map[entity] = {
+                    'entity': entity,
+                    'entity_name': detail.entity.name,
+                    'entity_level': detail.entity.entity_level,
+                    'next_entity': getattr(detail.entity, 'next_entity', None),
+                    'next_entity_name': getattr(detail.entity, 'next_entity', None).name if getattr(detail.entity, 'next_entity', None) else None,
+                    'can_generate': self._check_can_generate(rule, detail.entity),
                     'dimensions': [],
                     'validation_rules': [],
                     'generation_metadata': {},
@@ -58,15 +58,15 @@ class FieldTemplateService:
 
             # Add dimension information
             dimension_info = self._build_dimension_info(detail, rule)
-            fields_map[field]['dimensions'].append(dimension_info)
+            entities_map[entity]['dimensions'].append(dimension_info)
 
-        # Process each field to add computed information
-        for field_data in fields_map.values():
-            self._enrich_field_template(field_data, rule)
+        # Process each entity to add computed information
+        for entity_data in entities_map.values():
+            self._enrich_entity_template(entity_data, rule)
 
-        # Convert to list and sort by field level
-        result = list(fields_map.values())
-        result.sort(key=lambda x: x['field_level'])
+        # Convert to list and sort by entity level
+        result = list(entities_map.values())
+        result.sort(key=lambda x: x['entity_level'])
 
         return result
 
@@ -122,39 +122,39 @@ class FieldTemplateService:
         }
 
     def _check_dimension_inheritance(self, detail: RuleDetail, rule: Rule) -> Dict:
-        """Check if this dimension is inherited from a parent field"""
-        current_field_level = detail.field.field_level
+        """Check if this dimension is inherited from a parent entity"""
+        current_entity_level = detail.entity.entity_level
 
-        if current_field_level <= 1:
+        if current_entity_level <= 1:
             return {
                 'is_inherited': False,
                 'parent_rule_detail': None,
-                'parent_field_level': None,
-                'parent_field_name': None,
+                'parent_entity_level': None,
+                'parent_entity_name': None,
                 'inherits_formatting': False,
             }
 
-        # Look for the same dimension in previous field levels
+        # Look for the same dimension in previous entity levels
         parent_detail = RuleDetail.objects.filter(
             rule=rule,
             dimension=detail.dimension,
-            field__field_level__lt=current_field_level
-        ).select_related('field').order_by('-field__field_level').first()
+            entity__entity_level__lt=current_entity_level
+        ).select_related('entity').order_by('-entity__entity_level').first()
 
         if parent_detail:
             return {
                 'is_inherited': True,
                 'parent_rule_detail': parent_detail.id,  # Store ID instead of object
-                'parent_field_level': parent_detail.field.field_level,
-                'parent_field_name': parent_detail.field.name,
+                'parent_entity_level': parent_detail.entity.entity_level,
+                'parent_entity_name': parent_detail.entity.name,
                 'inherits_formatting': self._check_formatting_inheritance(detail, parent_detail),
             }
 
         return {
             'is_inherited': False,
             'parent_rule_detail': None,
-            'parent_field_level': None,
-            'parent_field_name': None,
+            'parent_entity_level': None,
+            'parent_entity_name': None,
             'inherits_formatting': False,
         }
 
@@ -166,18 +166,18 @@ class FieldTemplateService:
             (child_detail.delimiter or '') == (parent_detail.delimiter or '')
         )
 
-    def _check_can_generate(self, rule: Rule, field: Field) -> bool:
-        """Check if the rule can generate strings for this field"""
-        # Check if there are any rule details for this field
+    def _check_can_generate(self, rule: Rule, entity: Entity) -> bool:
+        """Check if the rule can generate strings for this entity"""
+        # Check if there are any rule details for this entity
         has_rule_details = RuleDetail.objects.filter(
-            rule=rule, field=field).exists()
+            rule=rule, entity=entity).exists()
 
         if not has_rule_details:
             return False
 
         # Check if all required dimensions have values or are optional
         rule_details = RuleDetail.objects.filter(
-            rule=rule, field=field).select_related('dimension')
+            rule=rule, entity=entity).select_related('dimension')
 
         for detail in rule_details:
             is_required = getattr(detail, 'is_required', True)
@@ -195,50 +195,50 @@ class FieldTemplateService:
 
         return True
 
-    def _enrich_field_template(self, field_data: Dict, rule: Rule):
-        """Enrich field template with computed information"""
+    def _enrich_entity_template(self, entity_data: Dict, rule: Rule):
+        """Enrich entity template with computed information"""
         # Sort dimensions by order
-        field_data['dimensions'].sort(key=lambda x: x['dimension_order'])
+        entity_data['dimensions'].sort(key=lambda x: x['dimension_order'])
 
         # Update counts
-        field_data['dimension_count'] = len(field_data['dimensions'])
-        field_data['required_dimension_count'] = sum(
-            1 for d in field_data['dimensions'] if d['is_required']
+        entity_data['dimension_count'] = len(entity_data['dimensions'])
+        entity_data['required_dimension_count'] = sum(
+            1 for d in entity_data['dimensions'] if d['is_required']
         )
-        field_data['inherited_dimension_count'] = sum(
-            1 for d in field_data['dimensions'] if d['inheritance']['is_inherited']
+        entity_data['inherited_dimension_count'] = sum(
+            1 for d in entity_data['dimensions'] if d['inheritance']['is_inherited']
         )
 
-        # Generate field rule preview
+        # Generate entity rule preview
         preview_parts = []
-        for dim in field_data['dimensions']:
+        for dim in entity_data['dimensions']:
             part = (dim['prefix'] +
                     f"[{dim['dimension_name']}]" +
                     dim['suffix'] +
                     dim['effective_delimiter'])
             preview_parts.append(part)
 
-        field_data['field_rule_preview'] = ''.join(preview_parts)
+        entity_data['entity_rule_preview'] = ''.join(preview_parts)
 
         # Add validation rules
-        field_data['validation_rules'] = self._build_validation_rules(
-            field_data)
+        entity_data['validation_rules'] = self._build_validation_rules(
+            entity_data)
 
         # Add generation metadata
-        field_data['generation_metadata'] = self._build_generation_metadata(
-            field_data, rule)
+        entity_data['generation_metadata'] = self._build_generation_metadata(
+            entity_data, rule)
 
         # Calculate completeness score
-        field_data['completeness_score'] = self._calculate_completeness_score(
-            field_data)
+        entity_data['completeness_score'] = self._calculate_completeness_score(
+            entity_data)
 
-    def _build_validation_rules(self, field_data: Dict) -> List[Dict]:
-        """Build validation rules for the field"""
+    def _build_validation_rules(self, entity_data: Dict) -> List[Dict]:
+        """Build validation rules for the entity"""
         rules = []
 
         # Required dimension validation
         required_dims = [
-            d for d in field_data['dimensions'] if d['is_required']]
+            d for d in entity_data['dimensions'] if d['is_required']]
         if required_dims:
             rules.append({
                 'type': 'required_dimensions',
@@ -248,7 +248,7 @@ class FieldTemplateService:
 
         # Constraint validation (parent-child relationships)
         constrained_dims = [
-            d for d in field_data['dimensions'] if d['has_constraints']]
+            d for d in entity_data['dimensions'] if d['has_constraints']]
         for dim in constrained_dims:
             rules.append({
                 'type': 'parent_constraint',
@@ -259,21 +259,21 @@ class FieldTemplateService:
 
         return rules
 
-    def _build_generation_metadata(self, field_data: Dict, rule: Rule) -> Dict:
+    def _build_generation_metadata(self, entity_data: Dict, rule: Rule) -> Dict:
         """Build metadata for string generation"""
         return {
-            'can_generate': field_data['can_generate'],
-            'generation_order': [d['dimension_name'] for d in field_data['dimensions']],
-            'required_for_generation': [d['dimension_name'] for d in field_data['dimensions'] if d['is_required']],
-            'optional_for_generation': [d['dimension_name'] for d in field_data['dimensions'] if not d['is_required']],
-            'total_possible_combinations': self._calculate_possible_combinations(field_data),
+            'can_generate': entity_data['can_generate'],
+            'generation_order': [d['dimension_name'] for d in entity_data['dimensions']],
+            'required_for_generation': [d['dimension_name'] for d in entity_data['dimensions'] if d['is_required']],
+            'optional_for_generation': [d['dimension_name'] for d in entity_data['dimensions'] if not d['is_required']],
+            'total_possible_combinations': self._calculate_possible_combinations(entity_data),
         }
 
-    def _calculate_possible_combinations(self, field_data: Dict) -> int:
-        """Calculate total possible string combinations for this field"""
+    def _calculate_possible_combinations(self, entity_data: Dict) -> int:
+        """Calculate total possible string combinations for this entity"""
         total = 1
 
-        for dim in field_data['dimensions']:
+        for dim in entity_data['dimensions']:
             if dim['allows_freetext']:
                 # For freetext, assume infinite possibilities
                 return -1  # Represents infinite
@@ -285,12 +285,12 @@ class FieldTemplateService:
 
         return total
 
-    def _calculate_completeness_score(self, field_data: Dict) -> float:
-        """Calculate completeness score for the field (0-100)"""
+    def _calculate_completeness_score(self, entity_data: Dict) -> float:
+        """Calculate completeness score for the entity (0-100)"""
         total_score = 0
         max_score = 0
 
-        for dim in field_data['dimensions']:
+        for dim in entity_data['dimensions']:
             max_score += 10  # Each dimension contributes max 10 points
 
             # Has values
@@ -307,24 +307,24 @@ class FieldTemplateService:
 
         return (total_score / max_score * 100) if max_score > 0 else 0
 
-    def get_template_for_field(self, rule: Rule, field: Field) -> Dict:
-        """Get template for a specific field within a rule"""
+    def get_template_for_entity(self, rule: Rule, entity: Entity) -> Dict:
+        """Get template for a specific entity within a rule"""
         templates = self.get_templates_for_rule(rule)
 
         for template in templates:
-            if template['field'] == field:
+            if template['entity'] == entity:
                 return template
 
-        raise ValueError(f"Field {field} not found in rule {rule.id}")
+        raise ValueError(f"Entity {entity} not found in rule {rule.id}")
 
-    def get_generation_preview(self, rule: Rule, field: Field, sample_values: Dict[str, str]) -> Dict:
+    def get_generation_preview(self, rule: Rule, entity: Entity, sample_values: Dict[str, str]) -> Dict:
         """Generate a preview of what a string would look like with sample values"""
-        template = self.get_template_for_field(rule, field)
+        template = self.get_template_for_entity(rule, entity)
 
         if not template['can_generate']:
             return {
                 'success': False,
-                'error': 'Field cannot generate strings',
+                'error': 'Entity cannot generate strings',
                 'preview': None
             }
 
@@ -361,12 +361,12 @@ class FieldTemplateService:
             'preview': preview,
             'missing_required': missing_required,
             'used_dimensions': list(sample_values.keys()),
-            'template_used': template['field_rule_preview']
+            'template_used': template['entity_rule_preview']
         }
 
     def invalidate_cache(self, rule: Rule):
-        """Invalidate field templates cache for a rule"""
-        cache_key = f"field_templates:{rule.id}"
+        """Invalidate entity templates cache for a rule"""
+        cache_key = f"entity_templates:{rule.id}"
         cache.delete(cache_key)
 
     def bulk_invalidate_cache(self, rules: List[Rule]):
@@ -376,10 +376,10 @@ class FieldTemplateService:
 
     def get_optimized_templates_for_rule(self, rule: Rule) -> List[Dict]:
         """
-        Get optimized field templates with minimal data duplication.
+        Get optimized entity templates with minimal data duplication.
         Returns dimension references by ID instead of full dimension data.
         """
-        cache_key = f"optimized_field_templates:{rule.id}"
+        cache_key = f"optimized_entity_templates:{rule.id}"
         cached_result = cache.get(cache_key)
 
         if cached_result is not None:
@@ -397,42 +397,42 @@ class FieldTemplateService:
         return templates
 
     def _build_optimized_templates(self, rule: Rule) -> List[Dict]:
-        """Build optimized field templates with dimension references only"""
+        """Build optimized entity templates with dimension references only"""
         rule_details = RuleDetail.objects.filter(rule=rule).select_related(
-            'field', 'dimension'
+            'entity', 'dimension'
         ).prefetch_related(
             'dimension__dimension_values'
-        ).order_by('field__field_level', 'dimension_order')
+        ).order_by('entity__entity_level', 'dimension_order')
 
         if not rule_details.exists():
             return []
 
-        # Group by field ID instead of field object
-        fields_map = {}
+        # Group by entity ID instead of entity object
+        entities_map = {}
         for detail in rule_details:
-            field_id = detail.field.id
-            if field_id not in fields_map:
-                fields_map[field_id] = {
-                    'field': detail.field.id,  # Store field ID instead of object
-                    'field_name': detail.field.name,
-                    'field_level': detail.field.field_level,
-                    # Store next field ID
-                    'next_field': getattr(detail.field.next_field, 'id', None) if getattr(detail.field, 'next_field', None) else None,
-                    'can_generate': self._check_can_generate(rule, detail.field),
+            entity_id = detail.entity.id
+            if entity_id not in entities_map:
+                entities_map[entity_id] = {
+                    'entity': detail.entity.id,  # Store entity ID instead of object
+                    'entity_name': detail.entity.name,
+                    'entity_level': detail.entity.entity_level,
+                    # Store next entity ID
+                    'next_entity': getattr(detail.entity.next_entity, 'id', None) if getattr(detail.entity, 'next_entity', None) else None,
+                    'can_generate': self._check_can_generate(rule, detail.entity),
                     'dimensions': [],
                 }
 
             # Add minimal dimension reference
             dimension_ref = self._build_dimension_reference(detail, rule)
-            fields_map[field_id]['dimensions'].append(dimension_ref)
+            entities_map[entity_id]['dimensions'].append(dimension_ref)
 
-        # Process each field to add computed information
-        for field_data in fields_map.values():
-            self._enrich_optimized_field_template(field_data, rule)
+        # Process each entity to add computed information
+        for entity_data in entities_map.values():
+            self._enrich_optimized_entity_template(entity_data, rule)
 
-        # Convert to list and sort by field level
-        result = list(fields_map.values())
-        result.sort(key=lambda x: x['field_level'])
+        # Convert to list and sort by entity level
+        result = list(entities_map.values())
+        result.sort(key=lambda x: x['entity_level'])
 
         return result
 
@@ -464,18 +464,18 @@ class FieldTemplateService:
             'dimension_order': detail.dimension_order,
             'is_required': getattr(detail, 'is_required', True),
             'is_inherited': inheritance_info['is_inherited'],
-            'inherits_from_field_level': inheritance_info['parent_field_level'],
+            'inherits_from_entity_level': inheritance_info['parent_entity_level'],
             'prefix_override': prefix_override,
             'suffix_override': suffix_override,
             'delimiter_override': delimiter_override,
         }
 
-    def _calculate_optimized_completeness_score(self, field_data: Dict) -> float:
-        """Calculate completeness score for the field using optimized data (0-100)"""
+    def _calculate_optimized_completeness_score(self, entity_data: Dict) -> float:
+        """Calculate completeness score for the entity using optimized data (0-100)"""
         total_score = 0
         max_score = 0
 
-        for dim in field_data['dimensions']:
+        for dim in entity_data['dimensions']:
             max_score += 10  # Each dimension contributes max 10 points
 
             # Basic dimension setup (5 points)
@@ -487,30 +487,30 @@ class FieldTemplateService:
 
         return (total_score / max_score * 100) if max_score > 0 else 0
 
-    def _enrich_optimized_field_template(self, field_data: Dict, rule: Rule):
-        """Enrich optimized field template with computed information"""
+    def _enrich_optimized_entity_template(self, entity_data: Dict, rule: Rule):
+        """Enrich optimized entity template with computed information"""
         # Sort dimensions by order
-        field_data['dimensions'].sort(key=lambda x: x['dimension_order'])
+        entity_data['dimensions'].sort(key=lambda x: x['dimension_order'])
 
         # Update counts
-        field_data['dimension_count'] = len(field_data['dimensions'])
-        field_data['required_dimension_count'] = sum(
-            1 for d in field_data['dimensions'] if d['is_required']
+        entity_data['dimension_count'] = len(entity_data['dimensions'])
+        entity_data['required_dimension_count'] = sum(
+            1 for d in entity_data['dimensions'] if d['is_required']
         )
-        field_data['inherited_dimension_count'] = sum(
-            1 for d in field_data['dimensions'] if d['is_inherited']
+        entity_data['inherited_dimension_count'] = sum(
+            1 for d in entity_data['dimensions'] if d['is_inherited']
         )
 
-        # Generate field rule preview (need to lookup dimension names)
-        field_data['field_rule_preview'] = self._generate_optimized_preview(
-            field_data['dimensions'], rule)
+        # Generate entity rule preview (need to lookup dimension names)
+        entity_data['entity_rule_preview'] = self._generate_optimized_preview(
+            entity_data['dimensions'], rule)
 
         # Calculate completeness score using the optimized method
-        field_data['completeness_score'] = self._calculate_optimized_completeness_score(
-            field_data)
+        entity_data['completeness_score'] = self._calculate_optimized_completeness_score(
+            entity_data)
 
     def _generate_optimized_preview(self, dimension_refs: List[Dict], rule: Rule) -> str:
-        """Generate field rule preview from dimension references"""
+        """Generate entity rule preview from dimension references"""
         preview_parts = []
 
         for dim_ref in dimension_refs:

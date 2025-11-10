@@ -78,8 +78,8 @@ class ProjectStringReadSerializer(serializers.ModelSerializer):
     """Serializer for reading project strings."""
     project_name = serializers.CharField(source='project.name', read_only=True)
     platform_name = serializers.CharField(source='platform.name', read_only=True)
-    field_name = serializers.CharField(source='field.name', read_only=True)
-    field_level = serializers.IntegerField(source='field.field_level', read_only=True)
+    entity_name = serializers.CharField(source='entity.name', read_only=True)
+    entity_level = serializers.IntegerField(source='entity.entity_level', read_only=True)
     rule_name = serializers.CharField(source='rule.name', read_only=True)
     created_by_name = serializers.SerializerMethodField()
     details = serializers.SerializerMethodField(read_only=True)
@@ -88,7 +88,7 @@ class ProjectStringReadSerializer(serializers.ModelSerializer):
         model = models.ProjectString
         fields = [
             'id', 'project_id', 'project_name', 'platform_id', 'platform_name',
-            'field_id', 'field_name', 'field_level', 'rule_id', 'rule_name',
+            'entity_id', 'entity_name', 'entity_level', 'rule_id', 'rule_name',
             'value', 'string_uuid', 'parent_uuid',
             'created_by', 'created_by_name', 'created', 'last_updated',
             'details'
@@ -130,13 +130,13 @@ class ProjectStringExpandedSerializer(ProjectStringReadSerializer):
         return obj.can_have_children()
 
     def get_suggested_child_field(self, obj):
-        """Get suggested next field for child strings."""
-        next_field = obj.suggest_child_field()
-        if next_field:
+        """Get suggested next entity for child strings."""
+        next_entity = obj.suggest_child_entity()
+        if next_entity:
             return {
-                'id': next_field.id,
-                'name': next_field.name,
-                'field_level': next_field.field_level
+                'id': next_entity.id,
+                'name': next_entity.name,
+                'entity_level': next_entity.entity_level
             }
         return None
 
@@ -147,7 +147,7 @@ class ProjectStringExpandedSerializer(ProjectStringReadSerializer):
 
 class ProjectStringWriteSerializer(serializers.Serializer):
     """Serializer for writing individual project strings (used in bulk create)."""
-    field = serializers.IntegerField()
+    entity = serializers.IntegerField()
     string_uuid = serializers.UUIDField()
     parent_uuid = serializers.UUIDField(required=False, allow_null=True)
     value = serializers.CharField(max_length=500)
@@ -172,25 +172,25 @@ class BulkProjectStringCreateSerializer(serializers.Serializer):
         except models.Rule.DoesNotExist:
             raise serializers.ValidationError(f"Rule with id {rule_id} does not exist")
 
-        # Validate starting field belongs to rule's platform
+        # Validate starting entity belongs to rule's platform
         try:
-            starting_field = models.Field.objects.get(id=starting_field_id)
-            if starting_field.platform != rule.platform:
+            starting_entity = models.Entity.objects.get(id=starting_field_id)
+            if starting_entity.platform != rule.platform:
                 raise serializers.ValidationError(
-                    "Starting field must belong to the rule's platform"
+                    "Starting entity must belong to the rule's platform"
                 )
-        except models.Field.DoesNotExist:
+        except models.Entity.DoesNotExist:
             raise serializers.ValidationError(
-                f"Field with id {starting_field_id} does not exist"
+                f"Entity with id {starting_field_id} does not exist"
             )
 
-        # Validate all fields belong to rule's platform
-        field_ids = {s['field'] for s in strings_data}
-        fields = models.Field.objects.filter(id__in=field_ids)
-        for field in fields:
-            if field.platform != rule.platform:
+        # Validate all entities belong to rule's platform
+        entity_ids = {s['entity'] for s in strings_data}
+        entities = models.Entity.objects.filter(id__in=entity_ids)
+        for entity in entities:
+            if entity.platform != rule.platform:
                 raise serializers.ValidationError(
-                    f"Field {field.name} does not belong to the rule's platform"
+                    f"Entity {entity.name} does not belong to the rule's platform"
                 )
 
         # Validate string UUIDs are unique
@@ -218,11 +218,11 @@ class BulkProjectStringCreateSerializer(serializers.Serializer):
         created_strings = []
         string_uuid_map = {}  # Map UUIDs to created string instances
 
-        # Sort strings by field level to ensure parents are created first
+        # Sort strings by entity level to ensure parents are created first
         strings_by_level = {}
         for string_data in strings_data:
-            field = models.Field.objects.get(id=string_data['field'])
-            level = field.field_level
+            entity = models.Entity.objects.get(id=string_data['entity'])
+            level = entity.entity_level
             if level not in strings_by_level:
                 strings_by_level[level] = []
             strings_by_level[level].append(string_data)
@@ -230,7 +230,7 @@ class BulkProjectStringCreateSerializer(serializers.Serializer):
         # Create strings level by level
         for level in sorted(strings_by_level.keys()):
             for string_data in strings_by_level[level]:
-                field = models.Field.objects.get(id=string_data['field'])
+                entity = models.Entity.objects.get(id=string_data['entity'])
                 details_data = string_data.pop('details')
 
                 # Get parent if parent_uuid is provided
@@ -256,7 +256,7 @@ class BulkProjectStringCreateSerializer(serializers.Serializer):
                 project_string = models.ProjectString.objects.create(
                     project=project,
                     platform=platform,
-                    field=field,
+                    entity=entity,
                     rule=rule,
                     parent=parent,
                     string_uuid=string_data['string_uuid'],
@@ -382,8 +382,8 @@ class ProjectStringUpdateSerializer(serializers.Serializer):
 
 class ListProjectStringsSerializer(serializers.Serializer):
     """Serializer for list strings query parameters."""
-    field = serializers.IntegerField(required=False)
-    parent_field = serializers.IntegerField(required=False)
+    entity = serializers.IntegerField(required=False)
+    parent_entity = serializers.IntegerField(required=False)
     parent_uuid = serializers.UUIDField(required=False)
     search = serializers.CharField(required=False)
     page = serializers.IntegerField(required=False, default=1)

@@ -7,13 +7,13 @@ from .views import (
     DimensionConstraintViewSet,
     WorkspaceViewSet,
     PlatformViewSet,
-    FieldViewSet,
+    EntityViewSet,
     RuleViewSet,
     RuleDetailViewSet,
     RuleNestedViewSet,
     # Rule configuration views
     LightweightRuleView,
-    FieldSpecificRuleView,
+    EntitySpecificRuleView,
     RuleValidationView,
     GenerationPreviewView,
     CacheManagementView,
@@ -34,7 +34,7 @@ router = routers.DefaultRouter()
 # Global resources (no workspace_id in path)
 router.register("workspaces", WorkspaceViewSet, basename="workspace")
 router.register("platforms", PlatformViewSet, basename="platform")
-router.register("fields", FieldViewSet, basename="field")
+router.register("entities", EntityViewSet, basename="entity")
 
 # Workspace-scoped resources (workspace_id in path)
 router.register(
@@ -113,9 +113,9 @@ urlpatterns = [
          LightweightRuleView.as_view(),
          name="rule-lightweight"),
 
-    path("workspaces/<int:workspace_id>/rules/<int:rule_id>/fields/<int:field_id>/",
-         FieldSpecificRuleView.as_view(),
-         name="rule-field-specific"),
+    path("workspaces/<int:workspace_id>/rules/<int:rule_id>/entities/<int:entity_id>/",
+         EntitySpecificRuleView.as_view(),
+         name="rule-entity-specific"),
 
     path("workspaces/<int:workspace_id>/rules/<int:rule_id>/validation/",
          RuleValidationView.as_view(),

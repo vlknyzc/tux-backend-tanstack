@@ -23,7 +23,7 @@ logger = logging.getLogger(__name__)
 
 class RuleFilter(filters.FilterSet):
     platform = filters.NumberFilter(method='filter_platform_id')
-    field = filters.NumberFilter(method='filter_field_id')
+    entity = filters.NumberFilter(method='filter_entity_id')
     status = filters.CharFilter()
     is_default = filters.BooleanFilter()
     workspace = filters.NumberFilter(field_name='workspace__id')
@@ -32,7 +32,7 @@ class RuleFilter(filters.FilterSet):
         model = models.Rule
         fields = [
             'id',
-            'field',
+            'entity',
             'platform',
             'status',
             'is_default',
@@ -42,8 +42,8 @@ class RuleFilter(filters.FilterSet):
     def filter_platform_id(self, queryset, name, value):
         return queryset.filter(platform__id=value)
 
-    def filter_field_id(self, queryset, name, value):
-        return queryset.filter(rule_details__field__id=value).distinct()
+    def filter_entity_id(self, queryset, name, value):
+        return queryset.filter(rule_details__entity__id=value).distinct()
 
 
 class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
@@ -105,8 +105,8 @@ class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
                 'rule_details__dimension',
                 'rule_details__dimension__parent',
                 'rule_details__dimension__dimension_values',
-                'rule_details__field',
-                'rule_details__field__next_field',
+                'rule_details__entity',
+                'rule_details__entity__next_entity',
                 'rule_details__created_by'
             )
 
@@ -136,25 +136,25 @@ class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
 
         if serializer.is_valid():
             try:
-                field = models.Field.objects.get(
-                    id=serializer.validated_data['field_id'])
+                entity = models.Entity.objects.get(
+                    id=serializer.validated_data['entity_id'])
                 sample_values = serializer.validated_data['sample_values']
 
-                preview = rule.get_preview(field, sample_values)
+                preview = rule.get_preview(entity, sample_values)
 
                 return Response({
                     'rule_id': rule.id,
                     'rule_name': rule.name,
-                    'field_id': field.id,
-                    'field_name': field.name,
+                    'entity_id': entity.id,
+                    'entity_name': entity.name,
                     'sample_values': sample_values,
                     'preview': preview,
                     'success': 'Preview failed' not in preview
                 })
 
-            except models.Field.DoesNotExist:
+            except models.Entity.DoesNotExist:
                 return Response(
-                    {'error': 'Field not found'},
+                    {'error': 'Entity not found'},
                     status=status.HTTP_404_NOT_FOUND
                 )
             except Exception as e:
@@ -166,7 +166,7 @@ class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
                         'user_id': request.user.id if request.user.is_authenticated else None,
                         'workspace_id': rule.workspace_id,
                         'rule_id': rule.id,
-                        'field_id': serializer.validated_data.get('field')
+                        'entity_id': serializer.validated_data.get('entity')
                     }
                 )
                 return Response(
@@ -239,22 +239,22 @@ class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     @extend_schema(tags=["Rules"])
     @action(detail=True, methods=['get'])
     def required_dimensions(self, request, pk=None):
-        """Get required dimensions for all fields in this rule."""
+        """Get required dimensions for all entities in this rule."""
         rule = self.get_object()
 
         result = {}
-        fields = models.Field.objects.filter(
+        entities = models.Entity.objects.filter(
             workspace=rule.workspace,
             platform=rule.platform
         )
 
-        for field in fields:
-            if rule.can_generate_for_field(field):
-                result[field.name] = {
-                    'field_id': field.id,
-                    'field_level': field.field_level,
-                    'required_dimensions': list(rule.get_required_dimensions(field)),
-                    'generation_order': rule.get_generation_order(field)
+        for entity in entities:
+            if rule.can_generate_for_entity(entity):
+                result[entity.name] = {
+                    'entity_id': entity.id,
+                    'entity_level': entity.entity_level,
+                    'required_dimensions': list(rule.get_required_dimensions(entity)),
+                    'generation_order': rule.get_generation_order(entity)
                 }
 
         return Response({
@@ -262,7 +262,7 @@ class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
             'rule_name': rule.name,
             'platform': rule.platform.name,
             'workspace': rule.workspace.name,
-            'fields': result
+            'entities': result
         })
 
     @extend_schema(tags=["Rules"])
@@ -282,7 +282,7 @@ class RuleViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
 
 
 class RuleDetailFilter(filters.FilterSet):
-    field = filters.NumberFilter(field_name='field__id')
+    entity = filters.NumberFilter(field_name='entity__id')
     platform = filters.NumberFilter(field_name='rule__platform__id')
     rule = filters.NumberFilter()
     dimension_order = filters.NumberFilter()
@@ -291,7 +291,7 @@ class RuleDetailFilter(filters.FilterSet):
 
     class Meta:
         model = models.RuleDetail
-        fields = ['id', 'rule', 'dimension_order', 'field',
+        fields = ['id', 'rule', 'dimension_order', 'entity',
                   'platform', 'is_required', 'workspace']
 
 
@@ -334,26 +334,26 @@ class RuleDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
         workspace_id = self.kwargs.get('workspace_id')
 
         if workspace_id:
-            # Subquery to check if dimension exists in parent field
-            parent_field_subquery = models.RuleDetail.objects.filter(
+            # Subquery to check if dimension exists in parent entity
+            parent_entity_subquery = models.RuleDetail.objects.filter(
                 rule=OuterRef('rule'),
-                field__platform=OuterRef('field__platform'),
+                entity__platform=OuterRef('entity__platform'),
                 dimension=OuterRef('dimension'),
-                field__field_level=OuterRef('field__field_level') - 1
+                entity__entity_level=OuterRef('entity__entity_level') - 1
             )
 
             return models.RuleDetail.objects.filter(
                 workspace_id=workspace_id
             ).select_related(
                 'rule',
-                'field',
-                'field__next_field',
+                'entity',
+                'entity__next_entity',
                 'dimension',
                 'dimension__parent',
                 'rule__platform',
                 'created_by'
             ).annotate(
-                in_parent_field=Exists(parent_field_subquery)
+                in_parent_entity=Exists(parent_entity_subquery)
             )
 
         return models.RuleDetail.objects.none()
@@ -381,25 +381,25 @@ class RuleDetailViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
     @extend_schema(tags=["Rules"])
     @action(detail=False, methods=['post'])
     def validate_order(self, request):
-        """Validate dimension order for a rule and field."""
+        """Validate dimension order for a rule and entity."""
         serializer = serializers.RuleDetailCreateSerializer(data=request.data)
 
         if serializer.is_valid():
             rule_id = serializer.validated_data['rule'].id
-            field_id = serializer.validated_data['field'].id
+            entity_id = serializer.validated_data['entity'].id
             dimension_order = serializer.validated_data['dimension_order']
 
             # Check for existing orders
             existing_orders = models.RuleDetail.objects.filter(
                 rule_id=rule_id,
-                field_id=field_id
+                entity_id=entity_id
             ).values_list('dimension_order', flat=True)
 
             existing_orders_list = list(existing_orders)
 
             return Response({
                 'rule_id': rule_id,
-                'field_id': field_id,
+                'entity_id': entity_id,
                 'requested_order': dimension_order,
                 'existing_orders': existing_orders_list,
                 'is_valid': dimension_order not in existing_orders_list,
@@ -458,8 +458,8 @@ class RuleNestedViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
             return models.Rule.objects.filter(
                 workspace_id=workspace_id
             ).prefetch_related(
-                'rule_details__field',
-                'rule_details__field__next_field',
+                'rule_details__entity',
+                'rule_details__entity__next_entity',
                 'rule_details__dimension',
                 'rule_details__dimension__parent',
                 'rule_details__dimension__dimension_values'
@@ -509,7 +509,7 @@ class RuleNestedViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
                     models.RuleDetail.objects.create(
                         workspace=original_rule.workspace,
                         rule=new_rule,
-                        field=detail.field,
+                        entity=detail.entity,
                         dimension=detail.dimension,
                         prefix=detail.prefix,
                         suffix=detail.suffix,

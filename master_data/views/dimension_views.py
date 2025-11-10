@@ -471,3 +471,96 @@ class DimensionValueViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
                 {'error': 'Bulk creation failed. Please try again or contact support.'},
                 status=status.HTTP_500_INTERNAL_SERVER_ERROR
             )
+
+    @extend_schema(tags=["Dimensions"])
+    @action(detail=False, methods=['post'], url_path='bulk-update-parents')
+    def bulk_update_parents(self, request, workspace_id=None, version=None):
+        """
+        POST /api/v1/workspaces/{workspace_id}/dimension-values/bulk-update-parents/
+        with body { "assignments": [ {"dimension_value_id": 11, "parent": 28}, ... ] }
+
+        Bulk update parent relationships for dimension values.
+        """
+        if not workspace_id:
+            workspace_id = self.kwargs.get('workspace_id')
+
+        if not workspace_id:
+            return Response(
+                {'error': 'Workspace ID is required in URL path'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        try:
+            workspace_obj = models.Workspace.objects.get(pk=workspace_id)
+        except models.Workspace.DoesNotExist:
+            return Response(
+                {'error': f'Workspace with id {workspace_id} does not exist'},
+                status=status.HTTP_404_NOT_FOUND
+            )
+
+        # Pass workspace context to serializer for validation
+        serializer = serializers.BulkUpdateParentsSerializer(
+            data=request.data,
+            context={'workspace': workspace_obj}
+        )
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        assignments = serializer.validated_data['assignments']
+
+        try:
+            with transaction.atomic():
+                updated_values = []
+                errors = []
+
+                for i, assignment in enumerate(assignments):
+                    try:
+                        dimension_value = models.DimensionValue.objects.get(
+                            id=assignment['dimension_value_id']
+                        )
+
+                        # Update the parent
+                        dimension_value.parent_id = assignment.get('parent')
+                        dimension_value.save()
+
+                        updated_values.append(self.get_serializer(dimension_value).data)
+                    except Exception as e:
+                        # SECURITY: Log detailed error, return generic message to user
+                        logger.warning(
+                            f"Parent assignment failed at index {i}: {str(e)}",
+                            extra={
+                                'dimension_value_id': assignment['dimension_value_id'],
+                                'parent_id': assignment.get('parent'),
+                                'workspace_id': workspace_id,
+                                'index': i
+                            }
+                        )
+                        errors.append({
+                            'index': i,
+                            'dimension_value_id': assignment['dimension_value_id'],
+                            'error': 'Failed to update parent assignment'
+                        })
+
+                return Response({
+                    'success_count': len(updated_values),
+                    'error_count': len(errors),
+                    'updated_values': updated_values,
+                    'errors': errors
+                }, status=status.HTTP_200_OK)
+
+        except Exception as e:
+            # SECURITY: Log detailed error but return generic message
+            logger.error(
+                f'Bulk parent update failed for workspace {workspace_id}: {str(e)}',
+                exc_info=True,
+                extra={
+                    'user_id': request.user.id if request.user.is_authenticated else None,
+                    'workspace_id': workspace_id,
+                    'assignments_count': len(assignments)
+                }
+            )
+            return Response(
+                {'error': 'Bulk parent update failed. Please try again or contact support.'},
+                status=status.HTTP_500_INTERNAL_SERVER_ERROR
+            )

@@ -154,7 +154,7 @@ class ProjectDetailSerializer(ProjectListSerializer):
         strings = models.ProjectString.objects.for_workspace(obj.workspace_id).filter(
             project=obj
         ).select_related(
-            'platform', 'field', 'rule', 'created_by'
+            'platform', 'entity', 'rule', 'created_by'
         ).prefetch_related('details')
         return ProjectStringReadSerializer(strings, many=True).data
 

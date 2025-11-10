@@ -22,9 +22,9 @@ class ProjectStringQuerySet(models.QuerySet):
         """Filter strings for a specific platform."""
         return self.filter(platform=platform)
 
-    def for_field_level(self, level):
-        """Filter strings for a specific field level."""
-        return self.filter(field__field_level=level)
+    def for_entity_level(self, level):
+        """Filter strings for a specific entity level."""
+        return self.filter(entity__entity_level=level)
 
 
 class ProjectStringManager(models.Manager):
@@ -53,8 +53,8 @@ class ProjectStringManager(models.Manager):
     def for_platform(self, platform):
         return self.get_queryset().for_platform(platform)
 
-    def for_field_level(self, level):
-        return self.get_queryset().for_field_level(level)
+    def for_entity_level(self, level):
+        return self.get_queryset().for_entity_level(level)
 
 
 class ProjectString(TimeStampModel, WorkspaceMixin):
@@ -78,11 +78,11 @@ class ProjectString(TimeStampModel, WorkspaceMixin):
         related_name="project_strings",
         help_text="Platform this string belongs to (via project platform assignment)"
     )
-    field = models.ForeignKey(
-        "master_data.Field",
+    entity = models.ForeignKey(
+        "master_data.Entity",
         on_delete=models.CASCADE,
-        related_name="project_field_strings",
-        help_text="Field this string belongs to"
+        related_name="project_entity_strings",
+        help_text="Entity this string belongs to"
     )
     rule = models.ForeignKey(
         "master_data.Rule",
@@ -129,30 +129,30 @@ class ProjectString(TimeStampModel, WorkspaceMixin):
     class Meta:
         verbose_name = "Project String"
         verbose_name_plural = "Project Strings"
-        ordering = ['workspace', 'project', 'field__field_level', 'value']
+        ordering = ['workspace', 'project', 'entity__entity_level', 'value']
         indexes = [
             models.Index(fields=['workspace', 'project', 'platform']),
             models.Index(fields=['workspace', 'string_uuid']),
             models.Index(fields=['workspace', 'parent_uuid']),
-            models.Index(fields=['project', 'platform', 'field']),
+            models.Index(fields=['project', 'platform', 'entity']),
         ]
         constraints = [
             # Unique constraint for strings WITH a parent
             models.UniqueConstraint(
-                fields=['workspace', 'project', 'platform', 'field', 'parent', 'value'],
+                fields=['workspace', 'project', 'platform', 'entity', 'parent', 'value'],
                 name='unique_with_parent',
                 condition=models.Q(parent__isnull=False)
             ),
             # Unique constraint for strings WITHOUT a parent (handles NULL properly)
             models.UniqueConstraint(
-                fields=['workspace', 'project', 'platform', 'field', 'value'],
+                fields=['workspace', 'project', 'platform', 'entity', 'value'],
                 name='unique_without_parent',
                 condition=models.Q(parent__isnull=True)
             ),
         ]
 
     def __str__(self):
-        return f"{self.project.name} - Level {self.field.field_level} - {self.field.name}: {self.value}"
+        return f"{self.project.name} - Level {self.entity.entity_level} - {self.entity.name}: {self.value}"
 
     def clean(self):
         """Validate the project string configuration."""
@@ -162,11 +162,11 @@ class ProjectString(TimeStampModel, WorkspaceMixin):
         if not self.value or not self.value.strip():
             raise ValidationError("String value cannot be empty")
 
-        # Validate rule belongs to same platform as field
-        if self.rule and self.field:
-            if self.rule.platform != self.field.platform:
+        # Validate rule belongs to same platform as entity
+        if self.rule and self.entity:
+            if self.rule.platform != self.entity.platform:
                 raise ValidationError(
-                    "Rule and field must belong to the same platform")
+                    "Rule and entity must belong to the same platform")
 
         # Validate platform is assigned to project
         if self.project_id and self.platform_id:
@@ -219,7 +219,7 @@ class ProjectString(TimeStampModel, WorkspaceMixin):
             path.insert(0, {
                 'id': current.id,
                 'value': current.value,
-                'field_level': current.field.field_level
+                'entity_level': current.entity.entity_level
             })
             current = current.parent
             max_depth -= 1
@@ -232,12 +232,12 @@ class ProjectString(TimeStampModel, WorkspaceMixin):
 
     def can_have_children(self):
         """Check if this string can have child strings."""
-        next_field = self.field.next_field
-        return next_field is not None
+        next_entity = self.entity.next_entity
+        return next_entity is not None
 
-    def suggest_child_field(self):
-        """Suggest the next field for child string generation."""
-        return self.field.next_field
+    def suggest_child_entity(self):
+        """Suggest the next entity for child string generation."""
+        return self.entity.next_entity
 
 
 class ProjectStringDetail(TimeStampModel, WorkspaceMixin):

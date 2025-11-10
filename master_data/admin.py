@@ -81,15 +81,15 @@ class PlatformAdmin(admin.ModelAdmin):
     ]
 
 
-class FieldAdminForm(forms.ModelForm):
+class EntityAdminForm(forms.ModelForm):
 
     class Meta:
-        model = models.Field
+        model = models.Entity
         fields = "__all__"
 
 
-class FieldAdmin(admin.ModelAdmin):
-    form = FieldAdminForm
+class EntityAdmin(admin.ModelAdmin):
+    form = EntityAdminForm
     list_display = [
         "name",
         "platform",
@@ -124,7 +124,7 @@ class RuleDetailAdmin(admin.ModelAdmin):
     list_display = [
         "rule",
         # "platform",
-        "field",
+        "entity",
         "dimension",
     ]
 
@@ -194,7 +194,7 @@ admin.site.register(models.Dimension, DimensionAdmin)
 admin.site.register(models.DimensionValue, DimensionValueAdmin)
 admin.site.register(models.Workspace, WorkspaceAdmin)
 admin.site.register(models.Platform, PlatformAdmin)
-admin.site.register(models.Field, FieldAdmin)
+admin.site.register(models.Entity, EntityAdmin)
 admin.site.register(models.Rule, RuleAdmin)
 admin.site.register(models.RuleDetail, RuleDetailAdmin)
 admin.site.register(models.String, StringAdmin)
@@ -237,10 +237,10 @@ class ApprovalHistoryAdmin(admin.ModelAdmin):
 
 class ProjectStringAdmin(admin.ModelAdmin):
     list_display = [
-        "project", "platform", "field", "value", "string_uuid",
+        "project", "platform", "entity", "value", "string_uuid",
         "created_by", "created", "last_updated",
     ]
-    list_filter = ["platform", "field__field_level", "created"]
+    list_filter = ["platform", "entity__entity_level", "created"]
     search_fields = ["value", "string_uuid", "project__name"]
     readonly_fields = ["string_uuid", "created", "last_updated"]
 

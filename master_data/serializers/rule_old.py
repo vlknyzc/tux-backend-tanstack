@@ -15,7 +15,7 @@ class RuleDetailCreateSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.RuleDetail
         fields = [
-            'field',
+            'entity',
             'dimension',
             'prefix',
             'suffix',
@@ -29,7 +29,7 @@ class RuleDetailCreateSerializer(serializers.ModelSerializer):
 
     def validate(self, attrs):
         """Enhanced validation for rule detail creation."""
-        field = attrs['field']
+        entity = attrs['entity']
         dimension = attrs['dimension']
 
         # Note: rule validation is handled at the RuleNestedSerializer level
@@ -74,7 +74,7 @@ class RuleCreateUpdateSerializer(WorkspaceOwnedSerializer):
 class RuleNestedSerializer(serializers.ModelSerializer):
     """Serializer for creating/updating rules with nested rule details."""
 
-    field_details = serializers.SerializerMethodField()
+    entity_details = serializers.SerializerMethodField()
     name = serializers.CharField()
     platform = serializers.PrimaryKeyRelatedField(
         queryset=models.Platform.objects.all())
@@ -129,18 +129,18 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                 "Invalid platform format. Expected an ID or a Platform instance.")
 
     def validate(self, attrs):
-        """Validate that all fields in rule_details belong to the same platform."""
+        """Validate that all entities in rule_details belong to the same platform."""
         platform = attrs.get('platform')
         rule_details = attrs.get('rule_details', [])
 
         if platform and rule_details:
             for detail in rule_details:
-                field = detail.get('field')
-                if field and hasattr(field, 'platform') and field.platform != platform:
+                entity = detail.get('entity')
+                if entity and hasattr(entity, 'platform') and entity.platform != platform:
                     raise serializers.ValidationError(
-                        f"Field '{field.name}' belongs to platform '{field.platform.name}' "
+                        f"Entity '{entity.name}' belongs to platform '{entity.platform.name}' "
                         f"but the rule is for platform '{platform.name}'. "
-                        "All fields must belong to the same platform."
+                        "All entities must belong to the same platform."
                     )
 
         return attrs
@@ -148,7 +148,7 @@ class RuleNestedSerializer(serializers.ModelSerializer):
     class Meta:
         model = models.Rule
         fields = ['id', 'name', 'description', 'status', 'platform',
-                  'platform_name', 'platform_slug', 'field_details', 'rule_details',
+                  'platform_name', 'platform_slug', 'entity_details', 'rule_details',
                   'workspace', 'workspace_name']
 
     def create(self, validated_data):
@@ -208,30 +208,30 @@ class RuleNestedSerializer(serializers.ModelSerializer):
 
         return instance
 
-    def get_field_details(self, obj):
+    def get_entity_details(self, obj):
         # Get all rule details for this rule
         rule_details = obj.rule_details.all()
 
-        # Create a dictionary to group by field
+        # Create a dictionary to group by entity
         grouped_details = {}
 
         for detail in rule_details:
-            if not detail.field:
+            if not detail.entity:
                 continue
 
-            field = detail.field.id
+            entity = detail.entity.id
 
-            if field not in grouped_details:
-                # Initialize the field group with field information safely
-                next_field_name = None
-                if detail.field and detail.field.next_field:
-                    next_field_name = detail.field.next_field.name
+            if entity not in grouped_details:
+                # Initialize the entity group with entity information safely
+                next_entity_name = None
+                if detail.entity and detail.entity.next_entity:
+                    next_entity_name = detail.entity.next_entity.name
 
-                grouped_details[field] = {
-                    'field': field,
-                    'field_name': detail.field.name if detail.field else None,
-                    'field_level': detail.field.field_level if detail.field else None,
-                    'next_field': next_field_name,
+                grouped_details[entity] = {
+                    'entity': entity,
+                    'entity_name': detail.entity.name if detail.entity else None,
+                    'entity_level': detail.entity.entity_level if detail.entity else None,
+                    'next_entity': next_entity_name,
                     'dimensions': []
                 }
 
@@ -273,9 +273,9 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                     # If there's any error getting dimension values, use empty list
                     dimension_info['dimension_values'] = []
 
-            grouped_details[field]['dimensions'].append(dimension_info)
+            grouped_details[entity]['dimensions'].append(dimension_info)
 
-            # combine dimensions to form field_rule safely
+            # combine dimensions to form entity_rule safely
             try:
                 dimension_names = [
                     (dim.get('prefix', '') or '') +  # Handle None values
@@ -283,16 +283,16 @@ class RuleNestedSerializer(serializers.ModelSerializer):
                     (dim.get('suffix', '') or '') +
                     (dim.get('delimiter', '') or '')
                     for dim in sorted(
-                        grouped_details[field]['dimensions'],
+                        grouped_details[entity]['dimensions'],
                         # Default to 0 if missing
                         key=lambda x: x.get('dimension_order', 0)
                     )
                 ]
-                field_rule = ''.join(dimension_names)
-                grouped_details[field]['field_rule'] = field_rule
+                entity_rule = ''.join(dimension_names)
+                grouped_details[entity]['entity_rule'] = entity_rule
             except Exception:
-                # If there's any error forming the field_rule, use empty string
-                grouped_details[field]['field_rule'] = ''
+                # If there's any error forming the entity_rule, use empty string
+                grouped_details[entity]['entity_rule'] = ''
 
         # Convert dictionary to list
         return list(grouped_details.values())
@@ -319,11 +319,11 @@ class RuleDetailReadSerializer(serializers.ModelSerializer):
     parent_dimension = serializers.SerializerMethodField()
     parent_dimension_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
-    field_name = serializers.SerializerMethodField()
-    field_level = serializers.SerializerMethodField()
-    next_field = serializers.SerializerMethodField()
-    in_parent_field = serializers.SerializerMethodField()
-    is_max_field_level = serializers.SerializerMethodField()
+    entity_name = serializers.SerializerMethodField()
+    entity_level = serializers.SerializerMethodField()
+    next_entity = serializers.SerializerMethodField()
+    in_parent_entity = serializers.SerializerMethodField()
+    is_max_entity_level = serializers.SerializerMethodField()
 
     class Meta:
         model = models.RuleDetail
@@ -334,10 +334,10 @@ class RuleDetailReadSerializer(serializers.ModelSerializer):
             "platform",
             "platform_name",
             "platform_slug",
-            "field",
-            "field_name",
-            "field_level",
-            "next_field",
+            "entity",
+            "entity_name",
+            "entity_level",
+            "next_entity",
             "dimension",
             "dimension_name",
             "dimension_type",
@@ -348,8 +348,8 @@ class RuleDetailReadSerializer(serializers.ModelSerializer):
             "is_required",
             "parent_dimension_name",
             "parent_dimension",
-            "in_parent_field",
-            "is_max_field_level",
+            "in_parent_entity",
+            "is_max_entity_level",
             "created_by",
             "created_by_name",
             "created",
@@ -359,11 +359,11 @@ class RuleDetailReadSerializer(serializers.ModelSerializer):
     def get_platform(self, obj) -> int:
         return obj.rule.platform.id
 
-    def get_field_name(self, obj) -> str:
-        return obj.field.name
+    def get_entity_name(self, obj) -> str:
+        return obj.entity.name
 
-    def get_field_level(self, obj) -> int:
-        return obj.field.field_level
+    def get_entity_level(self, obj) -> int:
+        return obj.entity.entity_level
 
     def get_platform_name(self, obj) -> str:
         return obj.rule.platform.name
@@ -388,39 +388,39 @@ class RuleDetailReadSerializer(serializers.ModelSerializer):
             return obj.dimension.parent.name
         return None
 
-    def get_next_field(self, obj) -> Optional[str]:
-        if obj.field.next_field_id:
-            return obj.field.next_field.name
+    def get_next_entity(self, obj) -> Optional[str]:
+        if obj.entity.next_entity_id:
+            return obj.entity.next_entity.name
         return None
 
     def get_rule_name(self, obj) -> str:
         return obj.rule.name
 
-    def get_in_parent_field(self, obj) -> bool:
+    def get_in_parent_entity(self, obj) -> bool:
         # Use annotated field from queryset to avoid N+1 query
-        # If annotation exists, use it; otherwise fall back to field_level check
-        if hasattr(obj, 'in_parent_field'):
-            return obj.in_parent_field
+        # If annotation exists, use it; otherwise fall back to entity_level check
+        if hasattr(obj, 'in_parent_entity'):
+            return obj.in_parent_entity
 
         # Fallback for cases where annotation isn't available
-        field_level = obj.field.field_level
-        if field_level <= 1:
+        entity_level = obj.entity.entity_level
+        if entity_level <= 1:
             return False
 
         parent_exists = models.RuleDetail.objects.filter(
-            field__platform=obj.field.platform,
+            entity__platform=obj.entity.platform,
             dimension=obj.dimension,
-            field__field_level=field_level - 1
+            entity__entity_level=entity_level - 1
         ).exists()
 
         return parent_exists
 
-    def get_is_max_field_level(self, obj) -> bool:
-        max_field_level = models.Field.objects.filter(
-            platform=obj.field.platform
-        ).aggregate(max_level=Max('field_level'))['max_level']
+    def get_is_max_entity_level(self, obj) -> bool:
+        max_entity_level = models.Entity.objects.filter(
+            platform=obj.entity.platform
+        ).aggregate(max_level=Max('entity_level'))['max_level']
 
-        return obj.field.field_level == max_field_level
+        return obj.entity.entity_level == max_entity_level
 
     def get_effective_delimiter(self, obj) -> str:
         """Get the effective delimiter for this rule detail."""
@@ -496,27 +496,27 @@ class RuleReadSerializer(serializers.ModelSerializer):
         return obj.validate_configuration()
 
     def get_fields_with_rules(self, obj) -> List[Dict[str, Any]]:
-        """Get all fields that have rule details configured."""
-        field_ids = list(obj.get_fields_with_rules()
+        """Get all entities that have rule details configured."""
+        entity_ids = list(obj.get_entities_with_rules()
                          )  # Convert to list to avoid multiple evaluations
-        fields = models.Field.objects.filter(id__in=field_ids)
-        return [{"id": f.id, "name": f.name, "field_level": f.field_level} for f in fields]
+        entities = models.Entity.objects.filter(id__in=entity_ids)
+        return [{"id": e.id, "name": e.name, "entity_level": e.entity_level} for e in entities]
 
     def get_required_dimensions(self, obj) -> Dict[str, List[str]]:
-        """Get required dimensions by field."""
+        """Get required dimensions by entity."""
         result = {}
         # Convert to list to avoid multiple evaluations
-        field_ids = list(obj.get_fields_with_rules())
-        fields = models.Field.objects.filter(id__in=field_ids)
-        for field in fields:
-            result[field.name] = list(obj.get_required_dimensions(field))
+        entity_ids = list(obj.get_entities_with_rules())
+        entities = models.Entity.objects.filter(id__in=entity_ids)
+        for entity in entities:
+            result[entity.name] = list(obj.get_required_dimensions(entity))
         return result
 
 
 class RuleNestedReadSerializer(serializers.ModelSerializer):
-    """Serializer for reading rules with comprehensive nested field details."""
+    """Serializer for reading rules with comprehensive nested entity details."""
 
-    field_details = serializers.SerializerMethodField()
+    entity_details = serializers.SerializerMethodField()
     configuration_errors = serializers.SerializerMethodField()
     platform_id = serializers.SerializerMethodField()
     platform_name = serializers.SerializerMethodField()
@@ -536,7 +536,7 @@ class RuleNestedReadSerializer(serializers.ModelSerializer):
             "platform_name",
             "platform_slug",
             "configuration_errors",
-            "field_details",
+            "entity_details",
             "created_by_id",
             "created_by_name",
             "created",
@@ -564,42 +564,42 @@ class RuleNestedReadSerializer(serializers.ModelSerializer):
         """Get configuration validation errors."""
         return obj.validate_configuration()
 
-    def get_field_details(self, obj) -> List[Dict[str, Any]]:
+    def get_entity_details(self, obj) -> List[Dict[str, Any]]:
         """
-        Get comprehensive field details including dimension values for frontend.
-        This groups rule details by field and includes all dimension information.
+        Get comprehensive entity details including dimension values for frontend.
+        This groups rule details by entity and includes all dimension information.
         """
         # Get all rule details for this rule with optimized queries
         rule_details = obj.rule_details.select_related(
-            'field', 'dimension', 'dimension__parent'
+            'entity', 'dimension', 'dimension__parent'
         ).prefetch_related(
             'dimension__dimension_values'
         ).all()
 
-        # Create a dictionary to group by field
+        # Create a dictionary to group by entity
         grouped_details = {}
 
         # Create a lookup for parent-child relationships
-        # Key: (rule, dimension, field_level), Value: rule_detail
+        # Key: (rule, dimension, entity_level), Value: rule_detail
         rule_detail_lookup = {}
 
         # First pass: build the lookup table
         for detail in rule_details:
             key = (detail.rule, detail.dimension,
-                   detail.field.field_level)
+                   detail.entity.entity_level)
             rule_detail_lookup[key] = detail
 
         for detail in rule_details:
-            field = detail.field
+            entity = detail.entity
 
-            if field not in grouped_details:
-                # Initialize the field group with field information
-                grouped_details[field] = {
-                    'field': field.id,
-                    'field_name': detail.field.name,
-                    'field_level': detail.field.field_level,
-                    'next_field': detail.field.next_field.id if detail.field.next_field else None,
-                    'can_generate': obj.can_generate_for_field(detail.field),
+            if entity not in grouped_details:
+                # Initialize the entity group with entity information
+                grouped_details[entity] = {
+                    'entity': entity.id,
+                    'entity_name': detail.entity.name,
+                    'entity_level': detail.entity.entity_level,
+                    'next_entity': detail.entity.next_entity.id if detail.entity.next_entity else None,
+                    'can_generate': obj.can_generate_for_entity(detail.entity),
                     'dimensions': []
                 }
 
@@ -607,16 +607,16 @@ class RuleNestedReadSerializer(serializers.ModelSerializer):
             parent_rule_detail = None
             inherits_from_parent = False
 
-            # Look for a rule detail with same rule and dimension but smaller field_level
-            current_field_level = detail.field.field_level
-            for check_field_level in range(1, current_field_level):
+            # Look for a rule detail with same rule and dimension but smaller entity_level
+            current_entity_level = detail.entity.entity_level
+            for check_entity_level in range(1, current_entity_level):
                 parent_key = (detail.rule, detail.dimension,
-                              check_field_level)
+                              check_entity_level)
                 if parent_key in rule_detail_lookup:
                     parent_rule_detail = rule_detail_lookup[parent_key]
                     parent_rule_detail = parent_rule_detail.id
                     inherits_from_parent = True
-                    break  # Found the parent (smallest field_level)
+                    break  # Found the parent (smallest entity_level)
 
             # Add comprehensive dimension information
             dimension_info = {
@@ -652,41 +652,41 @@ class RuleNestedReadSerializer(serializers.ModelSerializer):
                 'is_dropdown': detail.dimension.type == 'list',
             }
 
-            grouped_details[field]['dimensions'].append(dimension_info)
+            grouped_details[entity]['dimensions'].append(dimension_info)
 
-        # Process each field group to add computed information
-        for field, field_data in grouped_details.items():
+        # Process each entity group to add computed information
+        for entity, entity_data in grouped_details.items():
             # Sort dimensions by order
-            field_data['dimensions'].sort(key=lambda x: x['dimension_order'])
+            entity_data['dimensions'].sort(key=lambda x: x['dimension_order'])
 
-            # Generate field rule preview
+            # Generate entity rule preview
             dimension_preview_parts = []
-            for dim in field_data['dimensions']:
+            for dim in entity_data['dimensions']:
                 part = (dim.get('prefix', '') or '') + \
                     f"[{dim.get('dimension_name', '')}]" + \
                        (dim.get('suffix', '') or '') + \
                        (dim.get('delimiter', '') or '')
                 dimension_preview_parts.append(part)
 
-            field_data['field_rule_preview'] = ''.join(dimension_preview_parts)
-            field_data['dimension_count'] = len(field_data['dimensions'])
-            field_data['required_dimension_count'] = sum(
-                1 for d in field_data['dimensions'] if d.get('is_required'))
+            entity_data['entity_rule_preview'] = ''.join(dimension_preview_parts)
+            entity_data['dimension_count'] = len(entity_data['dimensions'])
+            entity_data['required_dimension_count'] = sum(
+                1 for d in entity_data['dimensions'] if d.get('is_required'))
 
-            # Get required dimensions for this field
-            field_obj = models.Field.objects.get(id=field.id)
-            required_dims = obj.get_required_dimensions(field_obj)
+            # Get required dimensions for this entity
+            entity_obj = models.Entity.objects.get(id=entity.id)
+            required_dims = obj.get_required_dimensions(entity_obj)
             # Convert to list of dimension IDs if they're model instances
             if required_dims:
-                field_data['required_dimensions'] = [
+                entity_data['required_dimensions'] = [
                     dim.id if hasattr(dim, 'id') else dim for dim in required_dims
                 ]
             else:
-                field_data['required_dimensions'] = []
+                entity_data['required_dimensions'] = []
 
-        # Convert dictionary to list and sort by field level
+        # Convert dictionary to list and sort by entity level
         result = list(grouped_details.values())
-        result.sort(key=lambda x: x['field_level'])
+        result.sort(key=lambda x: x['entity_level'])
 
         return result
 
@@ -722,22 +722,22 @@ class RuleValidationSerializer(serializers.ModelSerializer):
         return obj.validate_configuration()
 
     def get_can_generate_for_fields(self, obj) -> Dict[str, bool]:
-        """Get fields this rule can generate strings for."""
-        fields = models.Field.objects.filter(platform=obj.platform)
+        """Get entities this rule can generate strings for."""
+        entities = models.Entity.objects.filter(platform=obj.platform)
         result = {}
-        for field in fields:
-            result[field.name] = obj.can_generate_for_field(field)
+        for entity in entities:
+            result[entity.name] = obj.can_generate_for_entity(entity)
         return result
 
     def get_required_dimensions_by_field(self, obj) -> Dict[str, Dict[str, List[str]]]:
-        """Get required dimensions organized by field."""
+        """Get required dimensions organized by entity."""
         result = {}
-        fields = models.Field.objects.filter(platform=obj.platform)
-        for field in fields:
-            if obj.can_generate_for_field(field):
-                result[field.name] = {
-                    "dimensions": list(obj.get_required_dimensions(field)),
-                    "generation_order": obj.get_generation_order(field)
+        entities = models.Entity.objects.filter(platform=obj.platform)
+        for entity in entities:
+            if obj.can_generate_for_entity(entity):
+                result[entity.name] = {
+                    "dimensions": list(obj.get_required_dimensions(entity)),
+                    "generation_order": obj.get_generation_order(entity)
                 }
         return result
 
@@ -753,18 +753,18 @@ class RuleValidationSerializer(serializers.ModelSerializer):
 
 class RulePreviewRequestSerializer(serializers.Serializer):
     """Serializer for rule preview requests."""
-    field = serializers.IntegerField()
+    entity = serializers.IntegerField()
     sample_values = serializers.DictField(
         child=serializers.CharField(),
         help_text="Sample dimension values for preview generation"
     )
 
-    def validate_field(self, value):
-        """Validate that field exists."""
+    def validate_entity(self, value):
+        """Validate that entity exists."""
         try:
-            models.Field.objects.get(id=value)
-        except models.Field.DoesNotExist:
-            raise serializers.ValidationError("Field does not exist")
+            models.Entity.objects.get(id=value)
+        except models.Entity.DoesNotExist:
+            raise serializers.ValidationError("Entity does not exist")
         return value
 
 
@@ -810,8 +810,8 @@ class DimensionDefinitionSerializer(serializers.Serializer):
 
     # Order and positioning
     dimension_order = serializers.IntegerField()
-    field_level = serializers.IntegerField()
-    field_name = serializers.CharField()
+    entity_level = serializers.IntegerField()
+    entity_name = serializers.CharField()
 
     # Value metadata
     value_count = serializers.IntegerField()
@@ -1001,12 +1001,12 @@ class CacheInvalidationRequestSerializer(serializers.Serializer):
 # =============================================================================
 
 class DimensionReferenceSerializer(serializers.Serializer):
-    """Minimal dimension reference for field templates"""
+    """Minimal dimension reference for entity templates"""
     dimension = serializers.IntegerField()
     dimension_order = serializers.IntegerField()
     is_required = serializers.BooleanField()
     is_inherited = serializers.BooleanField()
-    inherits_from_field_level = serializers.IntegerField(allow_null=True)
+    inherits_from_entity_level = serializers.IntegerField(allow_null=True)
 
     # Formatting overrides (only if different from dimension defaults)
     prefix_override = serializers.CharField(allow_blank=True, allow_null=True)
@@ -1016,11 +1016,11 @@ class DimensionReferenceSerializer(serializers.Serializer):
 
 
 class OptimizedFieldTemplateSerializer(serializers.Serializer):
-    """Optimized field template with minimal data and ID references"""
-    field = serializers.IntegerField()
-    field_name = serializers.CharField()
-    field_level = serializers.IntegerField()
-    next_field = serializers.IntegerField(allow_null=True)
+    """Optimized entity template with minimal data and ID references"""
+    entity = serializers.IntegerField()
+    entity_name = serializers.CharField()
+    entity_level = serializers.IntegerField()
+    next_entity = serializers.IntegerField(allow_null=True)
     can_generate = serializers.BooleanField()
 
     # Dimension references (not full data)
@@ -1042,8 +1042,8 @@ class InheritanceLookupSerializer(serializers.Serializer):
     inheritance_chain = serializers.ListField(
         child=serializers.IntegerField(), required=False)
     by_dimension = serializers.DictField(required=False)
-    by_target_field_level = serializers.DictField(required=False)
-    by_source_field_level = serializers.DictField(required=False)
+    by_target_entity_level = serializers.DictField(required=False)
+    by_source_entity_level = serializers.DictField(required=False)
     inherits_from_dimension = serializers.DictField(required=False)
     provides_inheritance_to = serializers.DictField(required=False)
     inherited_dimensions = serializers.ListField(
@@ -1068,7 +1068,7 @@ class ConstraintRelationshipSerializer(serializers.Serializer):
 
 
 class ValidationRuleSerializer(serializers.Serializer):
-    """Serializer for field validation rules"""
+    """Serializer for entity validation rules"""
     type = serializers.CharField()
     message = serializers.CharField()
     dimensions = serializers.ListField(
@@ -1092,13 +1092,13 @@ class InheritanceInfoSerializer(serializers.Serializer):
     """Serializer for dimension inheritance information"""
     is_inherited = serializers.BooleanField()
     parent_rule_detail = serializers.IntegerField(allow_null=True)
-    parent_field_level = serializers.IntegerField(allow_null=True)
+    parent_entity_level = serializers.IntegerField(allow_null=True)
     parent_field_name = serializers.CharField(allow_null=True)
     inherits_formatting = serializers.BooleanField()
 
 
 class FieldDimensionSerializer(serializers.Serializer):
-    """Serializer for dimension information within a field template"""
+    """Serializer for dimension information within an entity template"""
     rule_detail = serializers.IntegerField()
     dimension = serializers.IntegerField()
     dimension_name = serializers.CharField()
@@ -1132,12 +1132,12 @@ class FieldDimensionSerializer(serializers.Serializer):
 
 
 class FieldTemplateSerializer(serializers.Serializer):
-    """Serializer for field templates"""
-    field = serializers.IntegerField()
-    field_name = serializers.CharField()
-    field_level = serializers.IntegerField()
-    next_field = serializers.IntegerField(allow_null=True)
-    next_field_name = serializers.CharField(allow_null=True, allow_blank=True)
+    """Serializer for entity templates"""
+    entity = serializers.IntegerField()
+    entity_name = serializers.CharField()
+    entity_level = serializers.IntegerField()
+    next_entity = serializers.IntegerField(allow_null=True)
+    next_entity_name = serializers.CharField(allow_null=True, allow_blank=True)
     can_generate = serializers.BooleanField()
 
     # Dimensions
@@ -1154,7 +1154,7 @@ class FieldTemplateSerializer(serializers.Serializer):
 
 
 class FieldSpecificDataSerializer(serializers.Serializer):
-    """Serializer for field-specific rule data"""
+    """Serializer for entity-specific rule data"""
     field_template = FieldTemplateSerializer()
     dimension_inheritance = serializers.DictField()
     field_summary = serializers.DictField()

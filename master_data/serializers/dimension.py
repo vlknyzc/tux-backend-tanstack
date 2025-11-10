@@ -401,3 +401,83 @@ class DimensionValueBulkCreateSerializer(serializers.Serializer):
             validated_values.append(validated_value_data)
 
         return validated_values
+
+
+class BulkUpdateParentsSerializer(serializers.Serializer):
+    """Serializer for bulk parent assignment updates."""
+    assignments = serializers.ListField(
+        child=serializers.DictField(),
+        help_text="List of parent assignments to update"
+    )
+
+    def validate_assignments(self, value):
+        """Validate each assignment in the list."""
+        if not value:
+            raise serializers.ValidationError("At least one assignment is required")
+
+        # Require workspace context for validation
+        workspace = self.context.get('workspace')
+        if not workspace:
+            raise serializers.ValidationError(
+                "Workspace context is required for validation"
+            )
+
+        validated_assignments = []
+        dimension_value_ids = []
+
+        for i, assignment in enumerate(value):
+            # Validate required fields
+            if 'dimension_value_id' not in assignment:
+                raise serializers.ValidationError(
+                    f"Assignment at index {i}: 'dimension_value_id' is required"
+                )
+
+            dimension_value_id = assignment['dimension_value_id']
+            parent_id = assignment.get('parent')  # parent can be null to remove parent
+
+            # Verify dimension value exists and belongs to workspace
+            try:
+                dimension_value = models.DimensionValue.objects.get(
+                    id=dimension_value_id,
+                    workspace=workspace
+                )
+            except models.DimensionValue.DoesNotExist:
+                raise serializers.ValidationError(
+                    f"Assignment at index {i}: Dimension value with id {dimension_value_id} "
+                    f"does not exist in workspace {workspace.id}"
+                )
+
+            # Verify parent exists, belongs to workspace, and is valid
+            if parent_id is not None:
+                try:
+                    parent_value = models.DimensionValue.objects.get(
+                        id=parent_id,
+                        workspace=workspace
+                    )
+                except models.DimensionValue.DoesNotExist:
+                    raise serializers.ValidationError(
+                        f"Assignment at index {i}: Parent dimension value with id {parent_id} "
+                        f"does not exist in workspace {workspace.id}"
+                    )
+
+                # Verify parent dimension is the parent of child's dimension
+                if dimension_value.dimension.parent_id != parent_value.dimension_id:
+                    raise serializers.ValidationError(
+                        f"Assignment at index {i}: Parent dimension value must belong to "
+                        f"dimension '{dimension_value.dimension.parent.name if dimension_value.dimension.parent else 'None'}', "
+                        f"but got dimension '{parent_value.dimension.name}'"
+                    )
+
+            validated_assignments.append({
+                'dimension_value_id': dimension_value_id,
+                'parent': parent_id
+            })
+            dimension_value_ids.append(dimension_value_id)
+
+        # Check for duplicate dimension_value_ids
+        if len(dimension_value_ids) != len(set(dimension_value_ids)):
+            raise serializers.ValidationError(
+                "Duplicate dimension_value_id found in assignments"
+            )
+
+        return validated_assignments

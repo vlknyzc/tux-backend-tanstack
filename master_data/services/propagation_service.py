@@ -239,7 +239,7 @@ class PropagationService:
             'string_id': root_string.id,
             'string_value': root_string.value,
             'new_value': None,  # Will be calculated
-            'field_level': root_string.field.field_level,
+            'entity_level': root_string.entity.entity_level,
             'parent_id': root_string.parent_id,
             'level': current_depth,
             'change_type': 'direct' if current_depth == 0 else 'inherited',
@@ -295,7 +295,7 @@ class PropagationService:
         children = String.objects.filter(
             parent=root_string,
             workspace=workspace
-        ).select_related('field')
+        ).select_related('entity')
 
         # Check for large number of children
         child_count = children.count()
@@ -376,7 +376,7 @@ class PropagationService:
         changed_fields: Dict[str, Any]
     ) -> str:
         """
-        Calculate what the new string value would be after field changes.
+        Calculate what the new string value would be after property changes.
         """
         # Get current dimension values
         current_values = string_obj.get_dimension_values()
@@ -412,11 +412,11 @@ class PropagationService:
         """
         Check if the new string value would create conflicts.
         """
-        # Check for duplicate values in same workspace/rule/field
+        # Check for duplicate values in same workspace/rule/entity
         existing = String.objects.filter(
             workspace=workspace,
             rule=string_obj.rule,
-            field=string_obj.field,
+            entity=string_obj.entity,
             value=new_value
         ).exclude(id=string_obj.id).first()
         
@@ -452,7 +452,7 @@ class PropagationService:
     @staticmethod
     def _should_inherit_field(child_string: String, field_key: str) -> bool:
         """
-        Determine if a child string should inherit a specific field change.
+        Determine if a child string should inherit a specific property change.
         """
         # Get configuration
         config = getattr(settings, 'MASTER_DATA_CONFIG', {})
@@ -467,7 +467,7 @@ class PropagationService:
         elif field_rule == 'inherit_always':
             return True
         elif field_rule == 'inherit_if_empty':
-            # Check if child has empty value for this field
+            # Check if child has empty value for this property
             # This would need more complex logic to check child's StringDetails
             return True  # Simplified for now
         

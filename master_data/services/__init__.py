@@ -1,6 +1,6 @@
 from .dimension_catalog_service import DimensionCatalogService
 from .inheritance_matrix_service import InheritanceMatrixService
-from .field_template_service import FieldTemplateService
+from .entity_template_service import EntityTemplateService
 from .rule_service import RuleService
 from .rule_cache_service import RuleCacheService
 from .rule_validation_service import RuleValidationService
@@ -12,7 +12,7 @@ from . import constants
 __all__ = [
     'DimensionCatalogService',
     'InheritanceMatrixService',
-    'FieldTemplateService',
+    'EntityTemplateService',
     'RuleService',
     'RuleCacheService',
     'RuleValidationService',

@@ -26,30 +26,30 @@ class PlatformSerializer(serializers.ModelSerializer):
         return None
 
 
-class FieldSerializer(serializers.ModelSerializer):
-    next_field_name = serializers.SerializerMethodField()
+class EntitySerializer(serializers.ModelSerializer):
+    next_entity_name = serializers.SerializerMethodField()
     platform_name = serializers.SerializerMethodField()
     created_by_name = serializers.SerializerMethodField()
 
     class Meta:
-        model = models.Field
+        model = models.Entity
         fields = [
             "id",
             "platform",
             "platform_name",
             "name",
-            "field_level",
-            "next_field",
-            "next_field_name",
+            "entity_level",
+            "next_entity",
+            "next_entity_name",
             "created_by",
             "created_by_name",
             "created",
             "last_updated",
         ]
 
-    def get_next_field_name(self, obj) -> Optional[str]:
-        if obj.next_field_id:
-            return obj.next_field.name
+    def get_next_entity_name(self, obj) -> Optional[str]:
+        if obj.next_entity_id:
+            return obj.next_entity.name
         return None
 
     def get_platform_name(self, obj) -> str:
@@ -62,7 +62,7 @@ class FieldSerializer(serializers.ModelSerializer):
 
 
 class PlatformTemplateSerializer(serializers.ModelSerializer):
-    fields = FieldSerializer(many=True)
+    entities = EntitySerializer(many=True)
 
     class Meta:
         model = models.Platform
@@ -70,5 +70,5 @@ class PlatformTemplateSerializer(serializers.ModelSerializer):
             "id",
             "name",
             "slug",
-            "fields"
+            "entities"
         ]

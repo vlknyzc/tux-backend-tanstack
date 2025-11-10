@@ -40,10 +40,10 @@ class Submission(TimeStampModel, WorkspaceMixin):
         related_name="submissions",
         help_text="The naming rule to apply for this submission"
     )
-    starting_field = models.ForeignKey(
-        "master_data.Field",
+    starting_entity = models.ForeignKey(
+        "master_data.Entity",
         on_delete=models.CASCADE,
-        related_name="starting_field",
+        related_name="starting_entity",
         help_text="The field to start the naming sequence from"
     )
 

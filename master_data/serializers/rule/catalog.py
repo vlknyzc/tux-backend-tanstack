@@ -7,7 +7,7 @@ rule catalog data, configuration data, and lightweight rule representations.
 
 from rest_framework import serializers
 from .dimension_ref import DimensionDefinitionSerializer, DimensionValueSerializer
-from .field_template import OptimizedFieldTemplateSerializer, FieldTemplateSerializer
+from .field_template import OptimizedEntityTemplateSerializer, EntityTemplateSerializer
 from .metadata import (
     ConstraintRelationshipSerializer,
     ConstraintLookupSerializer,
@@ -32,8 +32,8 @@ class LightweightRuleSerializer(serializers.Serializer):
     last_updated = serializers.CharField()
 
     # Summary information
-    total_fields = serializers.IntegerField()
-    fields_with_rules = serializers.ListField(child=serializers.DictField())
+    total_entities = serializers.IntegerField()
+    entities_with_rules = serializers.ListField(child=serializers.DictField())
     can_generate_count = serializers.IntegerField()
     configuration_errors = serializers.ListField(child=serializers.CharField())
 
@@ -71,8 +71,8 @@ class RuleConfigurationSerializer(serializers.Serializer):
     # Workspace object - exactly as shown in redocs
     workspace = serializers.DictField(child=serializers.CharField())
 
-    # Fields as array - exactly as shown in redocs
-    fields = serializers.ListField(child=serializers.DictField())
+    # Entities as array - exactly as shown in redocs
+    entities = serializers.ListField(child=serializers.DictField())
 
     # Dimensions object keyed by dimension ID - exactly as shown in redocs
     dimensions = serializers.DictField(child=serializers.DictField())
@@ -89,13 +89,13 @@ class RuleConfigurationSerializer(serializers.Serializer):
 
 class DimensionRelationshipMapsSerializer(serializers.Serializer):
     """Serializer for dimension relationship lookup maps"""
-    field_to_dimensions = serializers.DictField()
-    field_to_required_dimensions = serializers.DictField()
-    field_to_optional_dimensions = serializers.DictField()
-    dimension_to_fields = serializers.DictField()
-    dimension_to_required_fields = serializers.DictField()
-    dimension_to_optional_fields = serializers.DictField()
-    field_levels = serializers.ListField(child=serializers.IntegerField())
+    entity_to_dimensions = serializers.DictField()
+    entity_to_required_dimensions = serializers.DictField()
+    entity_to_optional_dimensions = serializers.DictField()
+    dimension_to_entities = serializers.DictField()
+    dimension_to_required_entities = serializers.DictField()
+    dimension_to_optional_entities = serializers.DictField()
+    entity_levels = serializers.ListField(child=serializers.IntegerField())
     all_dimensions = serializers.ListField(child=serializers.IntegerField())
     required_dimensions = serializers.ListField(
         child=serializers.IntegerField())
@@ -124,8 +124,8 @@ class CompleteRuleSerializer(serializers.Serializer):
     rule_name = serializers.CharField()
     rule_slug = serializers.CharField()
 
-    # Optimized field templates with dimension ID references only
-    field_templates = OptimizedFieldTemplateSerializer(many=True)
+    # Optimized entity templates with dimension ID references only
+    entity_templates = OptimizedEntityTemplateSerializer(many=True)
 
     # Centralized dimension catalog with lookup tables
     dimension_catalog = EnhancedDimensionCatalogSerializer()
@@ -145,5 +145,5 @@ class DimensionCatalogSerializer(serializers.Serializer):
         child=DimensionValueSerializer(many=True)
     )
     constraint_relationships = ConstraintRelationshipSerializer()
-    field_templates = FieldTemplateSerializer(many=True)
+    entity_templates = EntityTemplateSerializer(many=True)
     generated_at = serializers.CharField()

@@ -55,7 +55,7 @@ CACHE_TIMEOUT_DEFAULT = 30 * 60  # 30 minutes
 Default cache timeout for service-level caching.
 
 Used by RuleService, DimensionCatalogService, InheritanceMatrixService,
-and FieldTemplateService for general-purpose caching.
+and EntityTemplateService for general-purpose caching.
 """
 
 CACHE_TIMEOUT_SHORT = 5 * 60  # 5 minutes

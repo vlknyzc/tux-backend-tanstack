@@ -270,12 +270,12 @@ REST_FRAMEWORK = {
         'rest_framework.throttling.UserRateThrottle',
     ],
     'DEFAULT_THROTTLE_RATES': {
-        'anon': '100/hour',  # Anonymous users: 100 requests per hour
-        'user': '1000/hour',  # Authenticated users: 1000 requests per hour
-        'auth': '5/minute',  # Authentication endpoint: 5 attempts per minute
-        'token_refresh': '10/minute',  # Token refresh: 10 per minute
-        'registration': '3/hour',  # Registration: 3 per hour
-        'login_attempt': '5/minute',  # Per-user login attempts: 5 per minute
+        'anon': '1000/hour',  # Anonymous users: increased for local dev
+        'user': '10000/hour',  # Authenticated users: increased for local dev
+        'auth': '20/minute',  # Authentication endpoint: increased for local dev
+        'token_refresh': '50/minute',  # Token refresh: increased for local dev
+        'registration': '10/hour',  # Registration: increased for local dev
+        'login_attempt': '20/minute',  # Per-user login attempts: increased for local dev
     },
 }
 

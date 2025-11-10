@@ -52,10 +52,10 @@ class DimensionCatalogService:
         """Build complete catalog from database"""
         # Get all rule details for this rule with optimized queries
         rule_details = RuleDetail.objects.filter(rule=rule).select_related(
-            'dimension', 'field', 'dimension__parent'
+            'dimension', 'entity', 'dimension__parent'
         ).prefetch_related(
             'dimension__dimension_values'
-        ).order_by('field__field_level', 'dimension_order')
+        ).order_by('entity__entity_level', 'dimension_order')
 
         # Build components
         dimensions_map = self._build_dimensions_map(rule_details)
@@ -63,7 +63,7 @@ class DimensionCatalogService:
             dimensions_map.keys(), rule)
         constraint_relationships = self._build_constraint_relationships(
             rule_details)
-        field_templates = self._build_field_templates(rule_details)
+        entity_templates = self._build_entity_templates(rule_details)
 
         return {
             'rule': rule.id,
@@ -72,7 +72,7 @@ class DimensionCatalogService:
             'dimensions': dimensions_map,
             'dimension_values': dimension_values,
             'constraint_relationships': constraint_relationships,
-            'field_templates': field_templates,
+            'entity_templates': entity_templates,
             'generated_at': timezone.now().isoformat(),
         }
 
@@ -109,8 +109,8 @@ class DimensionCatalogService:
 
                     # Order and positioning
                     'dimension_order': detail.dimension_order,
-                    'field_level': detail.field.field_level,
-                    'field_name': detail.field.name,
+                    'entity_level': detail.entity.entity_level,
+                    'entity_name': detail.entity.name,
 
                     # Value metadata (will be populated from prefetched data)
                     'value_count': 0,
@@ -164,7 +164,7 @@ class DimensionCatalogService:
         """Build constraint relationships between dimensions"""
         relationships = {
             'parent_child': {},
-            'field_dependencies': {},
+            'entity_dependencies': {},
             'inheritance_matrix': {}
         }
 
@@ -180,33 +180,33 @@ class DimensionCatalogService:
                 if child not in relationships['parent_child'][parent]:
                     relationships['parent_child'][parent].append(child)
 
-        # Build field dependencies (which dimensions are used in which fields)
+        # Build entity dependencies (which dimensions are used in which entities)
         for detail in rule_details:
-            field_level = detail.field.field_level
+            entity_level = detail.entity.entity_level
             dim = detail.dimension.id
 
-            if field_level not in relationships['field_dependencies']:
-                relationships['field_dependencies'][field_level] = []
+            if entity_level not in relationships['entity_dependencies']:
+                relationships['entity_dependencies'][entity_level] = []
 
-            if dim not in relationships['field_dependencies'][field_level]:
-                relationships['field_dependencies'][field_level].append(dim)
+            if dim not in relationships['entity_dependencies'][entity_level]:
+                relationships['entity_dependencies'][entity_level].append(dim)
 
         return relationships
 
-    def _build_field_templates(self, rule_details: QuerySet) -> List[Dict]:
-        """Build field templates for easier frontend consumption"""
-        fields_map = {}
+    def _build_entity_templates(self, rule_details: QuerySet) -> List[Dict]:
+        """Build entity templates for easier frontend consumption"""
+        entities_map = {}
 
         for detail in rule_details:
-            field = detail.field.id
+            entity = detail.entity.id
 
-            if field not in fields_map:
-                fields_map[field] = {
-                    'field': field,
-                    'field_name': detail.field.name,
-                    'field_level': detail.field.field_level,
-                    'next_field': getattr(detail.field, 'next_field', None),
-                    'next_field_name': getattr(detail.field, 'next_field', None).name if getattr(detail.field, 'next_field', None) else None,
+            if entity not in entities_map:
+                entities_map[entity] = {
+                    'entity': entity,
+                    'entity_name': detail.entity.name,
+                    'entity_level': detail.entity.entity_level,
+                    'next_entity': getattr(detail.entity, 'next_entity', None),
+                    'next_entity_name': getattr(detail.entity, 'next_entity', None).name if getattr(detail.entity, 'next_entity', None) else None,
                     'dimensions': [],
                     'dimension_count': 0,
                     'required_dimension_count': 0,
@@ -225,33 +225,33 @@ class DimensionCatalogService:
                 'effective_delimiter': detail.get_effective_delimiter() if hasattr(detail, 'get_effective_delimiter') else (detail.delimiter or ''),
             }
 
-            fields_map[field]['dimensions'].append(dim_info)
+            entities_map[entity]['dimensions'].append(dim_info)
 
-        # Process each field to add computed information
-        for field_data in fields_map.values():
+        # Process each entity to add computed information
+        for entity_data in entities_map.values():
             # Sort dimensions by order
-            field_data['dimensions'].sort(key=lambda x: x['dimension_order'])
+            entity_data['dimensions'].sort(key=lambda x: x['dimension_order'])
 
             # Update counts
-            field_data['dimension_count'] = len(field_data['dimensions'])
-            field_data['required_dimension_count'] = sum(
-                1 for d in field_data['dimensions'] if d['is_required']
+            entity_data['dimension_count'] = len(entity_data['dimensions'])
+            entity_data['required_dimension_count'] = sum(
+                1 for d in entity_data['dimensions'] if d['is_required']
             )
 
-            # Generate field rule preview
+            # Generate entity rule preview
             preview_parts = []
-            for dim in field_data['dimensions']:
+            for dim in entity_data['dimensions']:
                 part = (dim['prefix'] +
                         f"[{dim['dimension_name']}]" +
                         dim['suffix'] +
                         dim['delimiter'])
                 preview_parts.append(part)
 
-            field_data['field_rule_preview'] = ''.join(preview_parts)
+            entity_data['entity_rule_preview'] = ''.join(preview_parts)
 
-        # Convert to list and sort by field level
-        result = list(fields_map.values())
-        result.sort(key=lambda x: x['field_level'])
+        # Convert to list and sort by entity level
+        result = list(entities_map.values())
+        result.sort(key=lambda x: x['entity_level'])
 
         return result
 
@@ -299,10 +299,10 @@ class DimensionCatalogService:
     def _build_optimized_catalog(self, rule: Rule) -> Dict:
         """Build optimized catalog with centralized data and improved structure"""
         rule_details = RuleDetail.objects.filter(rule=rule).select_related(
-            'field', 'dimension', 'dimension__parent'
+            'entity', 'dimension', 'dimension__parent'
         ).prefetch_related(
             'dimension__dimension_values'
-        ).order_by('field__field_level', 'dimension_order')
+        ).order_by('entity__entity_level', 'dimension_order')
 
         # Get all unique dimensions
         dimensions = set(detail.dimension.id for detail in rule_details)
@@ -350,7 +350,7 @@ class DimensionCatalogService:
                     'type': detail.dimension.type,
                     'description': detail.dimension.description or '',
 
-                    # Default formatting rules (can be overridden in field templates)
+                    # Default formatting rules (can be overridden in entity templates)
                     'default_prefix': getattr(detail.dimension, 'default_prefix', ''),
                     'default_suffix': getattr(detail.dimension, 'default_suffix', ''),
                     'default_delimiter': getattr(detail.dimension, 'default_delimiter', ''),
@@ -436,7 +436,7 @@ class DimensionCatalogService:
         """Build optimized constraint structure with arrays and pre-computed lookups"""
         constraints = {
             'parent_child_constraints': [],
-            'field_level_constraints': {},
+            'entity_level_constraints': {},
             'value_constraints': {},
 
             # Fast lookup tables
@@ -467,15 +467,15 @@ class DimensionCatalogService:
                     })
                     parent_child_map[constraint_key] = True
 
-        # Build field-level constraints
+        # Build entity-level constraints
         for detail in rule_details:
-            field_level = detail.field.field_level
+            entity_level = detail.entity.entity_level
             dim = detail.dimension.id
 
-            if field_level not in constraints['field_level_constraints']:
-                constraints['field_level_constraints'][field_level] = {
-                    'field': detail.field.id,
-                    'field_name': detail.field.name,
+            if entity_level not in constraints['entity_level_constraints']:
+                constraints['entity_level_constraints'][entity_level] = {
+                    'entity': detail.entity.id,
+                    'entity_name': detail.entity.name,
                     'required_dimensions': [],
                     'optional_dimensions': []
                 }
@@ -488,10 +488,10 @@ class DimensionCatalogService:
 
             is_required = getattr(detail, 'is_required', True)
             if is_required:
-                constraints['field_level_constraints'][field_level]['required_dimensions'].append(
+                constraints['entity_level_constraints'][entity_level]['required_dimensions'].append(
                     dim_info)
             else:
-                constraints['field_level_constraints'][field_level]['optional_dimensions'].append(
+                constraints['entity_level_constraints'][entity_level]['optional_dimensions'].append(
                     dim_info)
 
         # Build value constraints with actual parent-child value mappings
@@ -645,12 +645,12 @@ class DimensionCatalogService:
 
         # 4. Validation lookup for quick constraint checks
         for detail in rule_details:
-            field_level = detail.field.field_level
+            entity_level = detail.entity.entity_level
             dimension = detail.dimension.id
 
-            validation_key = f"{field_level}_{dimension}"
+            validation_key = f"{entity_level}_{dimension}"
             constraints['validation_lookup'][validation_key] = {
-                'field_level': field_level,
+                'entity_level': entity_level,
                 'dimension': dimension,
                 'has_constraints': dimension in constrained_dimensions,
                 # Store ID instead of object
@@ -689,9 +689,9 @@ class DimensionCatalogService:
             # Fast lookups by dimension ID
             'by_dimension': {},
 
-            # Fast lookups by field levels
-            'by_target_field_level': {},
-            'by_source_field_level': {},
+            # Fast lookups by entity levels
+            'by_target_entity_level': {},
+            'by_source_entity_level': {},
 
             # Reverse lookups
             'inherits_from_dimension': {},
@@ -707,33 +707,33 @@ class DimensionCatalogService:
         dimension_inheritance_map = {}
         for detail in rule_details:
             dimension = detail.dimension.id
-            current_field_level = detail.field.field_level
+            current_entity_level = detail.entity.entity_level
 
-            # Check for inheritance from previous field levels
+            # Check for inheritance from previous entity levels
             parent_detail = RuleDetail.objects.filter(
                 rule=rule,
                 dimension=detail.dimension,
-                field__field_level__lt=current_field_level
-            ).select_related('field').order_by('-field__field_level').first()
+                entity__entity_level__lt=current_entity_level
+            ).select_related('entity').order_by('-entity__entity_level').first()
 
             inheritance_chain = []
-            field_level_inherited_from = None
+            entity_level_inherited_from = None
             inherits_formatting = False
 
             if parent_detail:
-                field_level_inherited_from = parent_detail.field.field_level
+                entity_level_inherited_from = parent_detail.entity.entity_level
                 inherits_formatting = self._check_formatting_inheritance(
                     detail, parent_detail)
                 inheritance_chain = self._build_inheritance_chain(
-                    rule, detail.dimension, current_field_level)
+                    rule, detail.dimension, current_entity_level)
 
             dimension_inheritance_map[dimension] = {
                 'dimension': dimension,
-                'current_field_level': current_field_level,
-                'field_level_inherited_from': field_level_inherited_from,
+                'current_entity_level': current_entity_level,
+                'entity_level_inherited_from': entity_level_inherited_from,
                 'inherits_formatting': inherits_formatting,
                 'inheritance_chain': inheritance_chain,
-                'is_inherited': field_level_inherited_from is not None,
+                'is_inherited': entity_level_inherited_from is not None,
                 'is_source': False  # Will be updated below
             }
 
@@ -749,8 +749,8 @@ class DimensionCatalogService:
         for dim, data in inheritance_map.items():
             lookup['by_dimension'][dim] = {
                 'dimension': dim,
-                'current_field_level': data['current_field_level'],
-                'inherits_from_field_level': data['field_level_inherited_from'],
+                'current_entity_level': data['current_entity_level'],
+                'inherits_from_entity_level': data['entity_level_inherited_from'],
                 'inherits_formatting': data['inherits_formatting'],
                 'inheritance_chain': data['inheritance_chain'],
                 'is_inherited': data['is_inherited']
@@ -759,53 +759,53 @@ class DimensionCatalogService:
             if data['is_inherited']:
                 lookup['inherited_dimensions'].add(dim)
 
-        # 2. By Target Field Level (what each field level inherits)
+        # 2. By Target Entity Level (what each entity level inherits)
         for dim, data in inheritance_map.items():
-            target_level = data['current_field_level']
-            if target_level not in lookup['by_target_field_level']:
-                lookup['by_target_field_level'][target_level] = {
-                    'field_level': target_level,
+            target_level = data['current_entity_level']
+            if target_level not in lookup['by_target_entity_level']:
+                lookup['by_target_entity_level'][target_level] = {
+                    'entity_level': target_level,
                     'inherited_dimensions': [],
                     'non_inherited_dimensions': [],
                     'inheritance_sources': {}
                 }
 
             if data['is_inherited']:
-                lookup['by_target_field_level'][target_level]['inherited_dimensions'].append({
+                lookup['by_target_entity_level'][target_level]['inherited_dimensions'].append({
                     'dimension': dim,
-                    'inherits_from_field_level': data['field_level_inherited_from'],
+                    'inherits_from_entity_level': data['entity_level_inherited_from'],
                     'inherits_formatting': data['inherits_formatting']
                 })
 
                 # Track inheritance sources
-                source_level = data['field_level_inherited_from']
-                if source_level not in lookup['by_target_field_level'][target_level]['inheritance_sources']:
-                    lookup['by_target_field_level'][target_level]['inheritance_sources'][source_level] = [
+                source_level = data['entity_level_inherited_from']
+                if source_level not in lookup['by_target_entity_level'][target_level]['inheritance_sources']:
+                    lookup['by_target_entity_level'][target_level]['inheritance_sources'][source_level] = [
                     ]
-                lookup['by_target_field_level'][target_level]['inheritance_sources'][source_level].append(
+                lookup['by_target_entity_level'][target_level]['inheritance_sources'][source_level].append(
                     dim)
             else:
-                lookup['by_target_field_level'][target_level]['non_inherited_dimensions'].append(
+                lookup['by_target_entity_level'][target_level]['non_inherited_dimensions'].append(
                     dim)
 
-        # 3. By Source Field Level (what each field level provides)
+        # 3. By Source Entity Level (what each entity level provides)
         for dim, data in inheritance_map.items():
-            if data['field_level_inherited_from'] is not None:
-                source_level = data['field_level_inherited_from']
-                if source_level not in lookup['by_source_field_level']:
-                    lookup['by_source_field_level'][source_level] = {
-                        'field_level': source_level,
+            if data['entity_level_inherited_from'] is not None:
+                source_level = data['entity_level_inherited_from']
+                if source_level not in lookup['by_source_entity_level']:
+                    lookup['by_source_entity_level'][source_level] = {
+                        'entity_level': source_level,
                         'provides_inheritance_to': [],
-                        'target_field_levels': set()
+                        'target_entity_levels': set()
                     }
 
-                lookup['by_source_field_level'][source_level]['provides_inheritance_to'].append({
+                lookup['by_source_entity_level'][source_level]['provides_inheritance_to'].append({
                     'dimension': dim,
-                    'target_field_level': data['current_field_level'],
+                    'target_entity_level': data['current_entity_level'],
                     'inherits_formatting': data['inherits_formatting']
                 })
-                lookup['by_source_field_level'][source_level]['target_field_levels'].add(
-                    data['current_field_level'])
+                lookup['by_source_entity_level'][source_level]['target_entity_levels'].add(
+                    data['current_entity_level'])
 
                 # Update source dimensions
                 lookup['source_dimensions'].add(dim)
@@ -814,11 +814,11 @@ class DimensionCatalogService:
         # 4. Reverse Lookups - Inherits From Dimension
         for dim, data in inheritance_map.items():
             if data['is_inherited']:
-                source_level = data['field_level_inherited_from']
+                source_level = data['entity_level_inherited_from']
 
-                # Find the source dimension at the source field level
+                # Find the source dimension at the source entity level
                 for source_dim, source_data in inheritance_map.items():
-                    if (source_data['current_field_level'] == source_level and
+                    if (source_data['current_entity_level'] == source_level and
                             source_dim == dim):  # Same dimension at different levels
 
                         if source_dim not in lookup['inherits_from_dimension']:
@@ -826,7 +826,7 @@ class DimensionCatalogService:
 
                         lookup['inherits_from_dimension'][source_dim].append({
                             'target_dimension': dim,
-                            'target_field_level': data['current_field_level'],
+                            'target_entity_level': data['current_entity_level'],
                             'inherits_formatting': data['inherits_formatting']
                         })
 
@@ -838,10 +838,10 @@ class DimensionCatalogService:
         lookup['inherited_dimensions'] = list(lookup['inherited_dimensions'])
         lookup['source_dimensions'] = list(lookup['source_dimensions'])
 
-        # Convert target_field_levels sets to lists
-        for source_level_data in lookup['by_source_field_level'].values():
-            source_level_data['target_field_levels'] = list(
-                source_level_data['target_field_levels'])
+        # Convert target_entity_levels sets to lists
+        for source_level_data in lookup['by_source_entity_level'].values():
+            source_level_data['target_entity_levels'] = list(
+                source_level_data['target_entity_levels'])
 
         # 7. Calculate statistics
         total_dimensions = len(inheritance_map)
@@ -853,23 +853,23 @@ class DimensionCatalogService:
             'inherited_count': inherited_count,
             'source_count': source_count,
             'inheritance_coverage': (inherited_count / total_dimensions * 100) if total_dimensions > 0 else 0.0,
-            'field_levels_with_inheritance': list(lookup['by_target_field_level'].keys()),
-            'field_levels_providing_inheritance': list(lookup['by_source_field_level'].keys())
+            'entity_levels_with_inheritance': list(lookup['by_target_entity_level'].keys()),
+            'entity_levels_providing_inheritance': list(lookup['by_source_entity_level'].keys())
         }
 
-    def _build_inheritance_chain(self, rule: Rule, dimension: Dimension, current_field_level: int) -> List[int]:
-        """Build the inheritance chain for a dimension up to the current field level"""
+    def _build_inheritance_chain(self, rule: Rule, dimension: Dimension, current_entity_level: int) -> List[int]:
+        """Build the inheritance chain for a dimension up to the current entity level"""
         chain = []
 
-        # Get all rule details for this dimension in previous field levels
+        # Get all rule details for this dimension in previous entity levels
         previous_details = RuleDetail.objects.filter(
             rule=rule,
             dimension=dimension,
-            field__field_level__lt=current_field_level
-        ).select_related('field').order_by('field__field_level')
+            entity__entity_level__lt=current_entity_level
+        ).select_related('entity').order_by('entity__entity_level')
 
         for detail in previous_details:
-            chain.append(detail.field.field_level)
+            chain.append(detail.entity.entity_level)
 
         return chain
 
@@ -884,18 +884,18 @@ class DimensionCatalogService:
     def _build_dimension_relationship_maps(self, rule_details: QuerySet) -> Dict:
         """Build O(1) dimension relationship lookup maps"""
         maps = {
-            # Field-to-Dimensions mappings
-            'field_to_dimensions': {},
-            'field_to_required_dimensions': {},
-            'field_to_optional_dimensions': {},
+            # Entity-to-Dimensions mappings
+            'entity_to_dimensions': {},
+            'entity_to_required_dimensions': {},
+            'entity_to_optional_dimensions': {},
 
-            # Dimension-to-Fields mappings (reverse)
-            'dimension_to_fields': {},
-            'dimension_to_required_fields': {},
-            'dimension_to_optional_fields': {},
+            # Dimension-to-Entities mappings (reverse)
+            'dimension_to_entities': {},
+            'dimension_to_required_entities': {},
+            'dimension_to_optional_entities': {},
 
             # Quick access arrays
-            'field_levels': [],
+            'entity_levels': [],
             'all_dimensions': [],
             'required_dimensions': [],
             'optional_dimensions': [],
@@ -905,23 +905,23 @@ class DimensionCatalogService:
         }
 
         # Build primary mappings
-        field_dimension_map = {}
-        dimension_field_map = {}
+        entity_dimension_map = {}
+        dimension_entity_map = {}
 
         for detail in rule_details:
-            field_level = detail.field.field_level
-            field = detail.field.id
-            field_name = detail.field.name
+            entity_level = detail.entity.entity_level
+            entity = detail.entity.id
+            entity_name = detail.entity.name
             dimension = detail.dimension.id
             dimension_name = detail.dimension.name
             is_required = getattr(detail, 'is_required', True)
 
-            # Build field-to-dimensions mapping
-            if field_level not in field_dimension_map:
-                field_dimension_map[field_level] = {
-                    'field': field,
-                    'field_name': field_name,
-                    'field_level': field_level,
+            # Build entity-to-dimensions mapping
+            if entity_level not in entity_dimension_map:
+                entity_dimension_map[entity_level] = {
+                    'entity': entity,
+                    'entity_name': entity_name,
+                    'entity_level': entity_level,
                     'all_dimensions': [],
                     'required_dimensions': [],
                     'optional_dimensions': [],
@@ -937,129 +937,129 @@ class DimensionCatalogService:
                 'is_required': is_required
             }
 
-            field_dimension_map[field_level]['all_dimensions'].append(
+            entity_dimension_map[entity_level]['all_dimensions'].append(
                 dimension_info)
             if is_required:
-                field_dimension_map[field_level]['required_dimensions'].append(
+                entity_dimension_map[entity_level]['required_dimensions'].append(
                     dimension_info)
             else:
-                field_dimension_map[field_level]['optional_dimensions'].append(
+                entity_dimension_map[entity_level]['optional_dimensions'].append(
                     dimension_info)
 
-            # Build dimension-to-fields mapping
-            if dimension not in dimension_field_map:
-                dimension_field_map[dimension] = {
+            # Build dimension-to-entities mapping
+            if dimension not in dimension_entity_map:
+                dimension_entity_map[dimension] = {
                     'dimension': dimension,
                     'dimension_name': dimension_name,
-                    'used_in_fields': [],
-                    'required_in_fields': [],
-                    'optional_in_fields': [],
-                    'field_count': 0,
-                    'required_field_count': 0,
-                    'optional_field_count': 0
+                    'used_in_entities': [],
+                    'required_in_entities': [],
+                    'optional_in_entities': [],
+                    'entity_count': 0,
+                    'required_entity_count': 0,
+                    'optional_entity_count': 0
                 }
 
-            field_info = {
-                'field': field,
-                'field_name': field_name,
-                'field_level': field_level,
+            entity_info = {
+                'entity': entity,
+                'entity_name': entity_name,
+                'entity_level': entity_level,
                 'dimension_order': detail.dimension_order,
                 'is_required': is_required
             }
 
-            dimension_field_map[dimension]['used_in_fields'].append(
-                field_info)
+            dimension_entity_map[dimension]['used_in_entities'].append(
+                entity_info)
             if is_required:
-                dimension_field_map[dimension]['required_in_fields'].append(
-                    field_info)
+                dimension_entity_map[dimension]['required_in_entities'].append(
+                    entity_info)
             else:
-                dimension_field_map[dimension]['optional_in_fields'].append(
-                    field_info)
+                dimension_entity_map[dimension]['optional_in_entities'].append(
+                    entity_info)
 
         # Populate fast lookup maps
         self._populate_relationship_maps(
-            maps, field_dimension_map, dimension_field_map)
+            maps, entity_dimension_map, dimension_entity_map)
 
         return maps
 
-    def _populate_relationship_maps(self, maps: Dict, field_dimension_map: Dict, dimension_field_map: Dict):
+    def _populate_relationship_maps(self, maps: Dict, entity_dimension_map: Dict, dimension_entity_map: Dict):
         """Populate the relationship maps with computed data"""
 
-        # 1. Field-to-Dimensions mappings
-        for field_level, field_data in field_dimension_map.items():
+        # 1. Entity-to-Dimensions mappings
+        for entity_level, entity_data in entity_dimension_map.items():
             # Update counts
-            field_data['dimension_count'] = len(field_data['all_dimensions'])
-            field_data['required_count'] = len(
-                field_data['required_dimensions'])
-            field_data['optional_count'] = len(
-                field_data['optional_dimensions'])
+            entity_data['dimension_count'] = len(entity_data['all_dimensions'])
+            entity_data['required_count'] = len(
+                entity_data['required_dimensions'])
+            entity_data['optional_count'] = len(
+                entity_data['optional_dimensions'])
 
             # Store in maps
-            maps['field_to_dimensions'][field_level] = field_data
-            maps['field_to_required_dimensions'][field_level] = {
-                'field_level': field_level,
-                'field_name': field_data['field_name'],
-                'required_dimensions': field_data['required_dimensions'],
-                'count': field_data['required_count']
+            maps['entity_to_dimensions'][entity_level] = entity_data
+            maps['entity_to_required_dimensions'][entity_level] = {
+                'entity_level': entity_level,
+                'entity_name': entity_data['entity_name'],
+                'required_dimensions': entity_data['required_dimensions'],
+                'count': entity_data['required_count']
             }
-            maps['field_to_optional_dimensions'][field_level] = {
-                'field_level': field_level,
-                'field_name': field_data['field_name'],
-                'optional_dimensions': field_data['optional_dimensions'],
-                'count': field_data['optional_count']
+            maps['entity_to_optional_dimensions'][entity_level] = {
+                'entity_level': entity_level,
+                'entity_name': entity_data['entity_name'],
+                'optional_dimensions': entity_data['optional_dimensions'],
+                'count': entity_data['optional_count']
             }
 
-        # 2. Dimension-to-Fields mappings
-        for dimension, dimension_data in dimension_field_map.items():
+        # 2. Dimension-to-Entities mappings
+        for dimension, dimension_data in dimension_entity_map.items():
             # Update counts
-            dimension_data['field_count'] = len(
-                dimension_data['used_in_fields'])
-            dimension_data['required_field_count'] = len(
-                dimension_data['required_in_fields'])
-            dimension_data['optional_field_count'] = len(
-                dimension_data['optional_in_fields'])
+            dimension_data['entity_count'] = len(
+                dimension_data['used_in_entities'])
+            dimension_data['required_entity_count'] = len(
+                dimension_data['required_in_entities'])
+            dimension_data['optional_entity_count'] = len(
+                dimension_data['optional_in_entities'])
 
             # Store in maps
-            maps['dimension_to_fields'][dimension] = dimension_data
-            maps['dimension_to_required_fields'][dimension] = {
+            maps['dimension_to_entities'][dimension] = dimension_data
+            maps['dimension_to_required_entities'][dimension] = {
                 'dimension': dimension,
                 'dimension_name': dimension_data['dimension_name'],
-                'required_in_fields': dimension_data['required_in_fields'],
-                'count': dimension_data['required_field_count']
+                'required_in_entities': dimension_data['required_in_entities'],
+                'count': dimension_data['required_entity_count']
             }
-            maps['dimension_to_optional_fields'][dimension] = {
+            maps['dimension_to_optional_entities'][dimension] = {
                 'dimension': dimension,
                 'dimension_name': dimension_data['dimension_name'],
-                'optional_in_fields': dimension_data['optional_in_fields'],
-                'count': dimension_data['optional_field_count']
+                'optional_in_entities': dimension_data['optional_in_entities'],
+                'count': dimension_data['optional_entity_count']
             }
 
         # 3. Quick access arrays
-        maps['field_levels'] = sorted(field_dimension_map.keys())
-        maps['all_dimensions'] = list(dimension_field_map.keys())
+        maps['entity_levels'] = sorted(entity_dimension_map.keys())
+        maps['all_dimensions'] = list(dimension_entity_map.keys())
 
         # Required/Optional dimension lists
-        for dimension, dimension_data in dimension_field_map.items():
-            if dimension_data['required_field_count'] > 0:
+        for dimension, dimension_data in dimension_entity_map.items():
+            if dimension_data['required_entity_count'] > 0:
                 maps['required_dimensions'].append(dimension)
-            if dimension_data['optional_field_count'] > 0:
+            if dimension_data['optional_entity_count'] > 0:
                 maps['optional_dimensions'].append(dimension)
 
         # 4. Calculate statistics
-        total_field_levels = len(field_dimension_map)
-        total_dimensions = len(dimension_field_map)
+        total_entity_levels = len(entity_dimension_map)
+        total_dimensions = len(dimension_entity_map)
         total_required_dimensions = len(maps['required_dimensions'])
         total_optional_dimensions = len(maps['optional_dimensions'])
 
         maps['relationship_stats'] = {
-            'total_field_levels': total_field_levels,
+            'total_entity_levels': total_entity_levels,
             'total_dimensions': total_dimensions,
             'required_dimensions_count': total_required_dimensions,
             'optional_dimensions_count': total_optional_dimensions,
-            'avg_dimensions_per_field': total_dimensions / total_field_levels if total_field_levels > 0 else 0,
-            'fields_with_required_only': sum(1 for f in field_dimension_map.values() if f['required_count'] > 0 and f['optional_count'] == 0),
-            'fields_with_optional_only': sum(1 for f in field_dimension_map.values() if f['optional_count'] > 0 and f['required_count'] == 0),
-            'fields_with_mixed': sum(1 for f in field_dimension_map.values() if f['required_count'] > 0 and f['optional_count'] > 0)
+            'avg_dimensions_per_entity': total_dimensions / total_entity_levels if total_entity_levels > 0 else 0,
+            'entities_with_required_only': sum(1 for e in entity_dimension_map.values() if e['required_count'] > 0 and e['optional_count'] == 0),
+            'entities_with_optional_only': sum(1 for e in entity_dimension_map.values() if e['optional_count'] > 0 and e['required_count'] == 0),
+            'entities_with_mixed': sum(1 for e in entity_dimension_map.values() if e['required_count'] > 0 and e['optional_count'] > 0)
         }
 
     def _build_metadata_indexes(self, rule_details: QuerySet, dimensions: Dict) -> Dict:
@@ -1092,13 +1092,13 @@ class DimensionCatalogService:
             'dimension_to_type': {},
             'dimension_to_name': {},
             'dimension_name_to_id': {},
-            'field_level_to_dimensions': {},
+            'entity_level_to_dimensions': {},
             'dimension_order_index': {},
 
             # Performance indexes
             'fast_lookups': {
                 'by_dimension_id': {},
-                'by_field_level': {},
+                'by_entity_level': {},
                 'by_dimension_type': {},
                 'by_requirement_status': {},
                 'by_constraint_status': {}
@@ -1110,13 +1110,13 @@ class DimensionCatalogService:
 
         # Build primary data maps
         dimension_metadata = {}
-        field_metadata = {}
+        entity_metadata = {}
 
         for detail in rule_details:
             dimension = detail.dimension.id
             dimension_name = detail.dimension.name
             dimension_type = detail.dimension.type
-            field_level = detail.field.field_level
+            entity_level = detail.entity.entity_level
             is_required = getattr(detail, 'is_required', True)
 
             # Build dimension metadata
@@ -1128,14 +1128,14 @@ class DimensionCatalogService:
                     'allows_freetext': dimension_type == 'text',
                     'is_dropdown': dimension_type in ['list', 'combobox'],
                     'has_parent_constraint': bool(detail.dimension.parent),
-                    'used_in_field_levels': [],
+                    'used_in_entity_levels': [],
                     'formatting_patterns': [],
                     'is_required_anywhere': False,
                     'is_optional_anywhere': False
                 }
 
-            dimension_metadata[dimension]['used_in_field_levels'].append(
-                field_level)
+            dimension_metadata[dimension]['used_in_entity_levels'].append(
+                entity_level)
 
             # Track requirement status
             if is_required:
@@ -1145,7 +1145,7 @@ class DimensionCatalogService:
 
             # Build formatting pattern
             formatting_pattern = {
-                'field_level': field_level,
+                'entity_level': entity_level,
                 'prefix': detail.prefix or '',
                 'suffix': detail.suffix or '',
                 'delimiter': detail.delimiter or '',
@@ -1154,11 +1154,11 @@ class DimensionCatalogService:
             dimension_metadata[dimension]['formatting_patterns'].append(
                 formatting_pattern)
 
-            # Build field metadata
-            if field_level not in field_metadata:
-                field_metadata[field_level] = {
-                    'field_level': field_level,
-                    'field_name': detail.field.name,
+            # Build entity metadata
+            if entity_level not in entity_metadata:
+                entity_metadata[entity_level] = {
+                    'entity_level': entity_level,
+                    'entity_name': detail.entity.name,
                     'dimensions': [],
                     'dimension_types': set(),
                     'has_required_dimensions': False,
@@ -1166,24 +1166,24 @@ class DimensionCatalogService:
                     'has_constrained_dimensions': False
                 }
 
-            field_metadata[field_level]['dimensions'].append(dimension)
-            field_metadata[field_level]['dimension_types'].add(dimension_type)
+            entity_metadata[entity_level]['dimensions'].append(dimension)
+            entity_metadata[entity_level]['dimension_types'].add(dimension_type)
 
             if is_required:
-                field_metadata[field_level]['has_required_dimensions'] = True
+                entity_metadata[entity_level]['has_required_dimensions'] = True
             else:
-                field_metadata[field_level]['has_optional_dimensions'] = True
+                entity_metadata[entity_level]['has_optional_dimensions'] = True
 
             if detail.dimension.parent:
-                field_metadata[field_level]['has_constrained_dimensions'] = True
+                entity_metadata[entity_level]['has_constrained_dimensions'] = True
 
         # Populate indexes
         self._populate_metadata_indexes(
-            indexes, dimension_metadata, field_metadata)
+            indexes, dimension_metadata, entity_metadata)
 
         return indexes
 
-    def _populate_metadata_indexes(self, indexes: Dict, dimension_metadata: Dict, field_metadata: Dict):
+    def _populate_metadata_indexes(self, indexes: Dict, dimension_metadata: Dict, entity_metadata: Dict):
         """Populate the metadata indexes with computed data"""
 
         # 1. Dimension type groups
@@ -1251,11 +1251,11 @@ class DimensionCatalogService:
                 indexes['validation_flags']['dropdown_dimensions'].append(
                     dim)
 
-        # 4. Field level to dimensions mapping
-        for field_level, field_data in field_metadata.items():
-            field_data['dimension_types'] = list(
-                field_data['dimension_types'])  # Convert set to list
-            indexes['field_level_to_dimensions'][field_level] = field_data
+        # 4. Entity level to dimensions mapping
+        for entity_level, entity_data in entity_metadata.items():
+            entity_data['dimension_types'] = list(
+                entity_data['dimension_types'])  # Convert set to list
+            indexes['entity_level_to_dimensions'][entity_level] = entity_data
 
         # 5. Fast lookup indexes
         for dim, dim_data in dimension_metadata.items():
@@ -1266,7 +1266,7 @@ class DimensionCatalogService:
                 'allows_freetext': dim_data['allows_freetext'],
                 'is_dropdown': dim_data['is_dropdown'],
                 'has_constraints': dim_data['has_parent_constraint'],
-                'used_in_fields': dim_data['used_in_field_levels'],
+                'used_in_entities': dim_data['used_in_entity_levels'],
                 'is_required_anywhere': dim_data['is_required_anywhere'],
                 'is_optional_anywhere': dim_data['is_optional_anywhere']
             }
@@ -1303,22 +1303,22 @@ class DimensionCatalogService:
                 indexes['fast_lookups']['by_constraint_status']['unconstrained'].append(
                     dim)
 
-        # By field level
-        for field_level, field_data in field_metadata.items():
-            indexes['fast_lookups']['by_field_level'][field_level] = {
-                'field_level': field_level,
-                'field_name': field_data['field_name'],
-                'dimensions': field_data['dimensions'],
-                'dimension_types': field_data['dimension_types'],
-                'dimension_count': len(field_data['dimensions']),
-                'has_required': field_data['has_required_dimensions'],
-                'has_optional': field_data['has_optional_dimensions'],
-                'has_constrained': field_data['has_constrained_dimensions']
+        # By entity level
+        for entity_level, entity_data in entity_metadata.items():
+            indexes['fast_lookups']['by_entity_level'][entity_level] = {
+                'entity_level': entity_level,
+                'entity_name': entity_data['entity_name'],
+                'dimensions': entity_data['dimensions'],
+                'dimension_types': entity_data['dimension_types'],
+                'dimension_count': len(entity_data['dimensions']),
+                'has_required': entity_data['has_required_dimensions'],
+                'has_optional': entity_data['has_optional_dimensions'],
+                'has_constrained': entity_data['has_constrained_dimensions']
             }
 
         # 6. Calculate metadata statistics
         total_dimensions = len(dimension_metadata)
-        total_fields = len(field_metadata)
+        total_entities = len(entity_metadata)
 
         type_counts = {dim_type: len(
             dims) for dim_type, dims in indexes['dimension_type_groups'].items() if dim_type != 'all_types'}
@@ -1327,20 +1327,20 @@ class DimensionCatalogService:
 
         indexes['metadata_stats'] = {
             'total_dimensions': total_dimensions,
-            'total_fields': total_fields,
+            'total_entities': total_entities,
             'dimension_type_distribution': type_counts,
             'validation_flag_distribution': validation_counts,
             'unique_formatting_patterns': len(indexes['formatting_patterns']),
             'unique_delimiters': len(indexes['delimiter_groups']),
             'unique_prefixes': len(indexes['prefix_groups']),
             'unique_suffixes': len(indexes['suffix_groups']),
-            'avg_dimensions_per_field': total_dimensions / total_fields if total_fields > 0 else 0,
+            'avg_dimensions_per_entity': total_dimensions / total_entities if total_entities > 0 else 0,
             'most_common_type': max(type_counts.items(), key=lambda x: x[1])[0] if type_counts else None,
             'constraint_coverage': (validation_counts.get('constrained_dimensions', 0) / total_dimensions * 100) if total_dimensions > 0 else 0.0
         }
 
-    def _build_field_rule_preview(self, detail: RuleDetail) -> str:
-        """Build field rule preview for a given rule detail"""
+    def _build_entity_rule_preview(self, detail: RuleDetail) -> str:
+        """Build entity rule preview for a given rule detail"""
         prefix = detail.prefix or ''
         suffix = detail.suffix or ''
         delimiter = detail.delimiter or ''
