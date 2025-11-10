@@ -29,6 +29,7 @@ from .project_string_views import (
     BulkUpdateProjectStringsView,
     ExportProjectStringsView,
 )
+from .string_registry_views import StringRegistryViewSet
 
 __all__ = [
     'DimensionViewSet',
@@ -66,6 +67,8 @@ __all__ = [
     'ProjectStringUnlockView',
     'BulkUpdateProjectStringsView',
     'ExportProjectStringsView',
+    # String registry views
+    'StringRegistryViewSet',
 ]
 
 

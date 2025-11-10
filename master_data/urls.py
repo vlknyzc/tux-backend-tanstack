@@ -27,6 +27,8 @@ from .views import (
     PropagationErrorViewSet,
     EnhancedStringDetailViewSet,
     PropagationSettingsViewSet,
+    # String registry views
+    StringRegistryViewSet,
 )
 
 router = routers.DefaultRouter()
@@ -88,6 +90,13 @@ router.register(
     r"workspaces/(?P<workspace_id>\d+)/propagation-settings",
     PropagationSettingsViewSet,
     basename="propagation-settings"
+)
+
+# String registry endpoints (workspace-scoped)
+router.register(
+    r"workspaces/(?P<workspace_id>\d+)/string-registry",
+    StringRegistryViewSet,
+    basename="string-registry"
 )
 
 urlpatterns = [

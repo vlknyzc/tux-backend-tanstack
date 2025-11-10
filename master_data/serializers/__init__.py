@@ -111,6 +111,16 @@ from .project_string import (
     ProjectStringDetailWriteSerializer,
     ListProjectStringsSerializer,
 )
+from .string_registry import (
+    ErrorDetailSerializer,
+    WarningDetailSerializer,
+    RowResultSerializer,
+    ValidationSummarySerializer,
+    BulkValidationResponseSerializer,
+    SingleStringValidationRequestSerializer,
+    SingleStringValidationResponseSerializer,
+    CSVUploadRequestSerializer,
+)
 
 
 __all__ = [
@@ -227,4 +237,14 @@ __all__ = [
     'ProjectStringDetailNestedSerializer',
     'ProjectStringDetailWriteSerializer',
     'ListProjectStringsSerializer',
+
+    # String registry serializers
+    'ErrorDetailSerializer',
+    'WarningDetailSerializer',
+    'RowResultSerializer',
+    'ValidationSummarySerializer',
+    'BulkValidationResponseSerializer',
+    'SingleStringValidationRequestSerializer',
+    'SingleStringValidationResponseSerializer',
+    'CSVUploadRequestSerializer',
 ]
