@@ -135,6 +135,46 @@ class String(TimeStampModel, WorkspaceMixin):
         help_text="Current version number for tracking modifications"
     )
 
+    # External platform integration fields
+    validation_source = models.CharField(
+        max_length=20,
+        choices=[
+            ('internal', 'Internal'),
+            ('external', 'External'),
+        ],
+        default='internal',
+        help_text="Whether string was generated internally or imported from external platform"
+    )
+    external_platform_id = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="Platform-specific identifier (e.g., Meta campaign_123)"
+    )
+    external_parent_id = models.CharField(
+        max_length=100,
+        null=True,
+        blank=True,
+        help_text="Parent's platform identifier for external hierarchy tracking"
+    )
+    validation_status = models.CharField(
+        max_length=20,
+        choices=[
+            ('valid', 'Valid'),
+            ('invalid', 'Invalid'),
+            ('warning', 'Warning'),
+            ('entity_mismatch', 'Entity Mismatch'),
+        ],
+        null=True,
+        blank=True,
+        help_text="Validation status for external strings"
+    )
+    validation_metadata = models.JSONField(
+        default=dict,
+        blank=True,
+        help_text="Validation errors, warnings, and hierarchy conflicts"
+    )
+
     # Custom manager
     objects = StringManager()
 
@@ -148,6 +188,16 @@ class String(TimeStampModel, WorkspaceMixin):
             models.Index(fields=['workspace', 'rule', 'entity']),
             models.Index(fields=['workspace', 'string_uuid']),
             models.Index(fields=['workspace', 'value']),
+            models.Index(fields=['workspace', 'external_platform_id']),
+            models.Index(fields=['validation_source', 'validation_status']),
+        ]
+        constraints = [
+            # Unique external_platform_id per workspace (for external strings)
+            models.UniqueConstraint(
+                fields=['workspace', 'external_platform_id'],
+                condition=models.Q(external_platform_id__isnull=False),
+                name='unique_external_platform_id_per_workspace'
+            ),
         ]
 
     def __str__(self):

@@ -7,6 +7,7 @@ from .rule_validation_service import RuleValidationService
 from .rule_metrics_service import RuleMetricsService
 from .string_generation_service import StringGenerationService, NamingConventionError
 from .naming_pattern_validator import NamingPatternValidator
+from .string_registry_service import StringRegistryService, StringRegistryValidationError
 from . import constants
 
 __all__ = [
@@ -20,5 +21,7 @@ __all__ = [
     'StringGenerationService',
     'NamingConventionError',
     'NamingPatternValidator',
+    'StringRegistryService',
+    'StringRegistryValidationError',
     'constants',
 ]
