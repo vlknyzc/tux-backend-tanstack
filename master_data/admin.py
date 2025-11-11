@@ -129,40 +129,6 @@ class RuleDetailAdmin(admin.ModelAdmin):
     ]
 
 
-class StringAdminForm(forms.ModelForm):
-
-    class Meta:
-        model = models.String
-        fields = "__all__"
-
-
-class StringAdmin(admin.ModelAdmin):
-    form = StringAdminForm
-    list_display = [
-        "parent",
-        # "workspace",
-
-    ]
-
-
-class StringDetailAdminForm(forms.ModelForm):
-
-    class Meta:
-        model = models.StringDetail
-        fields = "__all__"
-
-
-class StringDetailAdmin(admin.ModelAdmin):
-    form = StringDetailAdminForm
-    list_display = [
-        "string",
-        "dimension",
-        "dimension_value",
-        "dimension_value_freetext",
-        # "rule",
-    ]
-
-
 class DimensionConstraintAdminForm(forms.ModelForm):
 
     class Meta:
@@ -197,10 +163,186 @@ admin.site.register(models.Platform, PlatformAdmin)
 admin.site.register(models.Entity, EntityAdmin)
 admin.site.register(models.Rule, RuleAdmin)
 admin.site.register(models.RuleDetail, RuleDetailAdmin)
-admin.site.register(models.String, StringAdmin)
-admin.site.register(models.StringDetail, StringDetailAdmin)
 # admin.site.register(models.Submission, SubmissionAdmin)  # DEPRECATED: Use Projects instead
 admin.site.register(models.DimensionConstraint, DimensionConstraintAdmin)
+
+
+# External String Admin (String Registry Validated Strings)
+class ExternalStringAdmin(admin.ModelAdmin):
+    list_display = [
+        "external_platform_id",
+        "value",
+        "platform",
+        "entity",
+        "validation_status",
+        "get_status_icon",
+        "imported_status",
+        "version",
+        "created",
+        "created_by",
+    ]
+    list_filter = [
+        "validation_status",
+        "platform",
+        "entity",
+        "batch__operation_type",
+        "imported_at",
+        "created",
+    ]
+    search_fields = [
+        "external_platform_id",
+        "value",
+        "batch__file_name",
+        "created_by__email",
+    ]
+    readonly_fields = [
+        "workspace",
+        "platform",
+        "rule",
+        "entity",
+        "batch",
+        "value",
+        "external_platform_id",
+        "external_parent_id",
+        "validation_status",
+        "validation_metadata",
+        "imported_to_project_string",
+        "imported_at",
+        "created_by",
+        "version",
+        "superseded_by",
+        "created",
+        "last_updated",
+    ]
+    ordering = ["-created"]
+    date_hierarchy = "created"
+
+    def get_status_icon(self, obj):
+        icons = {
+            'valid': '✓ Valid',
+            'invalid': '✗ Invalid',
+            'warning': '⚠ Warning',
+            'skipped': '⊘ Skipped'
+        }
+        return icons.get(obj.validation_status, '?')
+    get_status_icon.short_description = 'Status'
+
+    def imported_status(self, obj):
+        if obj.imported_at:
+            return '✓ Imported'
+        elif obj.is_importable():
+            return '⏳ Ready'
+        else:
+            return '✗ Cannot import'
+    imported_status.short_description = 'Import Status'
+
+    def has_add_permission(self, request):
+        """Prevent manual creation."""
+        return False
+
+
+# External String Batch Admin (String Registry CSV Uploads)
+class ExternalStringBatchAdmin(admin.ModelAdmin):
+    list_display = [
+        "file_name",
+        "operation_type",
+        "get_operation_icon",
+        "uploaded_by",
+        "workspace",
+        "platform",
+        "project",
+        "status",
+        "created",
+        "uploaded_rows",
+        "valid_count",
+        "failed_count",
+        "get_success_rate",
+        "processing_time_seconds",
+    ]
+    list_filter = [
+        "operation_type",
+        "status",
+        "workspace",
+        "platform",
+        "project",
+        "uploaded_by",
+        "created",
+    ]
+    search_fields = [
+        "file_name",
+        "uploaded_by__email",
+        "uploaded_by__first_name",
+        "uploaded_by__last_name",
+        "project__name",
+    ]
+    readonly_fields = [
+        "workspace",
+        "uploaded_by",
+        "file_name",
+        "file_size_bytes",
+        "operation_type",
+        "platform",
+        "rule",
+        "project",
+        "created",
+        "last_updated",
+        "total_rows",
+        "uploaded_rows",
+        "processed_rows",
+        "skipped_rows",
+        "created_count",
+        "updated_count",
+        "valid_count",
+        "warnings_count",
+        "failed_count",
+        "linked_parents_count",
+        "parent_conflicts_count",
+        "parent_not_found_count",
+        "processing_time_seconds",
+        "status",
+        "error_message",
+        "get_success_rate",
+        "get_failure_rate",
+        "view_strings_link",
+    ]
+    ordering = ["-created"]
+    date_hierarchy = "created"
+
+    def get_operation_icon(self, obj):
+        icons = {
+            'validation': '🔍 Validation',
+            'import': '📥 Import'
+        }
+        return icons.get(obj.operation_type, obj.operation_type)
+    get_operation_icon.short_description = 'Operation'
+
+    def get_success_rate(self, obj):
+        """Display success rate as percentage."""
+        return f"{obj.success_rate}%"
+    get_success_rate.short_description = "Success Rate"
+
+    def get_failure_rate(self, obj):
+        """Display failure rate as percentage."""
+        return f"{obj.failure_rate}%"
+    get_failure_rate.short_description = "Failure Rate"
+
+    def view_strings_link(self, obj):
+        from django.utils.html import format_html
+        url = f"/admin/master_data/externalstring/?batch__id__exact={obj.id}"
+        return format_html('<a href="{}">View {} strings</a>', url, obj.uploaded_rows)
+    view_strings_link.short_description = "Strings"
+
+    def has_add_permission(self, request):
+        """Prevent manual creation of batches."""
+        return False
+
+    def has_delete_permission(self, request, obj=None):
+        """Allow deletion for cleanup."""
+        return True
+
+
+admin.site.register(models.ExternalString, ExternalStringAdmin)
+admin.site.register(models.ExternalStringBatch, ExternalStringBatchAdmin)
 
 
 # Project models
@@ -235,7 +377,7 @@ class ApprovalHistoryAdmin(admin.ModelAdmin):
     readonly_fields = ["timestamp"]
 
 
-class ProjectStringAdmin(admin.ModelAdmin):
+class StringAdmin(admin.ModelAdmin):
     list_display = [
         "project", "platform", "entity", "value", "string_uuid",
         "created_by", "created", "last_updated",
@@ -245,7 +387,7 @@ class ProjectStringAdmin(admin.ModelAdmin):
     readonly_fields = ["string_uuid", "created", "last_updated"]
 
 
-class ProjectStringDetailAdmin(admin.ModelAdmin):
+class StringDetailAdmin(admin.ModelAdmin):
     list_display = [
         "string", "dimension", "dimension_value", "dimension_value_freetext",
         "is_inherited",
@@ -258,5 +400,5 @@ admin.site.register(models.Project, ProjectAdmin)
 admin.site.register(models.ProjectMember, ProjectMemberAdmin)
 admin.site.register(models.ProjectActivity, ProjectActivityAdmin)
 admin.site.register(models.ApprovalHistory, ApprovalHistoryAdmin)
-admin.site.register(models.ProjectString, ProjectStringAdmin)
-admin.site.register(models.ProjectStringDetail, ProjectStringDetailAdmin)
+admin.site.register(models.String, StringAdmin)
+admin.site.register(models.StringDetail, StringDetailAdmin)

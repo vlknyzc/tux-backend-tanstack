@@ -121,7 +121,7 @@ class ProjectListSerializer(serializers.ModelSerializer):
 
     def get_stats(self, obj):
         """Get project statistics."""
-        total_strings = models.ProjectString.objects.filter(project=obj).count()
+        total_strings = models.String.objects.filter(project=obj).count()
         platforms_count = obj.platforms.count()
         team_members_count = obj.team_members.count()
 
@@ -147,16 +147,16 @@ class ProjectDetailSerializer(ProjectListSerializer):
         fields = ProjectListSerializer.Meta.fields + ['strings', 'activities', 'approval_history']
 
     def get_strings(self, obj):
-        """Get strings for this project (using ProjectStringReadSerializer)."""
-        from .project_string import ProjectStringReadSerializer
+        """Get strings for this project (using StringReadSerializer)."""
+        from .project_string import StringReadSerializer
         # Use for_workspace to explicitly filter by the project's workspace
         # This ensures we get strings for the correct workspace
-        strings = models.ProjectString.objects.for_workspace(obj.workspace_id).filter(
+        strings = models.String.objects.for_workspace(obj.workspace_id).filter(
             project=obj
         ).select_related(
             'platform', 'entity', 'rule', 'created_by'
         ).prefetch_related('details')
-        return ProjectStringReadSerializer(strings, many=True).data
+        return StringReadSerializer(strings, many=True).data
 
     def get_activities(self, obj):
         """Get activities for this project."""

@@ -9,14 +9,14 @@ from rest_framework.routers import DefaultRouter
 
 from .views import (
     ProjectViewSet,
-    BulkCreateProjectStringsView,
-    ListProjectStringsView,
-    ProjectStringExpandedView,
-    ProjectStringUpdateView,
-    ProjectStringDeleteView,
-    ProjectStringUnlockView,
-    BulkUpdateProjectStringsView,
-    ExportProjectStringsView,
+    BulkCreateStringsView,
+    ListStringsView,
+    StringExpandedView,
+    StringUpdateView,
+    StringDeleteView,
+    StringUnlockView,
+    BulkUpdateStringsView,
+    ExportStringsView,
 )
 
 
@@ -39,35 +39,35 @@ urlpatterns += [
     # Bulk create strings for a platform
     path(
         'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/strings/bulk',
-        BulkCreateProjectStringsView.as_view(),
+        BulkCreateStringsView.as_view(),
         name='project-strings-bulk-create'
     ),
 
     # List strings for a platform
     path(
         'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/strings',
-        ListProjectStringsView.as_view(),
+        ListStringsView.as_view(),
         name='project-strings-list'
     ),
 
     # Get expanded string details
     path(
         'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/strings/<int:string_id>/expanded',
-        ProjectStringExpandedView.as_view(),
+        StringExpandedView.as_view(),
         name='project-string-expanded'
     ),
 
     # Update string
     path(
         'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/strings/<int:string_id>',
-        ProjectStringUpdateView.as_view(),
+        StringUpdateView.as_view(),
         name='project-string-update'
     ),
 
     # Delete string (same path as update but DELETE method)
     path(
         'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/strings/<int:string_id>/delete',
-        ProjectStringDeleteView.as_view(),
+        StringDeleteView.as_view(),
         name='project-string-delete'
     ),
 
@@ -75,21 +75,21 @@ urlpatterns += [
     # Unlock string
     path(
         'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/strings/<int:string_id>/unlock',
-        ProjectStringUnlockView.as_view(),
+        StringUnlockView.as_view(),
         name='project-string-unlock'
     ),
 
     # Bulk update strings
     path(
         'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/strings/bulk-update',
-        BulkUpdateProjectStringsView.as_view(),
+        BulkUpdateStringsView.as_view(),
         name='project-strings-bulk-update'
     ),
 
     # Export strings
     path(
         'workspaces/<int:workspace_id>/projects/<int:project_id>/platforms/<int:platform_id>/strings/export',
-        ExportProjectStringsView.as_view(),
+        ExportStringsView.as_view(),
         name='project-strings-export'
     ),
 ]

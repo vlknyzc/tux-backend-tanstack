@@ -1,161 +1,670 @@
 """
-RESTful API views for strings.
-These views implement the design patterns from restful-api-design.md
-All endpoints require workspace context for security and isolation.
+Views for String API endpoints (Phase 1 - Critical).
 """
 
-from rest_framework import viewsets, status
-from rest_framework.decorators import action
+from rest_framework import views, status
 from rest_framework.response import Response
-from django_filters import rest_framework as filters
-from django_filters.rest_framework import DjangoFilterBackend
-from django.db import transaction
-from drf_spectacular.utils import extend_schema, OpenApiParameter
+from rest_framework.permissions import IsAuthenticated
+from django.shortcuts import get_object_or_404
+from django.core.paginator import Paginator
+from django.db.models import Q
+from django.http import HttpResponse
+from django.utils import timezone
+import csv
+import json
 
-from master_data import models
-from master_data.serializers.string import (
-    StringWithDetailsSerializer,
-    StringWithDetailsReadSerializer
+from ..models import (
+    Project, String,
+    ProjectMember, Workspace, Platform
 )
-from master_data.serializers.bulk_operations import (
-    BulkStringCreateSerializer
+from ..serializers import (
+    BulkStringCreateSerializer,
+    StringReadSerializer,
+    StringExpandedSerializer,
+    StringUpdateSerializer,
 )
-from master_data.permissions import IsAuthenticatedOrDebugReadOnly
 from .mixins import WorkspaceValidationMixin
-import logging
-
-logger = logging.getLogger(__name__)
 
 
-class StringWorkspaceFilter(filters.FilterSet):
-    """Filter for workspace-scoped strings."""
-    submission = filters.NumberFilter(field_name='submission')
-    entity = filters.NumberFilter(field_name='entity')
-    entity_level = filters.NumberFilter(field_name='entity__entity_level')
-    platform = filters.NumberFilter(field_name='rule__platform__id')
-
-    class Meta:
-        model = models.String
-        fields = ['id', 'submission', 'entity', 'entity_level', 'platform']
-
-
-@extend_schema(tags=['Strings'])
-class StringViewSet(WorkspaceValidationMixin, viewsets.ModelViewSet):
+class BulkCreateStringsView(WorkspaceValidationMixin, views.APIView):
     """
-    Workspace-scoped string viewset with embedded details.
+    Bulk create project strings for a specific platform within a project.
 
-    Implements:
-    - GET    /api/v1/workspaces/{workspace_id}/strings/
-    - POST   /api/v1/workspaces/{workspace_id}/strings/
-    - GET    /api/v1/workspaces/{workspace_id}/strings/{id}/
-    - DELETE /api/v1/workspaces/{workspace_id}/strings/{id}/
-
-    Note: String values are generated from details, not updated directly.
+    Endpoint: POST /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings/bulk
     """
+    permission_classes = [IsAuthenticated]
 
-    queryset = models.String.objects.all()
-    permission_classes = [IsAuthenticatedOrDebugReadOnly]
-    filter_backends = [DjangoFilterBackend]
-    filterset_class = StringWorkspaceFilter
-    http_method_names = ['get', 'post', 'delete',
-                         'head', 'options']  # No PUT/PATCH
-
-    def get_serializer_class(self):
-        """Use different serializers for read and write operations."""
-        if self.action in ['create']:
-            return StringWithDetailsSerializer
-        else:
-            return StringWithDetailsReadSerializer
-
-    def get_queryset(self):
-        """Get workspace-filtered strings with optimized prefetch."""
-        queryset = super().get_queryset()
-
-        if not hasattr(queryset, 'model'):
-            queryset = models.String.objects.all()
-
-        return queryset.select_related(
-            'entity',
-            'entity__platform',  # Prevent N+1 query for platform access
-            'submission',
-            'rule',
-            'workspace',
-            'created_by',
-            'parent'
-        ).prefetch_related(
-            'string_details__dimension',
-            'string_details__dimension_value'
-        )
-
-    def get_serializer_context(self):
-        """Add workspace to serializer context for validation."""
-        context = super().get_serializer_context()
-        workspace_id = self.kwargs.get('workspace_id')
-        if workspace_id:
-            try:
-                workspace = models.Workspace.objects.get(id=workspace_id)
-                context['workspace'] = workspace
-            except models.Workspace.DoesNotExist:
-                pass
-        return context
-
-    @extend_schema(
-        tags=["Strings"],
-        parameters=[
-            OpenApiParameter(
-                name='workspace_id',
-                description='Workspace ID',
-                required=True,
-                type=int,
-                location=OpenApiParameter.PATH
+    def post(self, request, workspace_id, project_id, platform_id, version=None):
+        """Create multiple project strings in bulk."""
+        # Validate workspace access
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
             )
-        ]
-    )
-    def list(self, request, *args, **kwargs):
-        """List strings in workspace."""
-        return super().list(request, *args, **kwargs)
 
-    @extend_schema(tags=["Strings"])
-    @transaction.atomic
-    def create(self, request, *args, **kwargs):
-        """Create string with details (value generated from details)."""
-        return super().create(request, *args, **kwargs)
+        # Validate project exists and belongs to workspace
+        project = get_object_or_404(Project, id=project_id, workspace=workspace)
 
-    @extend_schema(tags=["Strings"])
-    def retrieve(self, request, *args, **kwargs):
-        """Get string with details."""
-        return super().retrieve(request, *args, **kwargs)
+        # Validate platform exists
+        platform = get_object_or_404(Platform, id=platform_id)
 
-    @extend_schema(tags=["Strings"])
-    @transaction.atomic
-    def destroy(self, request, *args, **kwargs):
-        """Delete string and all related details."""
-        return super().destroy(request, *args, **kwargs)
+        # Validate user has permission (owner/editor)
+        if not self.can_create_strings(request.user, project):
+            return Response(
+                {'error': 'You do not have permission to create strings for this platform'},
+                status=status.HTTP_403_FORBIDDEN
+            )
 
-    @extend_schema(
-        tags=["Strings"],
-        methods=['post'],
-        request=BulkStringCreateSerializer,
-        summary="Create multiple strings in bulk"
-    )
-    @action(detail=False, methods=['post'], url_path='bulk')
-    @transaction.atomic
-    def bulk_create(self, request, workspace_id=None):
-        """Create multiple strings in bulk."""
-        workspace_id = getattr(request, 'workspace_id', None)
-
-        # Add workspace to each string in the request
-        data = request.data.copy()
-        if 'strings' in data:
-            for string_data in data['strings']:
-                string_data['workspace'] = workspace_id
-
+        # Validate and create strings
         serializer = BulkStringCreateSerializer(
-            data=data, context={'request': request})
-        serializer.is_valid(raise_exception=True)
-        result = serializer.save()
-
-        return Response(
-            StringWithDetailsReadSerializer(result['strings'], many=True).data,
-            status=status.HTTP_201_CREATED
+            data=request.data,
+            context={
+                'request': request,
+                'project': project,
+                'platform': platform
+            }
         )
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        # Create strings
+        created_strings = serializer.save()
+
+        # Return created strings
+        return Response({
+            'created_count': len(created_strings),
+            'strings': StringReadSerializer(created_strings, many=True).data
+        }, status=status.HTTP_201_CREATED)
+
+    def can_create_strings(self, user, project):
+        """Check if user can create strings for this project."""
+        if user.is_superuser:
+            return True
+
+        # Check if user has owner/editor role in project
+        try:
+            member = ProjectMember.objects.get(project=project, user=user)
+            return member.role in ['owner', 'editor']
+        except ProjectMember.DoesNotExist:
+            return False
+
+
+class ListStringsView(WorkspaceValidationMixin, views.APIView):
+    """
+    List project strings for a specific platform within a project.
+
+    Endpoint: GET /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings
+
+    Query Parameters:
+    - entity: Filter by entity ID
+    - parent_entity: Filter by parent entity ID (returns parent strings for a given entity level)
+    - parent_uuid: Filter by parent UUID (returns children of a specific parent)
+    - search: Search by string value
+    - page: Page number (default: 1)
+    - page_size: Items per page (default: 50)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, workspace_id, project_id, platform_id, version=None):
+        """List project strings with filtering and pagination."""
+        # Validate workspace access
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Validate project exists and belongs to workspace
+        project = get_object_or_404(Project, id=project_id, workspace=workspace)
+
+        # Validate platform exists
+        platform = get_object_or_404(Platform, id=platform_id)
+
+        # Base queryset
+        queryset = String.objects.filter(
+            project=project,
+            platform=platform
+        ).select_related(
+            'project', 'platform', 'entity', 'rule', 'created_by'
+        ).prefetch_related('details')
+
+        # Apply filters
+        entity_id = request.query_params.get('entity')
+        if entity_id:
+            queryset = queryset.filter(entity_id=entity_id)
+
+        parent_entity_id = request.query_params.get('parent_entity')
+        if parent_entity_id:
+            queryset = queryset.filter(entity_id=parent_entity_id, parent__isnull=True)
+
+        parent_uuid = request.query_params.get('parent_uuid')
+        if parent_uuid:
+            queryset = queryset.filter(parent_uuid=parent_uuid)
+
+        search = request.query_params.get('search')
+        if search:
+            queryset = queryset.filter(value__icontains=search)
+
+        # Order by entity level and value
+        queryset = queryset.order_by('entity__entity_level', 'value')
+
+        # Pagination
+        page = int(request.query_params.get('page', 1))
+        page_size = int(request.query_params.get('page_size', 50))
+
+        paginator = Paginator(queryset, page_size)
+        page_obj = paginator.get_page(page)
+
+        # Serialize results
+        serializer = StringReadSerializer(page_obj.object_list, many=True)
+
+        return Response({
+            'count': paginator.count,
+            'next': page_obj.next_page_number() if page_obj.has_next() else None,
+            'previous': page_obj.previous_page_number() if page_obj.has_previous() else None,
+            'results': serializer.data
+        })
+
+
+class StringExpandedView(WorkspaceValidationMixin, views.APIView):
+    """
+    Get expanded project string details with hierarchy and suggestions.
+
+    Endpoint: GET /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings/{string_id}/expanded
+
+    Used for parent string inheritance - when user selects a parent string in grid builder,
+    frontend fetches expanded details to populate inherited dimension values.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, workspace_id, project_id, platform_id, string_id, version=None):
+        """Get expanded project string."""
+        # Validate workspace access
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Validate project exists and belongs to workspace
+        project = get_object_or_404(Project, id=project_id, workspace=workspace)
+
+        # Validate platform exists
+        platform = get_object_or_404(Platform, id=platform_id)
+
+        # Validate string exists
+        project_string = get_object_or_404(
+            String,
+            id=string_id,
+            project=project,
+            platform=platform
+        )
+
+        # Serialize with expanded data
+        serializer = StringExpandedSerializer(project_string)
+
+        return Response(serializer.data)
+
+
+class StringUpdateView(WorkspaceValidationMixin, views.APIView):
+    """
+    Update a project string.
+
+    Endpoint: PUT /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings/{string_id}
+    """
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, workspace_id, project_id, platform_id, string_id, version=None):
+        """Update project string."""
+        # Validate workspace access
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Validate project exists and belongs to workspace
+        project = get_object_or_404(Project, id=project_id, workspace=workspace)
+
+        # Validate platform exists
+        platform = get_object_or_404(Platform, id=platform_id)
+
+        # Validate string exists
+        project_string = get_object_or_404(
+            String,
+            id=string_id,
+            project=project,
+            platform=platform
+        )
+
+        # Validate user has permission
+        if not self.can_update_string(request.user, project):
+            return Response(
+                {'error': 'You do not have permission to update strings for this platform'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Update string
+        serializer = StringUpdateSerializer(
+            project_string,
+            data=request.data,
+            partial=False
+        )
+
+        if not serializer.is_valid():
+            return Response(serializer.errors, status=status.HTTP_400_BAD_REQUEST)
+
+        updated_string = serializer.save()
+
+        # Return updated string with expanded details
+        return Response(
+            StringExpandedSerializer(updated_string).data
+        )
+
+    def can_update_string(self, user, project):
+        """Check if user can update strings for this project."""
+        if user.is_superuser:
+            return True
+
+        # Check if user has owner/editor role in project
+        try:
+            member = ProjectMember.objects.get(project=project, user=user)
+            return member.role in ['owner', 'editor']
+        except ProjectMember.DoesNotExist:
+            return False
+
+
+class StringUnlockView(WorkspaceValidationMixin, views.APIView):
+    """
+    Unlock an approved string for editing.
+
+    Endpoint: POST /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings/{string_id}/unlock
+
+    Allows editing/deleting approved strings by unlocking them.
+    Changes platform status back to draft and requires re-approval.
+    """
+    permission_classes = [IsAuthenticated]
+
+    def post(self, request, workspace_id, project_id, platform_id, string_id, version=None):
+        """Unlock string for editing."""
+        # Validate workspace access
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Validate project exists and belongs to workspace
+        project = get_object_or_404(Project, id=project_id, workspace=workspace)
+
+        # Validate platform exists
+        platform = get_object_or_404(Platform, id=platform_id)
+
+        # Validate string exists
+        project_string = get_object_or_404(
+            String,
+            id=string_id,
+            project=project,
+            platform=platform
+        )
+
+        # Validate user has permission
+        if not self.can_unlock_string(request.user, project):
+            return Response(
+                {'error': 'You do not have permission to unlock strings for this project'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get reason from request
+        reason = request.data.get('reason', '')
+
+        # Create activity
+        from ..models import ProjectActivity
+        ProjectActivity.objects.create(
+            project=project,
+            user=request.user,
+            type='status_changed',
+            description=f"unlocked string in platform {platform.name} for editing",
+            metadata={
+                'platform_id': platform.id,
+                'string_id': string_id,
+                'reason': reason
+            }
+        )
+
+        return Response({
+            'string_id': string_id,
+            'unlocked_at': timezone.now(),
+            'unlocked_by': request.user.id,
+            'message': 'String unlocked successfully.'
+        })
+
+    def can_unlock_string(self, user, project):
+        """Check if user can unlock strings for this project."""
+        if user.is_superuser:
+            return True
+
+        # Check if user has owner/editor role in project
+        try:
+            member = ProjectMember.objects.get(project=project, user=user)
+            return member.role in ['owner', 'editor']
+        except ProjectMember.DoesNotExist:
+            return False
+
+
+class StringDeleteView(WorkspaceValidationMixin, views.APIView):
+    """
+    Delete a project string.
+
+    Endpoint: DELETE /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings/{string_id}
+
+    Returns 400 Bad Request if string has children (must delete children first).
+    """
+    permission_classes = [IsAuthenticated]
+
+    def delete(self, request, workspace_id, project_id, platform_id, string_id, version=None):
+        """Delete project string."""
+        # Validate workspace access
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Validate project exists and belongs to workspace
+        project = get_object_or_404(Project, id=project_id, workspace=workspace)
+
+        # Validate platform exists
+        platform = get_object_or_404(Platform, id=platform_id)
+
+        # Validate string exists
+        project_string = get_object_or_404(
+            String,
+            id=string_id,
+            project=project,
+            platform=platform
+        )
+
+        # Validate user has permission
+        if not self.can_delete_string(request.user, project):
+            return Response(
+                {'error': 'You do not have permission to delete strings for this platform'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Check if string has children
+        children_count = String.objects.filter(
+            parent_uuid=project_string.string_uuid,
+            platform=platform
+        ).count()
+
+        if children_count > 0:
+            return Response({
+                'error': 'Conflict',
+                'message': 'String has children and cannot be deleted',
+                'details': {
+                    'string_id': string_id,
+                    'children_count': children_count
+                }
+            }, status=status.HTTP_409_CONFLICT)
+
+        # Delete string
+        project_string.delete()
+
+        return Response(status=status.HTTP_204_NO_CONTENT)
+
+    def can_delete_string(self, user, project):
+        """Check if user can delete strings for this project."""
+        if user.is_superuser:
+            return True
+
+        # Check if user has owner/editor role in project
+        try:
+            member = ProjectMember.objects.get(project=project, user=user)
+            return member.role in ['owner', 'editor']
+        except ProjectMember.DoesNotExist:
+            return False
+
+
+class BulkUpdateStringsView(WorkspaceValidationMixin, views.APIView):
+    """
+    Bulk update multiple project strings.
+
+    Endpoint: PUT /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings/bulk-update
+
+    Request body: List of string updates
+    """
+    permission_classes = [IsAuthenticated]
+
+    def put(self, request, workspace_id, project_id, platform_id, version=None):
+        """Bulk update project strings."""
+        from django.db import transaction
+        from ..serializers import StringUpdateSerializer
+
+        # Validate workspace access
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Validate project exists and belongs to workspace
+        project = get_object_or_404(Project, id=project_id, workspace=workspace)
+
+        # Validate platform exists
+        platform = get_object_or_404(Platform, id=platform_id)
+
+        # Validate user has permission
+        if not self.can_update_strings(request.user, project):
+            return Response(
+                {'error': 'You do not have permission to update strings for this platform'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Get updates from request
+        updates = request.data.get('updates', [])
+
+        if not updates:
+            return Response(
+                {'error': 'No updates provided'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+        updated_strings = []
+        errors = []
+
+        with transaction.atomic():
+            for update_data in updates:
+                string_id = update_data.get('id')
+
+                if not string_id:
+                    errors.append({'error': 'Missing string ID', 'data': update_data})
+                    continue
+
+                try:
+                    # Get string
+                    project_string = String.objects.get(
+                        id=string_id,
+                        project=project,
+                        platform=platform
+                    )
+
+                    # Update string
+                    serializer = StringUpdateSerializer(
+                        project_string,
+                        data=update_data,
+                        partial=True
+                    )
+
+                    if serializer.is_valid():
+                        updated_string = serializer.save()
+                        updated_strings.append(updated_string)
+                    else:
+                        errors.append({
+                            'string_id': string_id,
+                            'errors': serializer.errors
+                        })
+
+                except String.DoesNotExist:
+                    errors.append({
+                        'string_id': string_id,
+                        'error': 'String not found'
+                    })
+                except Exception as e:
+                    errors.append({
+                        'string_id': string_id,
+                        'error': str(e)
+                    })
+
+        # Create activity
+        from ..models import ProjectActivity
+        ProjectActivity.objects.create(
+            project=project,
+            user=request.user,
+            type='strings_generated',
+            description=f"bulk updated {len(updated_strings)} strings for {platform.name}",
+            metadata={
+                'platform_id': platform.id,
+                'updated_count': len(updated_strings),
+                'error_count': len(errors)
+            }
+        )
+
+        from ..serializers import StringReadSerializer
+        return Response({
+            'updated_count': len(updated_strings),
+            'error_count': len(errors),
+            'updated_strings': StringReadSerializer(updated_strings, many=True).data,
+            'errors': errors
+        })
+
+    def can_update_strings(self, user, project):
+        """Check if user can update strings for this project."""
+        if user.is_superuser:
+            return True
+
+        # Check if user has owner/editor role in project
+        try:
+            member = ProjectMember.objects.get(project=project, user=user)
+            return member.role in ['owner', 'editor']
+        except ProjectMember.DoesNotExist:
+            return False
+
+
+class ExportStringsView(WorkspaceValidationMixin, views.APIView):
+    """
+    Export project strings in various formats.
+
+    Endpoint: GET /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings/export
+
+    Query Parameters:
+    - format: csv, json (default: csv)
+    """
+    permission_classes = [IsAuthenticated]
+
+    def get(self, request, workspace_id, project_id, platform_id, version=None):
+        """Export project strings."""
+        # Validate workspace access
+        workspace = get_object_or_404(Workspace, id=workspace_id)
+        if not request.user.has_workspace_access(workspace_id):
+            return Response(
+                {'error': 'Access denied to this workspace'},
+                status=status.HTTP_403_FORBIDDEN
+            )
+
+        # Validate project exists and belongs to workspace
+        project = get_object_or_404(Project, id=project_id, workspace=workspace)
+
+        # Validate platform exists
+        platform = get_object_or_404(Platform, id=platform_id)
+
+        # Get strings
+        strings = String.objects.filter(
+            project=project,
+            platform=platform
+        ).select_related(
+            'project', 'platform', 'entity', 'rule', 'created_by'
+        ).prefetch_related('details__dimension', 'details__dimension_value')
+
+        # Get export format
+        export_format = request.query_params.get('format', 'csv').lower()
+
+        if export_format == 'csv':
+            return self.export_csv(project, platform, strings)
+        elif export_format == 'json':
+            return self.export_json(project, platform, strings)
+        else:
+            return Response(
+                {'error': 'Invalid format. Supported formats: csv, json'},
+                status=status.HTTP_400_BAD_REQUEST
+            )
+
+    def export_csv(self, project, platform, strings):
+        """Export strings as CSV."""
+        response = HttpResponse(content_type='text/csv')
+        response['Content-Disposition'] = f'attachment; filename="project_{project.id}_platform_{platform.id}_strings.csv"'
+
+        writer = csv.writer(response)
+
+        # Write header
+        writer.writerow([
+            'String ID', 'UUID', 'Project', 'Platform', 'Entity', 'Entity Level',
+            'Value', 'Parent UUID', 'Rule', 'Created By', 'Created', 'Last Updated'
+        ])
+
+        # Write data
+        for string in strings:
+            writer.writerow([
+                string.id,
+                str(string.string_uuid),
+                string.project.name,
+                string.platform.name,
+                string.entity.name,
+                string.entity.entity_level,
+                string.value,
+                str(string.parent_uuid) if string.parent_uuid else '',
+                string.rule.name,
+                string.created_by.get_full_name() if string.created_by else '',
+                string.created.isoformat(),
+                string.last_updated.isoformat()
+            ])
+
+        return response
+
+    def export_json(self, project, platform, strings):
+        """Export strings as JSON."""
+        from ..serializers import StringReadSerializer
+
+        serializer = StringReadSerializer(strings, many=True)
+
+        export_data = {
+            'project': {
+                'id': project.id,
+                'name': project.name,
+                'slug': project.slug
+            },
+            'platform': {
+                'id': platform.id,
+                'name': platform.name
+            },
+            'exported_at': timezone.now().isoformat(),
+            'count': strings.count(),
+            'strings': serializer.data
+        }
+
+        response = HttpResponse(
+            json.dumps(export_data, indent=2),
+            content_type='application/json'
+        )
+        response['Content-Disposition'] = f'attachment; filename="project_{project.id}_platform_{platform.id}_strings.json"'
+
+        return response

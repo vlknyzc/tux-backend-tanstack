@@ -19,15 +19,15 @@ from .propagation_views import (
     PropagationSettingsViewSet,
 )
 from .project_views import ProjectViewSet
-from .project_string_views import (
-    BulkCreateProjectStringsView,
-    ListProjectStringsView,
-    ProjectStringExpandedView,
-    ProjectStringUpdateView,
-    ProjectStringDeleteView,
-    ProjectStringUnlockView,
-    BulkUpdateProjectStringsView,
-    ExportProjectStringsView,
+from .string_views import (
+    BulkCreateStringsView,
+    ListStringsView,
+    StringExpandedView,
+    StringUpdateView,
+    StringDeleteView,
+    StringUnlockView,
+    BulkUpdateStringsView,
+    ExportStringsView,
 )
 from .string_registry_views import StringRegistryViewSet
 
@@ -59,14 +59,14 @@ __all__ = [
     'PropagationSettingsViewSet',
     # Project views
     'ProjectViewSet',
-    'BulkCreateProjectStringsView',
-    'ListProjectStringsView',
-    'ProjectStringExpandedView',
-    'ProjectStringUpdateView',
-    'ProjectStringDeleteView',
-    'ProjectStringUnlockView',
-    'BulkUpdateProjectStringsView',
-    'ExportProjectStringsView',
+    'BulkCreateStringsView',
+    'ListStringsView',
+    'StringExpandedView',
+    'StringUpdateView',
+    'StringDeleteView',
+    'StringUnlockView',
+    'BulkUpdateStringsView',
+    'ExportStringsView',
     # String registry views
     'StringRegistryViewSet',
 ]

@@ -1,9 +1,9 @@
 {
   "info": {
     "name": "String Registry API",
-    "description": "API endpoints for validating and importing external platform strings into Tuxonomy.\n\n## Features\n- Upload CSV files with platform strings\n- Validate against workspace naming rules\n- Track dual hierarchies (Tuxonomy vs External)\n- Detect hierarchy conflicts\n\n## Setup\n1. Set the `base_url` variable (e.g., http://localhost:8000/api/v1)\n2. Set the `jwt_token` variable with your authentication token\n3. Update `workspace_id`, `platform_id`, `rule_id` as needed\n\n## Authentication\nAll requests require Bearer token authentication.",
+    "description": "API endpoints for validating and importing external platform strings into Tuxonomy.\n\n## Architecture\nThe API uses a dual-model architecture:\n- **ExternalString**: Stores ALL external strings (valid + invalid) for validation tracking\n- **ProjectString**: Stores strings imported into specific projects\n\n## Available Endpoints\n1. `/validate/` - Validation-only (creates ExternalStrings, no project needed)\n2. `/import/` - Direct import to project (creates ProjectStrings for valid strings)\n3. `/import-selected/` - Selective import of previously validated strings\n4. `/validate_single/` - Validate a single string without storage\n\n## Setup\n1. Set the `base_url` variable (e.g., http://localhost:8000/api/v1)\n2. Set the `jwt_token` variable with your authentication token\n3. Update `workspace_id`, `platform_id`, `rule_id`, `project_id` as needed\n\n## Authentication\nAll requests require Bearer token authentication.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
-    "_exporter_id": "string-registry-v1"
+    "_exporter_id": "string-registry-v2"
   },
   "auth": {
     "type": "bearer",
@@ -17,10 +17,10 @@
   },
   "item": [
     {
-      "name": "CSV Upload & Validation",
+      "name": "New Endpoints (Recommended)",
       "item": [
         {
-          "name": "Upload CSV File",
+          "name": "Validate Only",
           "event": [
             {
               "listen": "test",
@@ -39,23 +39,27 @@
                   "    pm.expect(response).to.have.property('success');",
                   "});",
                   "",
-                  "pm.test(\"Response has summary\", function () {",
-                  "    pm.expect(response).to.have.property('summary');",
+                  "pm.test(\"Response has batch_id\", function () {",
+                  "    pm.expect(response).to.have.property('batch_id');",
                   "});",
                   "",
-                  "pm.test(\"Response has results array\", function () {",
-                  "    pm.expect(response).to.have.property('results');",
-                  "    pm.expect(response.results).to.be.an('array');",
+                  "pm.test(\"Operation type is validation\", function () {",
+                  "    pm.expect(response.operation_type).to.eql('validation');",
                   "});",
                   "",
-                  "// Display summary in console",
+                  "// Save batch_id for selective import",
+                  "if (response.batch_id) {",
+                  "    pm.environment.set('last_batch_id', response.batch_id);",
+                  "}",
+                  "",
+                  "// Display summary",
                   "if (response.summary) {",
-                  "    console.log('=== Upload Summary ===');",
+                  "    console.log('=== Validation Summary ===');",
+                  "    console.log(`Batch ID: ${response.batch_id}`);",
                   "    console.log(`Total Rows: ${response.summary.total_rows}`);",
                   "    console.log(`Valid: ${response.summary.valid}`);",
                   "    console.log(`Warnings: ${response.summary.warnings}`);",
                   "    console.log(`Failed: ${response.summary.failed}`);",
-                  "    console.log(`Skipped: ${response.summary.skipped_rows}`);",
                   "}"
                 ],
                 "type": "text/javascript"
@@ -89,15 +93,15 @@
               ]
             },
             "url": {
-              "raw": "{{base_url}}/workspaces/{{workspace_id}}/string-registry/upload/",
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/string-registry/validate/",
               "host": ["{{base_url}}"],
-              "path": ["workspaces", "{{workspace_id}}", "string-registry", "upload", ""]
+              "path": ["workspaces", "{{workspace_id}}", "string-registry", "validate", ""]
             },
-            "description": "Upload a CSV file containing external platform strings for validation.\n\n**CSV Format:**\n```csv\nstring_value,external_platform_id,entity_name,parent_external_id\nACME-2024,account_999,account,\nACME-2024-US-Q4-Awareness,campaign_123,campaign,account_999\n```\n\n**Features:**\n- Validates strings against selected rule\n- Supports mixed entity types (processes matching, skips mismatched)\n- Detects and handles duplicates\n- Links parent-child relationships\n- Detects hierarchy conflicts\n\n**Limits:**\n- Max file size: 5MB\n- Max rows: 500\n- Rate limit: 10 uploads/hour"
+            "description": "Validate external strings WITHOUT importing to a project.\n\n**Use Case**: Validate and review strings before deciding which ones to import.\n\n**Creates**: ExternalString records for all strings (valid + invalid)\n\n**Returns**: batch_id for future reference\n\n**Workflow**:\n1. Upload CSV for validation\n2. Review results in admin panel or via API\n3. Use /import-selected/ to import specific strings to a project\n\n**CSV Format:**\n```csv\nstring_value,external_platform_id,entity_name,parent_external_id\nACME-2024,account_999,account,\nACME-2024-US-Q4-Awareness,campaign_123,campaign,account_999\n```\n\n**Limits:**\n- Max file size: 5MB\n- Rate limit: 10 uploads/hour"
           },
           "response": [
             {
-              "name": "Successful Upload",
+              "name": "Validation Success",
               "originalRequest": {
                 "method": "POST",
                 "header": [],
@@ -122,9 +126,9 @@
                   ]
                 },
                 "url": {
-                  "raw": "{{base_url}}/workspaces/1/string-registry/upload/",
+                  "raw": "{{base_url}}/workspaces/1/string-registry/validate/",
                   "host": ["{{base_url}}"],
-                  "path": ["workspaces", "1", "string-registry", "upload", ""]
+                  "path": ["workspaces", "1", "string-registry", "validate", ""]
                 }
               },
               "status": "OK",
@@ -136,16 +140,107 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"summary\": {\n    \"total_rows\": 3,\n    \"uploaded_rows\": 3,\n    \"processed_rows\": 3,\n    \"skipped_rows\": 0,\n    \"created\": 2,\n    \"updated\": 1,\n    \"valid\": 3,\n    \"warnings\": 1,\n    \"failed\": 0,\n    \"linked_parents\": 2,\n    \"parent_conflicts\": 0,\n    \"parent_not_found\": 0\n  },\n  \"results\": [\n    {\n      \"row_number\": 2,\n      \"string_value\": \"ACME-2024\",\n      \"external_platform_id\": \"account_999\",\n      \"entity_name\": \"account\",\n      \"parent_external_id\": null,\n      \"status\": \"valid\",\n      \"string_id\": 101,\n      \"tuxonomy_parent_id\": null,\n      \"errors\": [],\n      \"warnings\": []\n    },\n    {\n      \"row_number\": 3,\n      \"string_value\": \"ACME-2024-US-Q4-Awareness\",\n      \"external_platform_id\": \"campaign_123\",\n      \"entity_name\": \"campaign\",\n      \"parent_external_id\": \"account_999\",\n      \"status\": \"valid\",\n      \"string_id\": 102,\n      \"tuxonomy_parent_id\": 101,\n      \"errors\": [],\n      \"warnings\": []\n    },\n    {\n      \"row_number\": 4,\n      \"string_value\": \"ACME-2024-US-Q4-Broad-18-35\",\n      \"external_platform_id\": \"adgroup_456\",\n      \"entity_name\": \"ad_group\",\n      \"parent_external_id\": \"campaign_123\",\n      \"status\": \"warning\",\n      \"string_id\": 103,\n      \"tuxonomy_parent_id\": 102,\n      \"errors\": [],\n      \"warnings\": [\n        {\n          \"type\": \"parent_not_found\",\n          \"field\": \"parent_external_id\",\n          \"message\": \"Parent with external ID campaign_999 not found in workspace\"\n        }\n      ]\n    }\n  ]\n}"
-            },
+              "body": "{\n  \"success\": true,\n  \"batch_id\": 42,\n  \"operation_type\": \"validation\",\n  \"summary\": {\n    \"total_rows\": 3,\n    \"uploaded_rows\": 3,\n    \"processed_rows\": 3,\n    \"skipped_rows\": 0,\n    \"created\": 3,\n    \"valid\": 2,\n    \"warnings\": 1,\n    \"failed\": 0\n  },\n  \"results\": [\n    {\n      \"row_number\": 2,\n      \"string_value\": \"ACME-2024\",\n      \"external_platform_id\": \"account_999\",\n      \"entity_name\": \"account\",\n      \"parent_external_id\": null,\n      \"validation_status\": \"valid\",\n      \"external_string_id\": 101,\n      \"errors\": [],\n      \"warnings\": []\n    },\n    {\n      \"row_number\": 3,\n      \"string_value\": \"ACME-2024-US-Q4-Awareness\",\n      \"external_platform_id\": \"campaign_123\",\n      \"entity_name\": \"campaign\",\n      \"parent_external_id\": \"account_999\",\n      \"validation_status\": \"valid\",\n      \"external_string_id\": 102,\n      \"errors\": [],\n      \"warnings\": []\n    },\n    {\n      \"row_number\": 4,\n      \"string_value\": \"INVALID-Q4-Awareness\",\n      \"external_platform_id\": \"campaign_456\",\n      \"entity_name\": \"campaign\",\n      \"parent_external_id\": \"account_999\",\n      \"validation_status\": \"invalid\",\n      \"external_string_id\": 103,\n      \"errors\": [\n        {\n          \"type\": \"invalid_dimension_value\",\n          \"field\": \"region\",\n          \"message\": \"Value 'INVALID' not valid for dimension 'region'\",\n          \"expected\": [\"US\", \"EU\", \"APAC\"],\n          \"received\": \"INVALID\"\n        }\n      ],\n      \"warnings\": []\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Import to Project",
+          "event": [
             {
-              "name": "Validation Errors",
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test response status",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Parse response",
+                  "const response = pm.response.json();",
+                  "",
+                  "// Test response structure",
+                  "pm.test(\"Response has success field\", function () {",
+                  "    pm.expect(response).to.have.property('success');",
+                  "});",
+                  "",
+                  "pm.test(\"Operation type is import\", function () {",
+                  "    pm.expect(response.operation_type).to.eql('import');",
+                  "});",
+                  "",
+                  "pm.test(\"Response has project info\", function () {",
+                  "    pm.expect(response).to.have.property('project');",
+                  "    pm.expect(response.project).to.have.property('id');",
+                  "    pm.expect(response.project).to.have.property('name');",
+                  "});",
+                  "",
+                  "// Display summary",
+                  "if (response.summary) {",
+                  "    console.log('=== Import Summary ===');",
+                  "    console.log(`Project: ${response.project.name} (ID: ${response.project.id})`);",
+                  "    console.log(`Total Rows: ${response.summary.total_rows}`);",
+                  "    console.log(`Imported: ${response.summary.created}`);",
+                  "    console.log(`Updated: ${response.summary.updated}`);",
+                  "    console.log(`Failed: ${response.summary.failed}`);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [],
+            "body": {
+              "mode": "formdata",
+              "formdata": [
+                {
+                  "key": "project_id",
+                  "value": "{{project_id}}",
+                  "description": "ID of the target project (REQUIRED)",
+                  "type": "text"
+                },
+                {
+                  "key": "platform_id",
+                  "value": "{{platform_id}}",
+                  "description": "ID of the platform (must be assigned to project)",
+                  "type": "text"
+                },
+                {
+                  "key": "rule_id",
+                  "value": "{{rule_id}}",
+                  "description": "ID of the rule to validate against",
+                  "type": "text"
+                },
+                {
+                  "key": "file",
+                  "description": "CSV file with columns: string_value, external_platform_id, entity_name, parent_external_id",
+                  "type": "file",
+                  "src": []
+                }
+              ]
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/string-registry/import/",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "string-registry", "import", ""]
+            },
+            "description": "Validate and import valid strings to a project in ONE operation.\n\n**Use Case**: Direct import when you're confident about the data quality.\n\n**Creates**:\n- ExternalString records for ALL strings (valid + invalid)\n- ProjectString records for VALID strings only\n\n**Validation**:\n- Platform must be assigned to the project\n- Rule must belong to the platform\n\n**Workflow**:\n1. Select project and upload CSV\n2. System validates all strings\n3. Valid strings automatically imported to ProjectStrings\n4. Invalid strings stored as ExternalStrings for review\n\n**CSV Format:**\n```csv\nstring_value,external_platform_id,entity_name,parent_external_id\nACME-2024,account_999,account,\nACME-2024-US-Q4-Awareness,campaign_123,campaign,account_999\n```\n\n**Limits:**\n- Max file size: 5MB\n- Rate limit: 10 uploads/hour"
+          },
+          "response": [
+            {
+              "name": "Import Success",
               "originalRequest": {
                 "method": "POST",
                 "header": [],
                 "body": {
                   "mode": "formdata",
                   "formdata": [
+                    {
+                      "key": "project_id",
+                      "value": "10",
+                      "type": "text"
+                    },
                     {
                       "key": "platform_id",
                       "value": "1",
@@ -164,9 +259,9 @@
                   ]
                 },
                 "url": {
-                  "raw": "{{base_url}}/workspaces/1/string-registry/upload/",
+                  "raw": "{{base_url}}/workspaces/1/string-registry/import/",
                   "host": ["{{base_url}}"],
-                  "path": ["workspaces", "1", "string-registry", "upload", ""]
+                  "path": ["workspaces", "1", "string-registry", "import", ""]
                 }
               },
               "status": "OK",
@@ -178,36 +273,99 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"success\": true,\n  \"summary\": {\n    \"total_rows\": 2,\n    \"uploaded_rows\": 2,\n    \"processed_rows\": 2,\n    \"skipped_rows\": 0,\n    \"created\": 0,\n    \"updated\": 0,\n    \"valid\": 1,\n    \"warnings\": 0,\n    \"failed\": 1,\n    \"linked_parents\": 0,\n    \"parent_conflicts\": 0,\n    \"parent_not_found\": 0\n  },\n  \"results\": [\n    {\n      \"row_number\": 2,\n      \"string_value\": \"INVALID-Q4-Awareness\",\n      \"external_platform_id\": \"campaign_999\",\n      \"entity_name\": \"campaign\",\n      \"parent_external_id\": null,\n      \"status\": \"failed\",\n      \"string_id\": null,\n      \"tuxonomy_parent_id\": null,\n      \"errors\": [\n        {\n          \"type\": \"invalid_dimension_value\",\n          \"field\": \"region\",\n          \"message\": \"Value 'INVALID' not valid for dimension 'region'\",\n          \"expected\": [\"US\", \"EU\", \"APAC\", \"LATAM\"],\n          \"received\": \"INVALID\"\n        }\n      ],\n      \"warnings\": []\n    }\n  ]\n}"
-            },
+              "body": "{\n  \"success\": true,\n  \"batch_id\": 43,\n  \"operation_type\": \"import\",\n  \"project\": {\n    \"id\": 10,\n    \"name\": \"Q4 2024 Campaign\"\n  },\n  \"summary\": {\n    \"total_rows\": 3,\n    \"uploaded_rows\": 3,\n    \"processed_rows\": 3,\n    \"skipped_rows\": 0,\n    \"created\": 2,\n    \"updated\": 0,\n    \"valid\": 2,\n    \"warnings\": 0,\n    \"failed\": 1\n  },\n  \"results\": [\n    {\n      \"row_number\": 2,\n      \"string_value\": \"ACME-2024\",\n      \"external_platform_id\": \"account_999\",\n      \"entity_name\": \"account\",\n      \"validation_status\": \"valid\",\n      \"external_string_id\": 201,\n      \"project_string_id\": 301,\n      \"import_status\": \"imported\",\n      \"errors\": [],\n      \"warnings\": []\n    },\n    {\n      \"row_number\": 3,\n      \"string_value\": \"ACME-2024-US-Q4-Awareness\",\n      \"external_platform_id\": \"campaign_123\",\n      \"entity_name\": \"campaign\",\n      \"validation_status\": \"valid\",\n      \"external_string_id\": 202,\n      \"project_string_id\": 302,\n      \"import_status\": \"imported\",\n      \"errors\": [],\n      \"warnings\": []\n    },\n    {\n      \"row_number\": 4,\n      \"string_value\": \"INVALID-Q4-Awareness\",\n      \"external_platform_id\": \"campaign_456\",\n      \"entity_name\": \"campaign\",\n      \"validation_status\": \"invalid\",\n      \"external_string_id\": 203,\n      \"project_string_id\": null,\n      \"import_status\": \"failed\",\n      \"errors\": [\n        {\n          \"type\": \"invalid_dimension_value\",\n          \"field\": \"region\",\n          \"message\": \"Value 'INVALID' not valid for dimension 'region'\"\n        }\n      ],\n      \"warnings\": []\n    }\n  ]\n}"
+            }
+          ]
+        },
+        {
+          "name": "Import Selected Strings",
+          "event": [
             {
-              "name": "File Upload Error",
+              "listen": "test",
+              "script": {
+                "exec": [
+                  "// Test response status",
+                  "pm.test(\"Status code is 200\", function () {",
+                  "    pm.response.to.have.status(200);",
+                  "});",
+                  "",
+                  "// Parse response",
+                  "const response = pm.response.json();",
+                  "",
+                  "// Test response structure",
+                  "pm.test(\"Response has success field\", function () {",
+                  "    pm.expect(response).to.have.property('success');",
+                  "});",
+                  "",
+                  "pm.test(\"Response has summary\", function () {",
+                  "    pm.expect(response).to.have.property('summary');",
+                  "});",
+                  "",
+                  "// Display summary",
+                  "if (response.summary) {",
+                  "    console.log('=== Selective Import Summary ===');",
+                  "    console.log(`Requested: ${response.summary.requested}`);",
+                  "    console.log(`Imported: ${response.summary.imported}`);",
+                  "    console.log(`Failed: ${response.summary.failed}`);",
+                  "    console.log(`Already Imported: ${response.summary.already_imported}`);",
+                  "}"
+                ],
+                "type": "text/javascript"
+              }
+            }
+          ],
+          "request": {
+            "method": "POST",
+            "header": [
+              {
+                "key": "Content-Type",
+                "value": "application/json"
+              }
+            ],
+            "body": {
+              "mode": "raw",
+              "raw": "{\n  \"project_id\": {{project_id}},\n  \"external_string_ids\": [101, 102, 105]\n}",
+              "options": {
+                "raw": {
+                  "language": "json"
+                }
+              }
+            },
+            "url": {
+              "raw": "{{base_url}}/workspaces/{{workspace_id}}/string-registry/import-selected/",
+              "host": ["{{base_url}}"],
+              "path": ["workspaces", "{{workspace_id}}", "string-registry", "import-selected", ""]
+            },
+            "description": "Import specific ExternalStrings by ID to a project.\n\n**Use Case**: Selective import after reviewing validation results.\n\n**Workflow**:\n1. Call /validate/ to validate strings (returns batch_id)\n2. Review results in admin panel (filter by batch_id)\n3. Select specific ExternalString IDs to import\n4. Call this endpoint with project_id and external_string_ids\n\n**Validation**:\n- ExternalStrings must exist in workspace\n- Must have validation_status 'valid' or 'warning'\n- Platform must be assigned to target project\n- Cannot import already-imported strings\n\n**Request Body:**\n```json\n{\n  \"project_id\": 10,\n  \"external_string_ids\": [101, 102, 105]\n}\n```"
+          },
+          "response": [
+            {
+              "name": "Selective Import Success",
               "originalRequest": {
                 "method": "POST",
-                "header": [],
+                "header": [
+                  {
+                    "key": "Content-Type",
+                    "value": "application/json"
+                  }
+                ],
                 "body": {
-                  "mode": "formdata",
-                  "formdata": [
-                    {
-                      "key": "platform_id",
-                      "value": "1",
-                      "type": "text"
-                    },
-                    {
-                      "key": "rule_id",
-                      "value": "5",
-                      "type": "text"
+                  "mode": "raw",
+                  "raw": "{\n  \"project_id\": 10,\n  \"external_string_ids\": [101, 102, 103]\n}",
+                  "options": {
+                    "raw": {
+                      "language": "json"
                     }
-                  ]
+                  }
                 },
                 "url": {
-                  "raw": "{{base_url}}/workspaces/1/string-registry/upload/",
+                  "raw": "{{base_url}}/workspaces/1/string-registry/import-selected/",
                   "host": ["{{base_url}}"],
-                  "path": ["workspaces", "1", "string-registry", "upload", ""]
+                  "path": ["workspaces", "1", "string-registry", "import-selected", ""]
                 }
               },
-              "status": "Bad Request",
-              "code": 400,
+              "status": "OK",
+              "code": 200,
               "_postman_previewlanguage": "json",
               "header": [
                 {
@@ -215,12 +373,12 @@
                   "value": "application/json"
                 }
               ],
-              "body": "{\n  \"file\": [\n    \"No file was submitted.\"\n  ]\n}"
+              "body": "{\n  \"success\": true,\n  \"summary\": {\n    \"requested\": 3,\n    \"imported\": 2,\n    \"updated\": 0,\n    \"failed\": 0,\n    \"already_imported\": 1\n  },\n  \"results\": [\n    {\n      \"external_string_id\": 101,\n      \"external_platform_id\": \"account_999\",\n      \"project_string_id\": 401,\n      \"status\": \"imported\",\n      \"message\": \"Successfully imported to project\"\n    },\n    {\n      \"external_string_id\": 102,\n      \"external_platform_id\": \"campaign_123\",\n      \"project_string_id\": 402,\n      \"status\": \"imported\",\n      \"message\": \"Successfully imported to project\"\n    },\n    {\n      \"external_string_id\": 103,\n      \"external_platform_id\": \"campaign_456\",\n      \"project_string_id\": 350,\n      \"status\": \"already_imported\",\n      \"message\": \"String was already imported on 2024-11-01\"\n    }\n  ]\n}"
             }
           ]
         }
       ],
-      "description": "Endpoints for uploading and validating CSV files containing external platform strings."
+      "description": "New endpoints using the ExternalString + ProjectString architecture."
     },
     {
       "name": "Single String Validation",
@@ -323,78 +481,6 @@
                 }
               ],
               "body": "{\n  \"is_valid\": true,\n  \"entity\": {\n    \"id\": 3,\n    \"name\": \"campaign\",\n    \"entity_level\": 1\n  },\n  \"parsed_dimension_values\": {\n    \"region\": \"US\",\n    \"quarter\": \"Q4\",\n    \"objective\": \"Awareness\"\n  },\n  \"errors\": [],\n  \"warnings\": [],\n  \"expected_string\": null,\n  \"should_skip\": false\n}"
-            },
-            {
-              "name": "Invalid Dimension Value",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"platform_id\": 1,\n  \"rule_id\": 5,\n  \"entity_name\": \"campaign\",\n  \"string_value\": \"ACME-2024-INVALID-Q4-Awareness\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{base_url}}/workspaces/1/string-registry/validate_single/",
-                  "host": ["{{base_url}}"],
-                  "path": ["workspaces", "1", "string-registry", "validate_single", ""]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"is_valid\": false,\n  \"entity\": {\n    \"id\": 3,\n    \"name\": \"campaign\",\n    \"entity_level\": 1\n  },\n  \"parsed_dimension_values\": {\n    \"region\": \"INVALID\"\n  },\n  \"errors\": [\n    {\n      \"type\": \"invalid_dimension_value\",\n      \"field\": \"region\",\n      \"message\": \"Value 'INVALID' not valid for dimension 'region'\",\n      \"expected\": [\"US\", \"EU\", \"APAC\", \"LATAM\", \"MEA\"],\n      \"received\": \"INVALID\"\n    }\n  ],\n  \"warnings\": [],\n  \"expected_string\": null,\n  \"should_skip\": false\n}"
-            },
-            {
-              "name": "Entity Mismatch",
-              "originalRequest": {
-                "method": "POST",
-                "header": [
-                  {
-                    "key": "Content-Type",
-                    "value": "application/json"
-                  }
-                ],
-                "body": {
-                  "mode": "raw",
-                  "raw": "{\n  \"platform_id\": 1,\n  \"rule_id\": 5,\n  \"entity_name\": \"ad_group\",\n  \"string_value\": \"ACME-2024-US-Q4-Awareness\"\n}",
-                  "options": {
-                    "raw": {
-                      "language": "json"
-                    }
-                  }
-                },
-                "url": {
-                  "raw": "{{base_url}}/workspaces/1/string-registry/validate_single/",
-                  "host": ["{{base_url}}"],
-                  "path": ["workspaces", "1", "string-registry", "validate_single", ""]
-                }
-              },
-              "status": "OK",
-              "code": 200,
-              "_postman_previewlanguage": "json",
-              "header": [
-                {
-                  "key": "Content-Type",
-                  "value": "application/json"
-                }
-              ],
-              "body": "{\n  \"is_valid\": false,\n  \"entity\": {\n    \"id\": 4,\n    \"name\": \"ad_group\",\n    \"entity_level\": 2\n  },\n  \"parsed_dimension_values\": {},\n  \"errors\": [\n    {\n      \"type\": \"entity_rule_mismatch\",\n      \"field\": \"entity_name\",\n      \"message\": \"Entity 'ad_group' doesn't match rule entity 'campaign'\",\n      \"expected\": \"campaign\",\n      \"received\": \"ad_group\",\n      \"suggestion\": \"This row will be skipped. Select a rule for this entity type.\"\n    }\n  ],\n  \"warnings\": [],\n  \"expected_string\": null,\n  \"should_skip\": true\n}"
             }
           ]
         }
@@ -447,34 +533,6 @@
             "description": "Export validated external strings using the existing Strings export functionality.\n\n**Query Parameters:**\n- `validation_source`: Filter by 'internal' or 'external'\n- `validation_status`: Filter by 'valid', 'invalid', 'warning', 'entity_mismatch'\n- `format`: Export format ('csv' or 'json')\n- `has_conflicts`: Filter strings with hierarchy conflicts\n- `external_platform_id`: Search by platform ID\n\n**Export Includes:**\n- String value\n- External platform ID\n- External parent ID\n- Validation status\n- Tuxonomy parent (if linked)\n- Validation errors/warnings\n- Entity and rule information"
           },
           "response": []
-        },
-        {
-          "name": "Export Strings with Conflicts",
-          "request": {
-            "method": "GET",
-            "header": [],
-            "url": {
-              "raw": "{{base_url}}/workspaces/{{workspace_id}}/strings/export/?validation_source=external&validation_status=warning&format=csv",
-              "host": ["{{base_url}}"],
-              "path": ["workspaces", "{{workspace_id}}", "strings", "export", ""],
-              "query": [
-                {
-                  "key": "validation_source",
-                  "value": "external"
-                },
-                {
-                  "key": "validation_status",
-                  "value": "warning"
-                },
-                {
-                  "key": "format",
-                  "value": "csv"
-                }
-              ]
-            },
-            "description": "Export only external strings with warnings (typically hierarchy conflicts or parent not found)."
-          },
-          "response": []
         }
       ],
       "description": "Endpoints for exporting and searching validated strings. Uses the existing Strings export API with additional filters for external validation."
@@ -502,8 +560,18 @@
       "type": "string"
     },
     {
+      "key": "project_id",
+      "value": "10",
+      "type": "string"
+    },
+    {
       "key": "jwt_token",
       "value": "your_jwt_token_here",
+      "type": "string"
+    },
+    {
+      "key": "last_batch_id",
+      "value": "",
       "type": "string"
     }
   ]

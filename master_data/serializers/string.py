@@ -1,55 +1,59 @@
+"""
+Serializers for String models.
+"""
+
 from rest_framework import serializers
 from django.db import transaction
 from .. import models
-from .base import WorkspaceOwnedSerializer
 
 
 # =============================================================================
-# WRITE SERIALIZERS (for creating/updating data)
+# PROJECT STRING DETAIL SERIALIZERS
 # =============================================================================
 
 class StringDetailNestedSerializer(serializers.ModelSerializer):
-    """Serializer for string details when nested in string creation/updates."""
+    """Serializer for project string details when nested in string creation/updates."""
 
-    # Add these as SerializerMethodField to access dimension_value properties
+    # Add dimension metadata
+    dimension_name = serializers.CharField(
+        source='dimension.name', read_only=True)
+    dimension_type = serializers.CharField(
+        source='dimension.dimension_type', read_only=True)
+    dimension_value_display = serializers.SerializerMethodField()
     dimension_value_label = serializers.SerializerMethodField()
-    dimension_value_value = serializers.SerializerMethodField()
-    dimension_value_utm = serializers.SerializerMethodField()
-    dimension_value_description = serializers.SerializerMethodField()
 
     class Meta:
         model = models.StringDetail
         fields = [
-            'id', 'dimension', 'dimension_value', 'dimension_value_freetext',
-            'dimension_value_label', 'dimension_value_value', 'dimension_value_utm', 'dimension_value_description'
+            'id', 'dimension', 'dimension_name', 'dimension_type',
+            'dimension_value_id', 'dimension_value_freetext',
+            'dimension_value_display', 'dimension_value_label',
+            'is_inherited'
         ]
         extra_kwargs = {
-            'id': {'read_only': True}
+            'id': {'read_only': True},
+            'dimension_value_id': {'read_only': True}
         }
 
-    def get_dimension_value_label(self, obj):
-        """Get the label of the dimension value."""
-        if obj.dimension_value:
-            return obj.dimension_value.label
-        return None
-
-    def get_dimension_value_value(self, obj):
-        """Get the value of the dimension value."""
+    def get_dimension_value_display(self, obj):
+        """Get display value for the dimension value."""
         if obj.dimension_value:
             return obj.dimension_value.value
-        return None
+        return obj.dimension_value_freetext
 
-    def get_dimension_value_utm(self, obj):
-        """Get the UTM code of the dimension value."""
+    def get_dimension_value_label(self, obj):
+        """Get label for the dimension value."""
         if obj.dimension_value:
-            return obj.dimension_value.utm
-        return None
+            return obj.dimension_value.label
+        return obj.dimension_value_freetext
 
-    def get_dimension_value_description(self, obj):
-        """Get the description of the dimension value."""
-        if obj.dimension_value:
-            return obj.dimension_value.description
-        return None
+
+class StringDetailWriteSerializer(serializers.Serializer):
+    """Serializer for writing project string details."""
+    dimension = serializers.IntegerField()
+    dimension_value = serializers.IntegerField(required=False, allow_null=True)
+    dimension_value_freetext = serializers.CharField(
+        required=False, allow_null=True, allow_blank=True)
 
     def validate(self, attrs):
         """Validate that either dimension_value or dimension_value_freetext is provided."""
@@ -69,304 +73,329 @@ class StringDetailNestedSerializer(serializers.ModelSerializer):
         return attrs
 
 
-class StringWithDetailsSerializer(WorkspaceOwnedSerializer):
-    """
-    Serializer for creating/updating strings with embedded details.
-    Implements the details-first approach from the design document.
-    """
+# =============================================================================
+# PROJECT STRING READ SERIALIZERS
+# =============================================================================
 
-    details = StringDetailNestedSerializer(many=True, source='string_details')
-    entity = serializers.PrimaryKeyRelatedField(
-        queryset=models.Entity.objects.all(),
-        help_text="Entity this string belongs to"
-    )
-    submission = serializers.PrimaryKeyRelatedField(
-        queryset=models.Submission.objects.none(),  # Filtered in __init__
-        required=False,
-        help_text="Submission that generated this string"
-    )
-    parent = serializers.PrimaryKeyRelatedField(
-        queryset=models.String.objects.none(),  # Filtered in __init__
-        required=False,
-        allow_null=True,
-        help_text="Parent string for hierarchical relationships"
-    )
+class StringReadSerializer(serializers.ModelSerializer):
+    """Serializer for reading project strings."""
+    project_name = serializers.CharField(source='project.name', read_only=True)
+    platform_name = serializers.CharField(
+        source='platform.name', read_only=True)
+    entity_name = serializers.CharField(source='entity.name', read_only=True)
+    entity_level = serializers.IntegerField(
+        source='entity.entity_level', read_only=True)
+    rule_name = serializers.CharField(source='rule.name', read_only=True)
+    created_by_name = serializers.SerializerMethodField()
+    details = serializers.SerializerMethodField(read_only=True)
 
-    def __init__(self, *args, **kwargs):
-        """Initialize serializer and filter querysets by workspace."""
-        super().__init__(*args, **kwargs)
-
-        # Get workspace from context
-        workspace = self.context.get('workspace')
-        if workspace:
-            # Filter submission and parent querysets by workspace
-            self.fields['submission'].queryset = models.Submission.objects.filter(
-                workspace=workspace
-            )
-            self.fields['parent'].queryset = models.String.objects.filter(
-                workspace=workspace
-            )
-
-    class Meta(WorkspaceOwnedSerializer.Meta):
+    class Meta:
         model = models.String
         fields = [
-            'id', 'submission', 'entity', 'parent', 'string_uuid', 'parent_uuid',
-            'is_auto_generated', 'generation_metadata', 'version', 'workspace',
-            'created', 'last_updated', 'details', 'created_by', 'value'
+            'id', 'project_id', 'project_name', 'platform_id', 'platform_name',
+            'entity_id', 'entity_name', 'entity_level', 'rule_id', 'rule_name',
+            'value', 'string_uuid', 'parent_uuid',
+            'created_by', 'created_by_name', 'created', 'last_updated',
+            'details'
         ]
-        # Extend parent read_only_fields with additional auto-generated fields
-        read_only_fields = WorkspaceOwnedSerializer.Meta.read_only_fields + ['version']
         extra_kwargs = {
-            'string_uuid': {'required': False},
-            'value': {'required': False}
+            'created_by': {'read_only': True},
         }
 
+    def get_created_by_name(self, obj):
+        """Get creator name."""
+        if obj.created_by:
+            return obj.created_by.get_full_name()
+        return None
+
+    def get_details(self, obj):
+        """Get details for this project string."""
+        # Explicitly call .all() to convert Manager to QuerySet
+        details = obj.details.all()
+        return StringDetailNestedSerializer(details, many=True).data
+
+
+class StringExpandedSerializer(StringReadSerializer):
+    """Serializer for expanded project string with hierarchy and suggestions."""
+    hierarchy_path = serializers.SerializerMethodField()
+    can_have_children = serializers.SerializerMethodField()
+    suggested_child_entity = serializers.SerializerMethodField()
+
+    class Meta(StringReadSerializer.Meta):
+        fields = StringReadSerializer.Meta.fields + [
+            'hierarchy_path', 'can_have_children', 'suggested_child_entity'
+        ]
+
+    def get_hierarchy_path(self, obj):
+        """Get the full hierarchy path for this string."""
+        return obj.get_hierarchy_path()
+
+    def get_can_have_children(self, obj):
+        """Check if string can have children."""
+        return obj.can_have_children()
+
+    def get_suggested_child_entity(self, obj):
+        """Get suggested next entity for child strings."""
+        next_entity = obj.suggest_child_entity()
+        if next_entity:
+            return {
+                'id': next_entity.id,
+                'name': next_entity.name,
+                'entity_level': next_entity.entity_level
+            }
+        return None
+
+
+# =============================================================================
+# PROJECT STRING WRITE SERIALIZERS
+# =============================================================================
+
+class StringWriteSerializer(serializers.Serializer):
+    """Serializer for writing individual project strings (used in bulk create)."""
+    entity = serializers.IntegerField()
+    string_uuid = serializers.UUIDField()
+    parent_uuid = serializers.UUIDField(required=False, allow_null=True)
+    value = serializers.CharField(max_length=500)
+    details = StringDetailWriteSerializer(many=True)
+
+
+class BulkStringCreateSerializer(serializers.Serializer):
+    """Serializer for bulk creating project strings."""
+    rule = serializers.IntegerField()
+    starting_entity = serializers.IntegerField()
+    strings = StringWriteSerializer(many=True)
+
     def validate(self, attrs):
-        """Validate and set workspace from submission context if not provided."""
-        # If workspace is not provided but submission is, inherit workspace from submission
-        if 'workspace' not in attrs and 'submission' in attrs:
-            submission = attrs['submission']
-            attrs['workspace'] = submission.workspace
+        """Validate bulk string creation data."""
+        rule_id = attrs['rule']
+        starting_entity_id = attrs['starting_entity']
+        strings_data = attrs['strings']
+
+        # Validate rule exists
+        try:
+            rule = models.Rule.objects.get(id=rule_id)
+        except models.Rule.DoesNotExist:
+            raise serializers.ValidationError(
+                f"Rule with id {rule_id} does not exist")
+
+        # Validate starting entity belongs to rule's platform
+        try:
+            starting_entity = models.Entity.objects.get(id=starting_entity_id)
+            if starting_entity.platform != rule.platform:
+                raise serializers.ValidationError(
+                    "Starting entity must belong to the rule's platform"
+                )
+        except models.Entity.DoesNotExist:
+            raise serializers.ValidationError(
+                f"Entity with id {starting_entity_id} does not exist"
+            )
+
+        # Validate all entities belong to rule's platform
+        entity_ids = {s['entity'] for s in strings_data}
+        entities = models.Entity.objects.filter(id__in=entity_ids)
+        for entity in entities:
+            if entity.platform != rule.platform:
+                raise serializers.ValidationError(
+                    f"Entity {entity.name} does not belong to the rule's platform"
+                )
+
+        # Validate string UUIDs are unique
+        string_uuids = [s['string_uuid'] for s in strings_data]
+        if len(string_uuids) != len(set(string_uuids)):
+            raise serializers.ValidationError("Duplicate string UUIDs found")
+
+        # Validate parent UUIDs reference strings in same platform (will be checked at creation)
 
         return attrs
 
     @transaction.atomic
     def create(self, validated_data):
-        """
-        Create string with details atomically using details-first approach.
-        String value is generated from details, not provided directly.
-        """
-        details_data = validated_data.pop('string_details', [])
-        value = validated_data.pop('value', None)
+        """Create project strings in bulk."""
+        project = self.context['project']
+        platform = self.context['platform']
+        rule_id = validated_data['rule']
+        strings_data = validated_data['strings']
 
-        if not details_data:
-            raise serializers.ValidationError("String details are required")
+        request = self.context.get('request')
+        user = request.user if request and hasattr(request, 'user') else None
 
-        # Ensure workspace is set before creating the string
-        if 'workspace' not in validated_data:
-            raise serializers.ValidationError("Workspace is required")
+        rule = models.Rule.objects.get(id=rule_id)
 
-        # Create string
-        validated_data['value'] = value
-        string = models.String.objects.create(**validated_data)
+        created_strings = []
+        string_uuid_map = {}  # Map UUIDs to created string instances
 
-        # Create details
-        for detail_data in details_data:
-            models.StringDetail.objects.create(
-                string=string,
-                workspace=string.workspace,
-                **detail_data
-            )
+        # Sort strings by entity level to ensure parents are created first
+        strings_by_level = {}
+        for string_data in strings_data:
+            entity = models.Entity.objects.get(id=string_data['entity'])
+            level = entity.entity_level
+            if level not in strings_by_level:
+                strings_by_level[level] = []
+            strings_by_level[level].append(string_data)
 
-        # Generate correct value using existing service
-        string.regenerate_value()
+        # Create strings level by level
+        for level in sorted(strings_by_level.keys()):
+            for string_data in strings_by_level[level]:
+                entity = models.Entity.objects.get(id=string_data['entity'])
+                details_data = string_data.pop('details')
 
-        return string
+                # Get parent if parent_uuid is provided
+                parent = None
+                parent_uuid = string_data.get('parent_uuid')
+                if parent_uuid:
+                    # Check if parent was just created in this batch
+                    if parent_uuid in string_uuid_map:
+                        parent = string_uuid_map[parent_uuid]
+                    else:
+                        # Look for existing parent
+                        try:
+                            parent = models.String.objects.get(
+                                string_uuid=parent_uuid,
+                                platform=platform
+                            )
+                        except models.String.DoesNotExist:
+                            raise serializers.ValidationError(
+                                f"Parent string with UUID {parent_uuid} not found in platform {platform.name}"
+                            )
+
+                # Create string
+                project_string = models.String.objects.create(
+                    project=project,
+                    platform=platform,
+                    entity=entity,
+                    rule=rule,
+                    parent=parent,
+                    string_uuid=string_data['string_uuid'],
+                    parent_uuid=parent_uuid,
+                    value=string_data['value'],
+                    created_by=user,
+                    workspace=project.workspace
+                )
+
+                # Store in map for parent lookups
+                string_uuid_map[project_string.string_uuid] = project_string
+
+                # Create string details
+                for detail_data in details_data:
+                    dimension = models.Dimension.objects.get(
+                        id=detail_data['dimension'])
+                    dimension_value = None
+                    dimension_value_freetext = None
+
+                    if 'dimension_value' in detail_data and detail_data['dimension_value']:
+                        dimension_value = models.DimensionValue.objects.get(
+                            id=detail_data['dimension_value']
+                        )
+                    else:
+                        dimension_value_freetext = detail_data.get(
+                            'dimension_value_freetext')
+
+                    # Check if inherited from parent
+                    is_inherited = False
+                    if parent:
+                        # Check if parent has same dimension value
+                        parent_detail = models.StringDetail.objects.filter(
+                            string=parent,
+                            dimension=dimension
+                        ).first()
+
+                        if parent_detail:
+                            if dimension_value and parent_detail.dimension_value == dimension_value:
+                                is_inherited = True
+                            elif dimension_value_freetext and parent_detail.dimension_value_freetext == dimension_value_freetext:
+                                is_inherited = True
+
+                    models.StringDetail.objects.create(
+                        string=project_string,
+                        dimension=dimension,
+                        dimension_value=dimension_value,
+                        dimension_value_freetext=dimension_value_freetext,
+                        is_inherited=is_inherited,
+                        workspace=project.workspace
+                    )
+
+                created_strings.append(project_string)
+
+        # Create project activity
+        models.ProjectActivity.objects.create(
+            project=project,
+            user=user,
+            type='strings_generated',
+            description=f"generated {len(created_strings)} strings for {platform.name}",
+            metadata={'string_count': len(
+                created_strings), 'platform_id': platform.id}
+        )
+
+        return created_strings
+
+
+class StringUpdateSerializer(serializers.Serializer):
+    """Serializer for updating a project string."""
+    value = serializers.CharField(max_length=500)
+    details = StringDetailWriteSerializer(many=True)
 
     @transaction.atomic
     def update(self, instance, validated_data):
-        """Update string with details atomically."""
-        details_data = validated_data.pop('string_details', None)
+        """Update project string."""
+        details_data = validated_data.pop('details')
 
-        # Update string fields
-        for attr, value in validated_data.items():
-            setattr(instance, attr, value)
+        # Update value
+        instance.value = validated_data['value']
         instance.save()
 
-        # Handle details update if provided
-        if details_data is not None:
-            # Delete existing details
-            instance.string_details.all().delete()
+        # Clear existing details
+        instance.details.all().delete()
 
-            # Create new details
-            for detail_data in details_data:
-                models.StringDetail.objects.create(
-                    string=instance,
-                    workspace=instance.workspace,
-                    **detail_data
+        # Create new details
+        for detail_data in details_data:
+            dimension = models.Dimension.objects.get(
+                id=detail_data['dimension'])
+            dimension_value = None
+            dimension_value_freetext = None
+
+            if 'dimension_value' in detail_data and detail_data['dimension_value']:
+                dimension_value = models.DimensionValue.objects.get(
+                    id=detail_data['dimension_value']
                 )
+            else:
+                dimension_value_freetext = detail_data.get(
+                    'dimension_value_freetext')
 
-            # Regenerate string value based on new details
-            instance.regenerate_value()
+            # Check if inherited from parent
+            is_inherited = False
+            if instance.parent:
+                parent_detail = models.StringDetail.objects.filter(
+                    string=instance.parent,
+                    dimension=dimension
+                ).first()
 
-        return instance
+                if parent_detail:
+                    if dimension_value and parent_detail.dimension_value == dimension_value:
+                        is_inherited = True
+                    elif dimension_value_freetext and parent_detail.dimension_value_freetext == dimension_value_freetext:
+                        is_inherited = True
 
-
-class StringDetailWriteSerializer(serializers.ModelSerializer):
-    """
-    Workspace-scoped string detail serializer for write operations.
-    Updates to string details trigger automatic string regeneration.
-    """
-
-    class Meta:
-        model = models.StringDetail
-        fields = [
-            'id', 'dimension', 'dimension_value', 'dimension_value_freetext',
-            'string', 'created', 'last_updated'
-        ]
-        read_only_fields = ['id', 'created', 'last_updated']
-
-    def update(self, instance, validated_data):
-        """Update string detail and trigger string regeneration."""
-        instance = super().update(instance, validated_data)
-
-        # Trigger string regeneration
-        instance.string.regenerate_value()
+            models.StringDetail.objects.create(
+                string=instance,
+                dimension=dimension,
+                dimension_value=dimension_value,
+                dimension_value_freetext=dimension_value_freetext,
+                is_inherited=is_inherited,
+                workspace=instance.workspace
+            )
 
         return instance
 
 
 # =============================================================================
-# READ SERIALIZERS (for displaying/retrieving data)
+# LIST STRINGS SERIALIZERS
 # =============================================================================
 
-class StringDetailExpandedSerializer(serializers.ModelSerializer):
-    """Expanded serializer for string details with related object info."""
-
-    dimension = serializers.SerializerMethodField()
-    dimension_value = serializers.SerializerMethodField()
-    effective_value = serializers.SerializerMethodField()
-
-    class Meta:
-        model = models.StringDetail
-        fields = [
-            'id', 'dimension', 'dimension_value', 'dimension_value_freetext',
-            'effective_value'
-        ]
-
-    def get_dimension(self, obj):
-        """Get dimension info."""
-        return {
-            'id': obj.dimension.id,
-            'name': obj.dimension.name,
-            'type': obj.dimension.type
-        }
-
-    def get_dimension_value(self, obj):
-        """Get dimension value info if present."""
-        if obj.dimension_value:
-            return {
-                'id': obj.dimension_value.id,
-                'value': obj.dimension_value.value,
-                'label': obj.dimension_value.label
-            }
-        return None
-
-    def get_effective_value(self, obj):
-        """Get the effective value."""
-        return obj.get_effective_value()
-
-
-class StringWithDetailsReadSerializer(serializers.ModelSerializer):
-    """
-    Read-only serializer for strings that returns expanded field objects.
-    Used for GET requests to provide rich field information.
-    """
-
-    details = StringDetailNestedSerializer(many=True, source='string_details')
-    entity = serializers.SerializerMethodField()
-    submission = serializers.SerializerMethodField()
-    rule = serializers.SerializerMethodField()
-    platform = serializers.SerializerMethodField()
-    parent = serializers.SerializerMethodField()
-
-    class Meta:
-        model = models.String
-        fields = [
-            'id', 'submission', 'entity', 'rule', 'value', 'string_uuid',
-            'parent', 'parent_uuid', 'is_auto_generated', 'generation_metadata',
-            'version', 'workspace', 'created', 'last_updated', 'details', 'platform',
-            'created_by'
-        ]
-        read_only_fields = ['id', 'submission', 'entity', 'rule', 'value', 'string_uuid',
-                            'parent', 'parent_uuid', 'is_auto_generated', 'generation_metadata',
-                            'version', 'workspace', 'created', 'last_updated', 'details', 'platform',
-                            'created_by']
-
-    def get_submission(self, obj):
-        """Get submission info."""
-        return {
-            'id': obj.submission.id,
-            'name': obj.submission.name
-        }
-
-    def get_entity(self, obj):
-        """Get entity info."""
-        return {
-            'id': obj.entity.id,
-            'name': obj.entity.name,
-            'level': obj.entity.entity_level
-        }
-
-    def get_rule(self, obj):
-        """Get rule info."""
-        return {
-            'id': obj.rule.id,
-            'name': obj.rule.name
-        }
-
-    def get_platform(self, obj):
-        """Get platform info."""
-        return {
-            'id': obj.entity.platform.id,
-            'name': obj.entity.platform.name
-        }
-
-    def get_parent(self, obj):
-        """Get parent string info."""
-        if obj.parent:
-            return {
-                'id': obj.parent.id,
-                'value': obj.parent.value,
-                'string_uuid': str(obj.parent.string_uuid)
-            }
-        return None
-
-
-class StringDetailReadSerializer(serializers.ModelSerializer):
-    """
-    Workspace-scoped string detail serializer for read operations.
-    """
-
-    dimension = serializers.SerializerMethodField()
-    dimension_value = serializers.SerializerMethodField()
-    string = serializers.SerializerMethodField()
-    effective_value = serializers.SerializerMethodField()
-
-    class Meta:
-        model = models.StringDetail
-        fields = [
-            'id', 'dimension', 'dimension_value', 'dimension_value_freetext',
-            'string', 'effective_value', 'created', 'last_updated'
-        ]
-        read_only_fields = ['id', 'created', 'last_updated']
-
-    def get_dimension(self, obj):
-        """Get dimension info."""
-        return {
-            'id': obj.dimension.id,
-            'name': obj.dimension.name,
-            'type': obj.dimension.type
-        }
-
-    def get_dimension_value(self, obj):
-        """Get dimension value info if present."""
-        if obj.dimension_value:
-            return {
-                'id': obj.dimension_value.id,
-                'value': obj.dimension_value.value,
-                'label': obj.dimension_value.label
-            }
-        return None
-
-    def get_string(self, obj):
-        """Get basic string info."""
-        return {
-            'id': obj.string.id,
-            'value': obj.string.value,
-            'version': obj.string.version
-        }
-
-    def get_effective_value(self, obj):
-        """Get the effective value."""
-        return obj.get_effective_value()
+class ListStringsSerializer(serializers.Serializer):
+    """Serializer for list strings query parameters."""
+    entity = serializers.IntegerField(required=False)
+    parent_entity = serializers.IntegerField(required=False)
+    parent_uuid = serializers.UUIDField(required=False)
+    search = serializers.CharField(required=False)
+    page = serializers.IntegerField(required=False, default=1)
+    page_size = serializers.IntegerField(required=False, default=50)

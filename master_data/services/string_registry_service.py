@@ -14,7 +14,8 @@ from django.db import transaction
 
 from ..models import (
     String, StringDetail, Rule, RuleDetail, Entity, Platform,
-    Dimension, DimensionValue, Workspace
+    Dimension, DimensionValue, Workspace, ExternalString,
+    ExternalStringBatch, String, StringDetail, Project
 )
 from .dimension_catalog_service import DimensionCatalogService
 
@@ -425,3 +426,300 @@ class StringRegistryService:
             'errors': errors,
             'warnings': warnings
         }
+
+    # ==========================================
+    # ExternalString Methods
+    # ==========================================
+
+    @staticmethod
+    def create_external_string(
+        workspace: Workspace,
+        platform: Platform,
+        rule: Rule,
+        entity: Entity,
+        batch: ExternalStringBatch,
+        string_value: str,
+        external_platform_id: str,
+        external_parent_id: Optional[str],
+        validation_result: Dict,
+        created_by
+    ) -> ExternalString:
+        """
+        Create an ExternalString record from validation result.
+
+        Args:
+            workspace: Workspace context
+            platform: Platform
+            rule: Rule used for validation
+            entity: Entity
+            batch: ExternalStringBatch this string belongs to
+            string_value: The string value
+            external_platform_id: Platform-specific identifier
+            external_parent_id: Parent's platform identifier
+            validation_result: Result from validate_external_string()
+            created_by: User who created this
+
+        Returns:
+            ExternalString instance
+        """
+        # Check if this external_platform_id exists in this batch
+        existing = ExternalString.objects.filter(
+            workspace=workspace,
+            external_platform_id=external_platform_id,
+            batch=batch
+        ).first()
+
+        if existing:
+            # Update existing (shouldn't happen in same batch, but handle it)
+            existing.value = string_value
+            existing.external_parent_id = external_parent_id
+            existing.validation_status = 'valid' if validation_result['is_valid'] else 'invalid'
+            if validation_result.get('warnings'):
+                existing.validation_status = 'warning'
+            existing.validation_metadata = {
+                'parsed_dimension_values': validation_result.get('parsed_dimension_values', {}),
+                'errors': validation_result.get('errors', []),
+                'warnings': validation_result.get('warnings', [])
+            }
+            existing.save()
+            return existing
+
+        # Determine validation status
+        if validation_result.get('should_skip'):
+            validation_status = 'skipped'
+        elif not validation_result['is_valid']:
+            validation_status = 'invalid'
+        elif validation_result.get('warnings'):
+            validation_status = 'warning'
+        else:
+            validation_status = 'valid'
+
+        # Create new ExternalString
+        external_string = ExternalString.objects.create(
+            workspace=workspace,
+            platform=platform,
+            rule=rule,
+            entity=entity,
+            batch=batch,
+            value=string_value,
+            external_platform_id=external_platform_id,
+            external_parent_id=external_parent_id,
+            validation_status=validation_status,
+            validation_metadata={
+                'parsed_dimension_values': validation_result.get('parsed_dimension_values', {}),
+                'errors': validation_result.get('errors', []),
+                'warnings': validation_result.get('warnings', [])
+            },
+            created_by=created_by,
+            version=1
+        )
+
+        return external_string
+
+    @staticmethod
+    def find_or_create_external_string_version(
+        workspace: Workspace,
+        external_platform_id: str,
+        new_batch: ExternalStringBatch,
+        **string_data
+    ) -> Tuple[ExternalString, bool]:
+        """
+        Find existing ExternalString and create new version, or create new.
+
+        Args:
+            workspace: Workspace context
+            external_platform_id: Platform identifier
+            new_batch: New batch for this version
+            **string_data: String data (value, validation_result, etc.)
+
+        Returns:
+            Tuple of (ExternalString, created: bool)
+        """
+        # Find latest version of this external_platform_id
+        latest = ExternalString.objects.filter(
+            workspace=workspace,
+            external_platform_id=external_platform_id,
+            superseded_by__isnull=True
+        ).order_by('-version').first()
+
+        if latest:
+            # Create new version
+            new_version = StringRegistryService.create_external_string(
+                workspace=workspace,
+                external_platform_id=external_platform_id,
+                batch=new_batch,
+                **string_data
+            )
+            new_version.version = latest.version + 1
+            new_version.save()
+
+            # Link versions
+            latest.superseded_by = new_version
+            latest.save()
+
+            return new_version, False
+        else:
+            # Create first version
+            new_string = StringRegistryService.create_external_string(
+                workspace=workspace,
+                external_platform_id=external_platform_id,
+                batch=new_batch,
+                **string_data
+            )
+            return new_string, True
+
+    # ==========================================
+    # String Methods
+    # ==========================================
+
+    @staticmethod
+    def import_external_string_to_project(
+        project: Project,
+        external_string: ExternalString,
+        created_by
+    ) -> String:
+        """
+        Import an ExternalString into a String.
+
+        Args:
+            project: Target project
+            external_string: Source ExternalString
+            created_by: User performing the import
+
+        Returns:
+            String instance
+
+        Raises:
+            ValidationError: If import fails validation
+        """
+        # Validate external_string is importable
+        if not external_string.is_importable():
+            raise ValidationError(
+                f"ExternalString {external_string.external_platform_id} cannot be imported "
+                f"(status: {external_string.validation_status}, "
+                f"already imported: {external_string.imported_at is not None})"
+            )
+
+        # Validate platform is assigned to project
+        if not project.platforms.filter(id=external_string.platform_id).exists():
+            raise ValidationError(
+                f"Platform '{external_string.platform.name}' is not assigned to project '{project.name}'"
+            )
+
+        # Check if already exists by external_platform_id
+        existing = String.objects.filter(
+            workspace=external_string.workspace,
+            external_platform_id=external_string.external_platform_id,
+            validation_source='external'
+        ).first()
+
+        if existing:
+            # Update existing String
+            existing.value = external_string.value
+            existing.external_parent_id = external_string.external_parent_id
+            existing.validation_metadata = external_string.validation_metadata
+            existing.source_external_string = external_string
+            existing.sync_status = 'in_sync'
+            existing.save()
+
+            # Mark external_string as imported
+            external_string.imported_to_project_string = existing
+            external_string.imported_at = timezone.now()
+            external_string.save()
+
+            return existing
+
+        # Create new String
+        from django.utils import timezone
+
+        project_string = String.objects.create(
+            workspace=external_string.workspace,
+            project=project,
+            platform=external_string.platform,
+            entity=external_string.entity,
+            rule=external_string.rule,
+            value=external_string.value,
+            created_by=created_by,
+            # External validation fields
+            validation_source='external',
+            external_platform_id=external_string.external_platform_id,
+            external_parent_id=external_string.external_parent_id,
+            validation_metadata=external_string.validation_metadata,
+            source_external_string=external_string,
+            sync_status='in_sync',
+            last_synced_at=timezone.now()
+        )
+
+        # Mark external_string as imported
+        external_string.imported_to_project_string = project_string
+        external_string.imported_at = timezone.now()
+        external_string.save()
+
+        # TODO: Create StringDetail records from parsed dimension values
+        # This would involve creating StringDetail for each dimension
+        # from validation_metadata['parsed_dimension_values']
+
+        return project_string
+
+    @staticmethod
+    def find_external_string_parent(
+        workspace: Workspace,
+        parent_external_id: str,
+        created_strings: Dict[str, ExternalString] = None
+    ) -> Optional[ExternalString]:
+        """
+        Find parent ExternalString by external_platform_id.
+
+        Checks both newly created strings in current batch and existing strings.
+
+        Args:
+            workspace: Workspace context
+            parent_external_id: Parent's platform identifier
+            created_strings: Dict of external_platform_id -> ExternalString for current batch
+
+        Returns:
+            ExternalString if found, None otherwise
+        """
+        if not parent_external_id:
+            return None
+
+        # Check in newly created strings first
+        if created_strings and parent_external_id in created_strings:
+            return created_strings[parent_external_id]
+
+        # Check in existing ExternalStrings
+        return ExternalString.objects.filter(
+            workspace=workspace,
+            external_platform_id=parent_external_id
+        ).order_by('-created').first()
+
+    @staticmethod
+    def find_project_string_parent(
+        workspace: Workspace,
+        parent_external_id: str,
+        created_strings: Dict[str, String] = None
+    ) -> Optional[String]:
+        """
+        Find parent String by external_platform_id.
+
+        Args:
+            workspace: Workspace context
+            parent_external_id: Parent's platform identifier
+            created_strings: Dict of external_platform_id -> String for current batch
+
+        Returns:
+            String if found, None otherwise
+        """
+        if not parent_external_id:
+            return None
+
+        # Check in newly created strings first
+        if created_strings and parent_external_id in created_strings:
+            return created_strings[parent_external_id]
+
+        # Check in existing Strings
+        return String.objects.filter(
+            workspace=workspace,
+            external_platform_id=parent_external_id,
+            validation_source='external'
+        ).first()

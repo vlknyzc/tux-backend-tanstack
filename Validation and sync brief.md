@@ -2,7 +2,12 @@
 
 ## Executive Summary
 
-A validation and sync system that integrates external platform strings (from Meta, Google Ads, TikTok, etc.) into Tuxonomy's existing String model. Users upload CSV files with platform strings and parent-child relationships, validate against workspace naming rules, and sync to create unified string records. The system tracks both Tuxonomy hierarchy and external platform hierarchy, flagging conflicts for user review.
+A validation and sync system that integrates external platform strings (from Meta, Google Ads, TikTok, etc.) into Tuxonomy's project-based string management. Users upload CSV files with platform strings and parent-child relationships, validate against workspace naming rules, and optionally import valid strings into projects. The system uses a dual-model architecture:
+
+- **ExternalString**: Stores ALL external platform strings (valid + invalid) for validation tracking
+- **ProjectString**: Stores strings imported into specific projects
+
+The system supports flexible workflows: validation-only (review before importing), direct project imports, and selective imports after review, with full hierarchy tracking and conflict detection.
 
 ## Core Concept
 
@@ -385,9 +390,11 @@ Export includes:
 
 ### API Endpoints
 
-#### 1. CSV Upload with Validation
+##### 1. Validate Only (No Project Import)
 
-**Endpoint**: `POST /api/v1/workspaces/{workspace_id}/string-registry/upload/`
+**Endpoint**: `POST /api/v1/workspaces/{workspace_id}/string-registry/validate/`
+
+**Use Case**: Validate external strings without importing to a project. Creates `ExternalString` records for all strings (valid + invalid) for later review and selective import.
 
 **Content-Type**: `multipart/form-data`
 
@@ -396,7 +403,7 @@ Export includes:
 {
   platform_id: number,        // Required: Selected platform
   rule_id: number,            // Required: Selected rule for validation
-  file: File                  // Required: CSV file (max 5MB, 500 rows)
+  file: File                  // Required: CSV file (max 5MB)
 }
 ```
 
@@ -404,65 +411,145 @@ Export includes:
 ```typescript
 {
   success: boolean,
+  batch_id: number,           // ExternalStringBatch ID
+  operation_type: 'validation',
   summary: {
-    total_rows: number,         // Total rows in CSV
-    uploaded_rows: number,      // Rows uploaded
-    processed_rows: number,     // Rows that matched rule entity
-    skipped_rows: number,       // Rows with entity_name mismatch
-    created: number,            // New Strings created
-    updated: number,            // Existing Strings updated
-    valid: number,              // Total successful (created + updated)
-    warnings: number,           // Succeeded with warnings
-    failed: number,             // Failed validation
-    linked_parents: number,     // Successfully linked to parent
-    parent_conflicts: number,   // Hierarchy conflicts detected
-    parent_not_found: number    // Parent external_id not found
+    total_rows: number,
+    uploaded_rows: number,
+    processed_rows: number,
+    skipped_rows: number,
+    created: number,          // ExternalStrings created
+    valid: number,            // Valid strings
+    warnings: number,         // Warnings
+    failed: number            // Invalid strings
   },
   results: [
     {
       row_number: number,
       string_value: string,
-      external_platform_id: string | null,
+      external_platform_id: string,
       entity_name: string,
       parent_external_id: string | null,
-      status: 'valid' | 'warning' | 'failed' | 'skipped' | 'updated',
-      string_id: number | null,           // Created/updated String.id
-      tuxonomy_parent_id: number | null,  // Linked parent String.id
-      errors: Array<{
-        type: string,           // Error code (e.g., 'invalid_dimension_value')
-        field: string,          // Field that caused error
-        message: string,        // Human-readable message
-        expected?: any,         // Expected value
-        received?: any          // Actual value
-      }>,
-      warnings: Array<{
-        type: string,           // Warning code (e.g., 'hierarchy_conflict')
-        field: string,
-        message: string
-      }>
+      validation_status: 'valid' | 'invalid' | 'warning' | 'skipped',
+      external_string_id: number | null,  // ExternalString.id
+      errors: Array<ErrorDetail>,
+      warnings: Array<WarningDetail>
     }
   ]
 }
 ```
 
-**Status Definitions**:
-- `valid`: Passed all validation, String created/updated without warnings
-- `warning`: Passed validation but has warnings (e.g., hierarchy conflict, parent not found)
-- `failed`: Failed validation (e.g., missing dimensions, invalid values), not stored
-- `skipped`: Not processed (entity_name doesn't match rule.entity)
-- `updated`: Existing String was updated (re-upload of same external_platform_id)
+---
 
-**Error Response** (400, 404, 500):
+##### 2. Import to Project (Direct)
+
+**Endpoint**: `POST /api/v1/workspaces/{workspace_id}/string-registry/import/`
+
+**Use Case**: Validate and import valid strings to a project in one operation. Creates both `ExternalString` (for all) and `ProjectString` (for valid only).
+
+**Content-Type**: `multipart/form-data`
+
+**Request Body**:
 ```typescript
 {
-  error: string,              // Error message
-  details?: object            // Additional error details
+  project_id: number,         // Required: Target project
+  platform_id: number,        // Required: Selected platform
+  rule_id: number,            // Required: Selected rule for validation
+  file: File                  // Required: CSV file (max 5MB)
+}
+```
+
+**Validations**:
+- Platform must be assigned to the project
+- Rule must belong to the platform
+
+**Response**:
+```typescript
+{
+  success: boolean,
+  batch_id: number,           // ExternalStringBatch ID
+  operation_type: 'import',
+  project: {
+    id: number,
+    name: string
+  },
+  summary: {
+    total_rows: number,
+    uploaded_rows: number,
+    processed_rows: number,
+    skipped_rows: number,
+    created: number,          // ProjectStrings created
+    updated: number,          // ProjectStrings updated
+    valid: number,            // Valid strings
+    warnings: number,
+    failed: number
+  },
+  results: [
+    {
+      row_number: number,
+      string_value: string,
+      external_platform_id: string,
+      entity_name: string,
+      validation_status: 'valid' | 'invalid' | 'warning' | 'skipped',
+      external_string_id: number | null,  // ExternalString.id
+      project_string_id: number | null,   // ProjectString.id (valid only)
+      import_status: 'imported' | 'updated' | 'failed' | 'skipped',
+      errors: Array<ErrorDetail>,
+      warnings: Array<WarningDetail>
+    }
+  ]
 }
 ```
 
 ---
 
-#### 2. Single String Validation
+##### 3. Selective Import
+
+**Endpoint**: `POST /api/v1/workspaces/{workspace_id}/string-registry/import-selected/`
+
+**Use Case**: Import specific previously validated `ExternalStrings` to a project. Useful after reviewing validation results.
+
+**Content-Type**: `application/json`
+
+**Request Body**:
+```typescript
+{
+  project_id: number,                 // Required: Target project
+  external_string_ids: number[]       // Required: Array of ExternalString IDs
+}
+```
+
+**Workflow**:
+1. User calls `/validate/` to validate strings
+2. User reviews results in admin panel or via API
+3. User calls this endpoint with IDs of strings to import
+
+**Response**:
+```typescript
+{
+  success: boolean,
+  summary: {
+    requested: number,
+    imported: number,
+    updated: number,
+    failed: number,
+    already_imported: number
+  },
+  results: [
+    {
+      external_string_id: number,
+      external_platform_id: string,
+      project_string_id: number | null,
+      status: 'imported' | 'updated' | 'failed' | 'already_imported',
+      message: string
+    }
+  ]
+}
+```
+
+---
+
+#### Single String Validation
 
 **Endpoint**: `POST /api/v1/workspaces/{workspace_id}/string-registry/validate_single/`
 
@@ -515,94 +602,6 @@ Export includes:
 - Real-time validation in UI
 
 ---
-
-#### 3. Export Validation Results
-
-**Note**: Uses existing Strings export functionality with additional filters.
-
-**Endpoint**: `GET /api/v1/workspaces/{workspace_id}/strings/export/`
-
-**Query Parameters**:
-```typescript
-{
-  validation_source?: 'internal' | 'external',  // Filter by source
-  validation_status?: 'valid' | 'invalid' | 'warning' | 'entity_mismatch',
-  format?: 'csv' | 'json',                      // Export format
-  has_conflicts?: boolean,                       // Filter strings with hierarchy conflicts
-  external_platform_id?: string,                // Search by platform ID
-  // ... other standard String filters
-}
-```
-
-**Example**:
-```
-GET /api/v1/workspaces/1/strings/export/?validation_source=external&validation_status=warning&format=csv
-```
-
-**Export Includes**:
-- String value
-- External platform ID
-- External parent ID
-- Validation status
-- Tuxonomy parent (if linked)
-- Validation errors/warnings from metadata
-- Entity information
-- Rule information
-
----
-
-#### Authentication
-
-All endpoints require authentication and workspace access:
-
-**Headers**:
-```
-Authorization: Bearer <jwt_token>
-```
-
-**Workspace Access**: User must have access to the specified workspace_id.
-
-**Rate Limits**:
-- Upload endpoint: 10 uploads per hour per user
-- Single validation: 100 validations per hour per user
-
-### Error Response Standards
-
-```typescript
-interface ErrorResponse {
-  error: {
-    code: string;
-    message: string;
-    details: {
-      file_errors?: FileError[];
-      row_errors?: RowError[];
-      validation_errors?: ValidationError[];
-    };
-    recovery_options: RecoveryOption[];
-  };
-}
-
-interface FileError {
-  type: "missing_column" | "invalid_format" | "encoding" | "size_exceeded";
-  message: string;
-  suggestion: string;
-}
-
-interface RowError {
-  row_number: number;
-  column: string;
-  value: any;
-  error: string;
-  valid_options?: string[];
-}
-
-interface RecoveryOption {
-  action: string;
-  label: string;
-  endpoint: string;
-  requires_input?: boolean;
-}
-```
 
 ### Data Models
 
@@ -1742,18 +1741,31 @@ ACME-2024-US-Q4-Awareness,campaign_123,campaign,account_999
 
 ## Implementation Status
 
-### ✅ Completed (Phase 1 MVP)
+### ✅ Completed (Phase 1 & 2 - New Architecture)
 
 **Database Schema** (100% Complete)
-- ✅ Extended String model with 5 new fields:
+- ✅ Created **ExternalString** model for validation tracking:
+  - Stores ALL external strings (valid + invalid)
+  - Fields: `external_platform_id`, `external_parent_id`, `validation_status`, `validation_metadata`
+  - Version tracking: `version`, `superseded_by` for re-uploads
+  - Import tracking: `imported_at`, `imported_to_project_string`
+  - Unique constraint per batch allows version history
+
+- ✅ Renamed **ImportBatch** to **ExternalStringBatch**:
+  - Added `operation_type` ('validation' or 'import')
+  - Added optional `project` field (required for import operations)
+  - Tracks upload metadata and summary statistics
+
+- ✅ Extended **ProjectString** model with external validation fields:
   - `validation_source` (internal/external)
-  - `external_platform_id` (unique per workspace)
-  - `external_parent_id` (parent's platform ID)
-  - `validation_status` (valid/invalid/warning/entity_mismatch)
-  - `validation_metadata` (JSONField with errors/warnings)
-- ✅ Added unique constraint on (workspace, external_platform_id)
-- ✅ Added indexes for performance optimization
-- ✅ Migration `0003_add_external_validation_fields` applied
+  - `external_platform_id` (unique per workspace when external)
+  - `external_parent_id`, `validation_metadata`
+  - `source_external_string` (FK to ExternalString)
+  - Sync tracking: `last_synced_at`, `sync_status`
+
+- ✅ Migrations applied:
+  - `0005_create_external_string_and_rename_batch.py`
+  - Admin panels configured for both models
 
 **Core Services** (100% Complete)
 - ✅ **StringRegistryService** with complete validation logic:
@@ -1765,62 +1777,80 @@ ACME-2024-US-Q4-Awareness,campaign_123,campaign,account_999
   - Hierarchy relationship validation
   - Entity level validation (parent.level < child.level)
   - String length validation (500 char max)
-  - Duplicate detection (within-file and existing strings)
+
+- ✅ **New service methods for ExternalString/ProjectString**:
+  - `create_external_string()` - Create validation records
+  - `find_or_create_external_string_version()` - Version tracking
+  - `import_external_string_to_project()` - Import to ProjectString
+  - `find_external_string_parent()` - Parent lookup in ExternalStrings
+  - `find_project_string_parent()` - Parent lookup in ProjectStrings
 
 **API Endpoints** (100% Complete)
-- ✅ **Upload endpoint**: `POST /workspaces/{id}/string-registry/upload/`
-  - CSV file upload and parsing (UTF-8 support)
-  - Row-by-row validation with partial success
-  - Platform and rule selection
-  - Mixed entity type support (process matching, skip mismatched)
-  - Duplicate handling (update existing, skip within-file)
-  - Parent-child relationship linking
-  - Hierarchy conflict detection
-  - Detailed response with summary and per-row results
+- ✅ **Validation-only endpoint**: `POST /workspaces/{id}/string-registry/validate/`
+  - Creates ExternalString records for all strings (valid + invalid)
+  - No project required - validation tracking only
+  - Returns batch_id for future reference
+
+- ✅ **Direct import endpoint**: `POST /workspaces/{id}/string-registry/import/`
+  - Validates and imports to ProjectString in one operation
+  - Creates both ExternalString (all) and ProjectString (valid only)
+  - Validates platform is assigned to project
+
+- ✅ **Selective import endpoint**: `POST /workspaces/{id}/string-registry/import-selected/`
+  - Import specific ExternalStrings by ID to a project
+  - Validates importability and platform assignment
+  - Supports workflow: validate → review → selectively import
+
+- ✅ **[DEPRECATED] Upload endpoint**: `POST /workspaces/{id}/string-registry/upload/`
+  - Marked as deprecated in OpenAPI schema
+  - Logs deprecation warnings
+  - Returns migration guide in response
 
 - ✅ **Single validation endpoint**: `POST /workspaces/{id}/string-registry/validate_single/`
   - Real-time validation without database writes
   - Useful for pre-validation and testing
 
 **Serializers** (100% Complete)
-- ✅ `CSVUploadRequestSerializer` - Request validation
-- ✅ `ErrorDetailSerializer` - Structured error responses
-- ✅ `WarningDetailSerializer` - Warning details
-- ✅ `RowResultSerializer` - Per-row validation results
+
+*Legacy serializers (for deprecated /upload/ endpoint):*
+- ✅ `CSVUploadRequestSerializer`, `BulkValidationResponseSerializer`
+
+*New serializers for ExternalString/ProjectString workflow:*
+- ✅ `ValidationOnlyRequestSerializer` - Validation-only request
+- ✅ `ImportToProjectRequestSerializer` - Direct import request with project validation
+- ✅ `SelectiveImportRequestSerializer` - Selective import by IDs
+- ✅ `ExternalStringRowSerializer` - ExternalString result row
+- ✅ `ProjectStringRowSerializer` - ProjectString import result row
+- ✅ `ValidationOnlyResponseSerializer` - Validation batch response
+- ✅ `ImportToProjectResponseSerializer` - Import batch response
+- ✅ `SelectiveImportResponseSerializer` - Selective import response
+- ✅ `ErrorDetailSerializer`, `WarningDetailSerializer` - Shared error/warning structures
 - ✅ `ValidationSummarySerializer` - Summary statistics
-- ✅ `BulkValidationResponseSerializer` - Complete upload response
 - ✅ `SingleStringValidationRequestSerializer` - Single validation request
 - ✅ `SingleStringValidationResponseSerializer` - Single validation response
 
-**Testing** (94% Complete)
-- ✅ **Unit Tests**: 16/16 passing
-  - String parsing with delimiters, prefix/suffix
-  - Dimension value validation
-  - Hierarchy relationship validation
-  - Entity level validation
-  - Workspace isolation
-  - Edge cases (invalid values, missing dimensions, etc.)
+**Admin Panels** (100% Complete)
+- ✅ **ExternalStringAdmin**:
+  - List display with status icons, validation status, imported status
+  - Filters by validation_status, platform, entity, operation_type
+  - Search by external_platform_id, value, batch file name
+  - Custom display methods for status icons and import status
 
-- ✅ **Integration Tests**: 10/13 passing
-  - CSV upload success scenarios
-  - Invalid dimension values
-  - Duplicate handling
-  - Entity-rule mismatches
-  - Authentication/authorization
-  - String length validation
-  - Workspace isolation
-  - ⚠️ 3 tests pending minor fixes (hierarchy with multi-entity, response structure, permission enforcement)
+- ✅ **ExternalStringBatchAdmin**:
+  - List display with operation type icons, statistics
+  - Custom methods for success rate calculation
+  - Links to view associated ExternalStrings
+  - Filters by operation type, status, platform
 
 **Documentation** (100% Complete)
-- ✅ API endpoint specifications with actual request/response formats
+- ✅ Architecture migration notice at document top
+- ✅ API endpoint specifications with new 3-endpoint workflow
+- ✅ Migration guide for deprecated endpoint
+- ✅ Request/response schemas with TypeScript types
 - ✅ CSV format specification
 - ✅ Error code taxonomy
-- ✅ Status definitions (valid/warning/failed/skipped/updated)
-- ✅ Implementation considerations (13 sections covering edge cases)
-
-**Code Commits**
-- ✅ Commit 1: Initial implementation (model, service, serializers, views, URLs)
-- ✅ Commit 2: Comprehensive tests with fixes and improvements
+- ✅ Status definitions updated for new architecture
+- ✅ Implementation Status section updated
 
 ---
 

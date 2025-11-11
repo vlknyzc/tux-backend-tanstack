@@ -102,9 +102,6 @@ router.register(
 urlpatterns = [
     path("", include(router.urls)),
 
-    # Main RESTful API endpoints for strings and string details
-    path("", include('master_data.urls_main_api')),
-
     # Project API endpoints (replaces submissions)
     path("", include('master_data.urls_projects')),
 

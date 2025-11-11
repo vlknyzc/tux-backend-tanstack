@@ -5,10 +5,10 @@ from .entity import Entity
 from .dimension import Dimension, DimensionValue
 from .dimension_constraint import DimensionConstraint, ConstraintTypeChoices, CONSTRAINT_TYPES_REQUIRING_VALUE
 from .rule import Rule, RuleDetail
-from .string import String, StringDetail
-from .submission import Submission, SubmissionStatusChoices
 from .audit import StringModification, StringInheritanceUpdate, StringUpdateBatch
 from .propagation import PropagationJob, PropagationError, PropagationSettings
+from .external_string import ExternalString
+from .external_string_batch import ExternalStringBatch
 from .project import (
     Project,
     ProjectMember,
@@ -20,7 +20,7 @@ from .project import (
     ProjectActivityTypeChoices,
     ApprovalActionChoices,
 )
-from .project_string import ProjectString, ProjectStringDetail
+from .string import String, StringDetail
 
 # Import constants for external use
 from ..constants import (
@@ -44,7 +44,6 @@ __all__ = [
     'DimensionConstraint',
     'Rule',
     'RuleDetail',
-    'Submission',
     'String',
     'StringDetail',
     'StringModification',
@@ -53,17 +52,16 @@ __all__ = [
     'PropagationJob',
     'PropagationError',
     'PropagationSettings',
+    'ExternalString',
+    'ExternalStringBatch',
     # Project models
     'Project',
     'ProjectMember',
     'ProjectActivity',
     'ApprovalHistory',
-    'ProjectString',
-    'ProjectStringDetail',
 
     # Constants
     'StatusChoices',
-    'SubmissionStatusChoices',
     'DimensionTypeChoices',
     'ConstraintTypeChoices',
     'CONSTRAINT_TYPES_REQUIRING_VALUE',

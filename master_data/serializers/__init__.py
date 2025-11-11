@@ -50,12 +50,14 @@ from .rule import (
 )
 from .platform import PlatformSerializer, EntitySerializer, PlatformTemplateSerializer
 from .string import (
+    StringReadSerializer,
+    StringExpandedSerializer,
+    StringWriteSerializer,
+    BulkStringCreateSerializer,
+    StringUpdateSerializer,
     StringDetailNestedSerializer,
-    StringWithDetailsSerializer,
-    StringWithDetailsReadSerializer,
-    StringDetailExpandedSerializer,
-    StringDetailReadSerializer,
     StringDetailWriteSerializer,
+    ListStringsSerializer,
 )
 from .workspace import WorkspaceSerializer
 from .batch_operations import (
@@ -101,25 +103,12 @@ from .project import (
     ApproveSerializer,
     RejectSerializer,
 )
-from .project_string import (
-    ProjectStringReadSerializer,
-    ProjectStringExpandedSerializer,
-    ProjectStringWriteSerializer,
-    BulkProjectStringCreateSerializer,
-    ProjectStringUpdateSerializer,
-    ProjectStringDetailNestedSerializer,
-    ProjectStringDetailWriteSerializer,
-    ListProjectStringsSerializer,
-)
 from .string_registry import (
     ErrorDetailSerializer,
     WarningDetailSerializer,
-    RowResultSerializer,
     ValidationSummarySerializer,
-    BulkValidationResponseSerializer,
     SingleStringValidationRequestSerializer,
     SingleStringValidationResponseSerializer,
-    CSVUploadRequestSerializer,
 )
 
 
@@ -169,11 +158,6 @@ __all__ = [
     'PlatformSerializer',
     'EntitySerializer',
     'PlatformTemplateSerializer',
-    'StringExpandedSerializer',
-    'StringGenerationRequestSerializer',
-    'StringRegenerationSerializer',
-    'StringConflictCheckSerializer',
-    'StringBulkGenerationRequestSerializer',
     'WorkspaceSerializer',
     # Batch operations serializers
     'StringBatchUpdateRequestSerializer',
@@ -192,20 +176,9 @@ __all__ = [
     'StringDetailUpdateWithPropagationSerializer',
     'PropagationJobSerializer',
     'PropagationErrorSerializer',
-    'StringDetailUpdateItemSerializer',
     'StringDetailBatchUpdateRequestSerializer',
     'StringDetailBatchUpdateResponseSerializer',
     'PropagationSettingsSerializer',
-
-    # New main_api serializers
-    'StringDetailNestedSerializer',
-    'StringWithDetailsSerializer',
-    'StringWithDetailsReadSerializer',
-    'StringDetailExpandedSerializer',
-    'StringDetailReadSerializer',
-    'StringDetailWriteSerializer',
-    # 'SubmissionWithStringsSerializer',  # DEPRECATED
-    # 'SubmissionWithStringsReadSerializer',  # DEPRECATED
 
     # Bulk operations
     'BulkStringCreateSerializer',
@@ -229,22 +202,18 @@ __all__ = [
     'RejectSerializer',
 
     # Project string serializers
-    'ProjectStringReadSerializer',
-    'ProjectStringExpandedSerializer',
-    'ProjectStringWriteSerializer',
-    'BulkProjectStringCreateSerializer',
-    'ProjectStringUpdateSerializer',
-    'ProjectStringDetailNestedSerializer',
-    'ProjectStringDetailWriteSerializer',
-    'ListProjectStringsSerializer',
+    'StringReadSerializer',
+    'StringExpandedSerializer',
+    'StringWriteSerializer',
+    'BulkStringCreateSerializer',
+    'StringUpdateSerializer',
+    'StringDetailNestedSerializer',
+    'StringDetailWriteSerializer',
+    'ListStringsSerializer',
 
     # String registry serializers
     'ErrorDetailSerializer',
     'WarningDetailSerializer',
-    'RowResultSerializer',
-    'ValidationSummarySerializer',
-    'BulkValidationResponseSerializer',
     'SingleStringValidationRequestSerializer',
     'SingleStringValidationResponseSerializer',
-    'CSVUploadRequestSerializer',
 ]
