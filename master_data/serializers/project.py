@@ -148,7 +148,7 @@ class ProjectDetailSerializer(ProjectListSerializer):
 
     def get_strings(self, obj):
         """Get strings for this project (using StringReadSerializer)."""
-        from .project_string import StringReadSerializer
+        from .string import StringReadSerializer
         # Use for_workspace to explicitly filter by the project's workspace
         # This ensures we get strings for the correct workspace
         strings = models.String.objects.for_workspace(obj.workspace_id).filter(

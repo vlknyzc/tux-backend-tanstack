@@ -52,6 +52,7 @@ from .platform import PlatformSerializer, EntitySerializer, PlatformTemplateSeri
 from .string import (
     StringReadSerializer,
     StringExpandedSerializer,
+    StringWithDetailsSerializer,
     StringWriteSerializer,
     BulkStringCreateSerializer,
     StringUpdateSerializer,
@@ -83,7 +84,7 @@ from .propagation import (
     PropagationSettingsSerializer,
 )
 from .bulk_operations import (
-    BulkStringCreateSerializer,
+    BulkStringOperationsSerializer,
     BulkStringDetailUpdateSerializer,
     # BulkSubmissionCreateSerializer,  # DEPRECATED
     BulkStringDeleteSerializer,
@@ -181,7 +182,7 @@ __all__ = [
     'PropagationSettingsSerializer',
 
     # Bulk operations
-    'BulkStringCreateSerializer',
+    'BulkStringOperationsSerializer',
     'BulkStringDetailUpdateSerializer',
     # 'BulkSubmissionCreateSerializer',  # DEPRECATED
     'BulkStringDeleteSerializer',
@@ -204,6 +205,7 @@ __all__ = [
     # Project string serializers
     'StringReadSerializer',
     'StringExpandedSerializer',
+    'StringWithDetailsSerializer',
     'StringWriteSerializer',
     'BulkStringCreateSerializer',
     'StringUpdateSerializer',

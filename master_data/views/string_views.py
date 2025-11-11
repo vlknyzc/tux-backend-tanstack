@@ -33,6 +33,7 @@ class BulkCreateStringsView(WorkspaceValidationMixin, views.APIView):
     Endpoint: POST /workspaces/{workspace_id}/projects/{project_id}/platforms/{platform_id}/strings/bulk
     """
     permission_classes = [IsAuthenticated]
+    serializer_class = BulkStringCreateSerializer
 
     def post(self, request, workspace_id, project_id, platform_id, version=None):
         """Create multiple project strings in bulk."""

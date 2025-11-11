@@ -5,6 +5,7 @@ Serializers for String models.
 from rest_framework import serializers
 from django.db import transaction
 from .. import models
+from .base import WorkspaceOwnedSerializer
 
 
 # =============================================================================
@@ -144,6 +145,71 @@ class StringExpandedSerializer(StringReadSerializer):
                 'entity_level': next_entity.entity_level
             }
         return None
+
+
+class StringWithDetailsSerializer(WorkspaceOwnedSerializer, serializers.ModelSerializer):
+    """
+    Serializer for String model with nested details.
+    Supports both reading and writing String objects with their StringDetail relationships.
+    """
+    details = StringDetailNestedSerializer(many=True, read_only=True)
+
+    # Read-only computed fields
+    project_name = serializers.CharField(source='project.name', read_only=True)
+    platform_name = serializers.CharField(source='platform.name', read_only=True)
+    entity_name = serializers.CharField(source='entity.name', read_only=True)
+    entity_level = serializers.IntegerField(source='entity.entity_level', read_only=True)
+    rule_name = serializers.CharField(source='rule.name', read_only=True)
+    created_by_name = serializers.SerializerMethodField()
+
+    class Meta:
+        model = models.String
+        fields = [
+            'id', 'project', 'project_name', 'platform', 'platform_name',
+            'entity', 'entity_name', 'entity_level', 'rule', 'rule_name',
+            'parent', 'parent_uuid', 'value', 'string_uuid',
+            'validation_source', 'external_platform_id', 'external_parent_id',
+            'validation_metadata', 'source_external_string',
+            'last_synced_at', 'sync_status',
+            'created_by', 'created_by_name', 'created', 'last_updated',
+            'workspace', 'details'
+        ]
+        read_only_fields = [
+            'id', 'string_uuid', 'created', 'last_updated', 'workspace',
+            'project_name', 'platform_name', 'entity_name', 'entity_level',
+            'rule_name', 'created_by_name', 'details'
+        ]
+        extra_kwargs = {
+            'workspace': {'required': False},
+            'created_by': {'required': False},
+        }
+
+    def get_created_by_name(self, obj):
+        """Get creator name."""
+        if obj.created_by:
+            return obj.created_by.get_full_name()
+        return None
+
+    def create(self, validated_data):
+        """Create a new String instance."""
+        # Auto-set workspace from context if not provided
+        if 'workspace' not in validated_data and 'workspace_id' in self.context:
+            validated_data['workspace_id'] = self.context['workspace_id']
+
+        # Auto-set created_by from request if available
+        request = self.context.get('request')
+        if request and hasattr(request, 'user') and request.user.is_authenticated:
+            validated_data['created_by'] = request.user
+
+        return super().create(validated_data)
+
+    def update(self, instance, validated_data):
+        """Update a String instance."""
+        # Remove workspace from validated_data to prevent changes
+        validated_data.pop('workspace', None)
+        validated_data.pop('workspace_id', None)
+
+        return super().update(instance, validated_data)
 
 
 # =============================================================================

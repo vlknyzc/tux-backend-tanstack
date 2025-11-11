@@ -8,8 +8,8 @@ from django.db import transaction
 from .. import models
 
 
-class BulkStringCreateSerializer(serializers.Serializer):
-    """Serializer for bulk string creation."""
+class BulkStringOperationsSerializer(serializers.Serializer):
+    """Serializer for bulk string operations (generic batch operations)."""
 
     strings = serializers.ListField(
         child=serializers.DictField(),
