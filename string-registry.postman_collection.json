@@ -1,7 +1,7 @@
 {
   "info": {
     "name": "String Registry API",
-    "description": "API endpoints for validating and importing external platform strings into Tuxonomy.\n\n## Architecture\nThe API uses a dual-model architecture:\n- **ExternalString**: Stores ALL external strings (valid + invalid) for validation tracking\n- **ProjectString**: Stores strings imported into specific projects\n\n## Available Endpoints\n1. `/validate/` - Validation-only (creates ExternalStrings, no project needed)\n2. `/import/` - Direct import to project (creates ProjectStrings for valid strings)\n3. `/import-selected/` - Selective import of previously validated strings\n4. `/validate_single/` - Validate a single string without storage\n\n## Setup\n1. Set the `base_url` variable (e.g., http://localhost:8000/api/v1)\n2. Set the `jwt_token` variable with your authentication token\n3. Update `workspace_id`, `platform_id`, `rule_id`, `project_id` as needed\n\n## Authentication\nAll requests require Bearer token authentication.",
+    "description": "API endpoints for validating and importing external platform strings into Tuxonomy.\n\n## Architecture\nThe API uses a dual-model architecture:\n- **ExternalString**: Stores ALL external strings (valid + invalid) for validation tracking\n- **String**: Stores strings imported into specific projects\n\n## Available Endpoints\n1. `/validate/` - Validation-only (creates ExternalStrings, no project needed)\n2. `/import/` - Direct import to project (creates Strings for valid strings)\n3. `/import-selected/` - Selective import of previously validated strings\n4. `/validate_single/` - Validate a single string without storage\n\n## Setup\n1. Set the `base_url` variable (e.g., http://localhost:8000/api/v1)\n2. Set the `jwt_token` variable with your authentication token\n3. Update `workspace_id`, `platform_id`, `rule_id`, `project_id` as needed\n\n## Authentication\nAll requests require Bearer token authentication.",
     "schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json",
     "_exporter_id": "string-registry-v2"
   },
@@ -225,7 +225,7 @@
               "host": ["{{base_url}}"],
               "path": ["workspaces", "{{workspace_id}}", "string-registry", "import", ""]
             },
-            "description": "Validate and import valid strings to a project in ONE operation.\n\n**Use Case**: Direct import when you're confident about the data quality.\n\n**Creates**:\n- ExternalString records for ALL strings (valid + invalid)\n- ProjectString records for VALID strings only\n\n**Validation**:\n- Platform must be assigned to the project\n- Rule must belong to the platform\n\n**Workflow**:\n1. Select project and upload CSV\n2. System validates all strings\n3. Valid strings automatically imported to ProjectStrings\n4. Invalid strings stored as ExternalStrings for review\n\n**CSV Format:**\n```csv\nstring_value,external_platform_id,entity_name,parent_external_id\nACME-2024,account_999,account,\nACME-2024-US-Q4-Awareness,campaign_123,campaign,account_999\n```\n\n**Limits:**\n- Max file size: 5MB\n- Rate limit: 10 uploads/hour"
+            "description": "Validate and import valid strings to a project in ONE operation.\n\n**Use Case**: Direct import when you're confident about the data quality.\n\n**Creates**:\n- ExternalString records for ALL strings (valid + invalid)\n- String records for VALID strings only\n\n**Validation**:\n- Platform must be assigned to the project\n- Rule must belong to the platform\n\n**Workflow**:\n1. Select project and upload CSV\n2. System validates all strings\n3. Valid strings automatically imported to Strings\n4. Invalid strings stored as ExternalStrings for review\n\n**CSV Format:**\n```csv\nstring_value,external_platform_id,entity_name,parent_external_id\nACME-2024,account_999,account,\nACME-2024-US-Q4-Awareness,campaign_123,campaign,account_999\n```\n\n**Limits:**\n- Max file size: 5MB\n- Rate limit: 10 uploads/hour"
           },
           "response": [
             {
@@ -378,7 +378,7 @@
           ]
         }
       ],
-      "description": "New endpoints using the ExternalString + ProjectString architecture."
+      "description": "New endpoints using the ExternalString + String architecture."
     },
     {
       "name": "Single String Validation",

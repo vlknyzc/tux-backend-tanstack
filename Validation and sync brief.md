@@ -5,7 +5,7 @@
 A validation and sync system that integrates external platform strings (from Meta, Google Ads, TikTok, etc.) into Tuxonomy's project-based string management. Users upload CSV files with platform strings and parent-child relationships, validate against workspace naming rules, and optionally import valid strings into projects. The system uses a dual-model architecture:
 
 - **ExternalString**: Stores ALL external platform strings (valid + invalid) for validation tracking
-- **ProjectString**: Stores strings imported into specific projects
+- **String**: Stores strings imported into specific projects
 
 The system supports flexible workflows: validation-only (review before importing), direct project imports, and selective imports after review, with full hierarchy tracking and conflict detection.
 
@@ -445,7 +445,7 @@ Export includes:
 
 **Endpoint**: `POST /api/v1/workspaces/{workspace_id}/string-registry/import/`
 
-**Use Case**: Validate and import valid strings to a project in one operation. Creates both `ExternalString` (for all) and `ProjectString` (for valid only).
+**Use Case**: Validate and import valid strings to a project in one operation. Creates both `ExternalString` (for all) and `String` (for valid only).
 
 **Content-Type**: `multipart/form-data`
 
@@ -478,8 +478,8 @@ Export includes:
     uploaded_rows: number,
     processed_rows: number,
     skipped_rows: number,
-    created: number,          // ProjectStrings created
-    updated: number,          // ProjectStrings updated
+    created: number,          // Strings created
+    updated: number,          // Strings updated
     valid: number,            // Valid strings
     warnings: number,
     failed: number
@@ -492,7 +492,7 @@ Export includes:
       entity_name: string,
       validation_status: 'valid' | 'invalid' | 'warning' | 'skipped',
       external_string_id: number | null,  // ExternalString.id
-      project_string_id: number | null,   // ProjectString.id (valid only)
+      project_string_id: number | null,   // String.id (valid only)
       import_status: 'imported' | 'updated' | 'failed' | 'skipped',
       errors: Array<ErrorDetail>,
       warnings: Array<WarningDetail>
@@ -1756,7 +1756,7 @@ ACME-2024-US-Q4-Awareness,campaign_123,campaign,account_999
   - Added optional `project` field (required for import operations)
   - Tracks upload metadata and summary statistics
 
-- ✅ Extended **ProjectString** model with external validation fields:
+- ✅ Extended **String** model with external validation fields:
   - `validation_source` (internal/external)
   - `external_platform_id` (unique per workspace when external)
   - `external_parent_id`, `validation_metadata`
@@ -1778,12 +1778,12 @@ ACME-2024-US-Q4-Awareness,campaign_123,campaign,account_999
   - Entity level validation (parent.level < child.level)
   - String length validation (500 char max)
 
-- ✅ **New service methods for ExternalString/ProjectString**:
+- ✅ **New service methods for ExternalString/String**:
   - `create_external_string()` - Create validation records
   - `find_or_create_external_string_version()` - Version tracking
-  - `import_external_string_to_project()` - Import to ProjectString
+  - `import_external_string_to_project()` - Import to String
   - `find_external_string_parent()` - Parent lookup in ExternalStrings
-  - `find_project_string_parent()` - Parent lookup in ProjectStrings
+  - `find_project_string_parent()` - Parent lookup in Strings
 
 **API Endpoints** (100% Complete)
 - ✅ **Validation-only endpoint**: `POST /workspaces/{id}/string-registry/validate/`
@@ -1792,8 +1792,8 @@ ACME-2024-US-Q4-Awareness,campaign_123,campaign,account_999
   - Returns batch_id for future reference
 
 - ✅ **Direct import endpoint**: `POST /workspaces/{id}/string-registry/import/`
-  - Validates and imports to ProjectString in one operation
-  - Creates both ExternalString (all) and ProjectString (valid only)
+  - Validates and imports to String in one operation
+  - Creates both ExternalString (all) and String (valid only)
   - Validates platform is assigned to project
 
 - ✅ **Selective import endpoint**: `POST /workspaces/{id}/string-registry/import-selected/`
@@ -1815,12 +1815,12 @@ ACME-2024-US-Q4-Awareness,campaign_123,campaign,account_999
 *Legacy serializers (for deprecated /upload/ endpoint):*
 - ✅ `CSVUploadRequestSerializer`, `BulkValidationResponseSerializer`
 
-*New serializers for ExternalString/ProjectString workflow:*
+*New serializers for ExternalString/String workflow:*
 - ✅ `ValidationOnlyRequestSerializer` - Validation-only request
 - ✅ `ImportToProjectRequestSerializer` - Direct import request with project validation
 - ✅ `SelectiveImportRequestSerializer` - Selective import by IDs
 - ✅ `ExternalStringRowSerializer` - ExternalString result row
-- ✅ `ProjectStringRowSerializer` - ProjectString import result row
+- ✅ `StringRowSerializer` - String import result row
 - ✅ `ValidationOnlyResponseSerializer` - Validation batch response
 - ✅ `ImportToProjectResponseSerializer` - Import batch response
 - ✅ `SelectiveImportResponseSerializer` - Selective import response

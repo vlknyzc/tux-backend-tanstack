@@ -87,7 +87,7 @@ class SingleStringValidationResponseSerializer(serializers.Serializer):
 
 
 # ==========================================
-# Serializers for ExternalString/ProjectString Operations
+# Serializers for ExternalString/String Operations
 # ==========================================
 
 class ValidationOnlyRequestSerializer(serializers.Serializer):
@@ -139,7 +139,7 @@ class ImportToProjectRequestSerializer(serializers.Serializer):
     """
     Serializer for direct import to project.
 
-    Validates, creates ExternalStrings, and imports to ProjectStrings in one operation.
+    Validates, creates ExternalStrings, and imports to Strings in one operation.
     """
     project_id = serializers.IntegerField()
     platform_id = serializers.IntegerField()
@@ -251,8 +251,8 @@ class ValidationOnlyResponseSerializer(serializers.Serializer):
     results = ExternalStringRowSerializer(many=True)
 
 
-class ProjectStringRowSerializer(serializers.Serializer):
-    """Serializer for ProjectString import result."""
+class StringRowSerializer(serializers.Serializer):
+    """Serializer for String import result."""
     row_number = serializers.IntegerField()
     string_value = serializers.CharField()
     external_platform_id = serializers.CharField()
@@ -276,7 +276,7 @@ class ImportToProjectResponseSerializer(serializers.Serializer):
     operation_type = serializers.CharField(default='import')
     project = serializers.DictField()  # {id, name}
     summary = ValidationSummarySerializer()
-    results = ProjectStringRowSerializer(many=True)
+    results = StringRowSerializer(many=True)
 
 
 class SelectiveImportResponseSerializer(serializers.Serializer):

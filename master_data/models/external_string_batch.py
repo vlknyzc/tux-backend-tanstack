@@ -21,7 +21,7 @@ class ExternalStringBatch(TimeStampModel, WorkspaceMixin):
     Each batch represents one CSV file upload containing external platform
     strings that were either:
     - Validated and stored in ExternalString (validation operation)
-    - Validated and imported to ProjectString (import operation)
+    - Validated and imported to String (import operation)
 
     Provides audit trail and summary statistics for each upload.
     """
@@ -96,11 +96,11 @@ class ExternalStringBatch(TimeStampModel, WorkspaceMixin):
     # Validation results
     created_count = models.IntegerField(
         default=0,
-        help_text="ExternalStrings or ProjectStrings created"
+        help_text="ExternalStrings or Strings created"
     )
     updated_count = models.IntegerField(
         default=0,
-        help_text="ProjectStrings updated (import operation only)"
+        help_text="Strings updated (import operation only)"
     )
     valid_count = models.IntegerField(
         default=0,
